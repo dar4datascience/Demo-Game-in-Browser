@@ -1,0 +1,23 @@
+{
+  "name": "demo-game-in-browser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Night Shift: a lo-fi browser horror demo inspired by Chilla's Art",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dar4datascience/Demo-Game-in-Browser.git"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "vite": "8.3.2"
+  }
+}

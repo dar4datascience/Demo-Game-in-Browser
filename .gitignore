@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.devin/mcp_config.local.json
+scripts/shots/

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Night Shift — lo-fi konbini horror demo</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="hud">
+      <div id="objective"></div>
+      <div id="clock"></div>
+      <div id="crosshair"></div>
+      <div id="prompt"></div>
+      <div id="subtitle"></div>
+      <div id="cam" class="hidden"><span class="rec">● REC</span> CAM 02 — STAFF ROOM<br /><span id="camtime"></span></div>
+    </div>
+    <div id="title" class="screen">
+      <h1>NIGHT SHIFT</h1>
+      <p class="sub">a lo-fi convenience store horror demo</p>
+      <p class="credit">
+        A fan-made tribute inspired by Chilla's Art — <em>The Convenience Store</em> (2020).<br />
+        Original code and procedural assets; no content from the original game.
+      </p>
+      <ul class="controls">
+        <li><b>WASD</b> move</li>
+        <li><b>Mouse</b> look</li>
+        <li><b>Shift</b> run</li>
+        <li><b>E / Click</b> interact</li>
+        <li><b>Esc</b> pause</li>
+      </ul>
+      <p class="blink">Click to start your shift</p>
+      <p class="hint">Headphones recommended.</p>
+    </div>
+    <div id="pause" class="screen hidden">
+      <h2>PAUSED</h2>
+      <p class="blink">Click to resume</p>
+    </div>
+    <div id="end" class="screen hidden">
+      <h1>END OF SHIFT</h1>
+      <p class="sub">Thanks for playing the demo.</p>
+      <p class="blink">Click to play again</p>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
