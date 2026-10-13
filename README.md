@@ -46,11 +46,26 @@ Desktop browser with WebGL2 required. Headphones recommended.
 src/
   engine/          post.js (render pipeline + PS1 material), textures.js, audio.js, input.js
   world/           builder.js (shared level helpers, oriented-box colliders), person.js (NPCs)
-  game/            player.js, hud.js, director.js (shared story helpers)
+  game/            player.js, hud.js, scheduler.js, interaction.js, director.js (shared story helpers)
+  levels/index.js  level registry
   levels/konbini/  world.js, story.js
   levels/ceda/     world.js, props.js (trucks, diablitos, stalls), story.js (3 characters + finale)
   main.js          menu, level loading, main loop
 ```
+
+## Tests
+
+```bash
+npm test            # unit + integration (Vitest, headless, ~5s), also run in CI on every push/PR
+npm run test:e2e    # browser playthroughs of every story (Docker + mcp/playwright image, slow)
+```
+
+- **Unit** (`tests/unit/`): scheduler, collision and player movement, raycast interactions, level builder,
+  NPC walking, HUD clock, textures, Central de Abasto layout invariants.
+- **Integration** (`tests/integration/`): builds both levels in Node (canvas stub, no WebGL), checks that every
+  mission target is reachable on foot from the spawn using the game's collision rules, and plays every story
+  headlessly to its ending (NightMart, plus each Central de Abasto character with both endings).
+- **E2E** (`scripts/e2e.sh`): real Chromium with WebGL plays each story through `?debug` hooks and saves screenshots.
 
 ## Debugging
 
