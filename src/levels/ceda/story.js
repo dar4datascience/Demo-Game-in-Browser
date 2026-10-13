@@ -87,13 +87,16 @@ export async function runStory(ctx) {
       ['C-9', 'd2', 'la camioneta azul del andén A'],
       ['B-11', 'd3', 'la camioneta blanca del andén D'],
     ];
+    F.delivered = 0;
+    // A job is active only until it's delivered (no re-loading the same pickup during the driver's lines).
+    const active = (i) => F.job === i && F.delivered === i;
     jobs.forEach(([pickup, truck], i) => {
-      interact(R.pickups[pickup], () => (F.job === i && F.hasCart && !load.visible ? 'Cargar los bultos' : null), () => {
+      interact(R.pickups[pickup], () => (active(i) && F.hasCart && !load.visible ? 'Cargar los bultos' : null), () => {
         load.visible = true;
         player.speedScale = 0.7;
         sfx.thud();
       });
-      interact(R.trucks[truck], () => (F.job === i && load.visible ? 'Descargar en la camioneta' : null), () => {
+      interact(R.trucks[truck], () => (active(i) && load.visible ? 'Descargar en la camioneta' : null), () => {
         load.visible = false;
         player.speedScale = CHARACTERS.diablero.speed;
         F.delivered = i + 1;
