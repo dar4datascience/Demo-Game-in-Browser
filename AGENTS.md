@@ -18,10 +18,23 @@
   It plays the whole story through `?debug&speed=4` hooks, prints each interaction prompt, exits non-zero on
   timeouts/page errors, and writes screenshots to `scripts/shots/` (gitignored).
 
+- Central de Abasto, one run per character (`CHAR=diablero|seller|consumer`, optional `ENDING=caught`):
+
+  ```bash
+  docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=seller --entrypoint node mcp/playwright /out/playthrough-ceda.mjs
+  ```
+
+- Software rendering in that container runs at about 3 fps on the CEDA map (about 21 point lights), so each run takes a few
+  minutes. The scripts wait on rendered frames, not wall-clock time.
+- `scripts/shots/` is gitignored, so agent file tools can't read it; copy the screenshots out first (`cp -r scripts/shots /tmp/`).
+
 ## Conventions
 
 - Plain ES modules, 2-space indent, single quotes. Three.js materials must go through `lam()` / `basic()` from
   `src/engine/post.js` so they get PS1 vertex snapping.
 - Keep assets procedural (canvas textures, WebAudio). Don't add copied art, audio, names or characters from
-  Chilla's Art games; this is a style tribute.
+  Chilla's Art games; this is a style tribute. Central de Abasto businesses must stay fictional (no real brands or logos).
+- New levels: add `src/levels/<id>/world.js` (`buildWorld(scene)` returning the `createBuilder` object plus
+  `refs`, `cameras`, `fog`, `update`) and `story.js` (`runStory(ctx)`), then register them in `LEVELS` in `src/main.js`
+  and add a menu card in `index.html`.
 - Pin dependency versions exactly, and pick releases that are at least 7 days old.

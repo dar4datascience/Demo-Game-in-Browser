@@ -10,7 +10,7 @@ page.on('pageerror', (e) => logs.push(`pageerror: ${e.message}`));
 page.on('console', (m) => m.type() === 'error' && !m.text().includes('404') && logs.push(m.text()));
 await page.goto(`${process.env.GAME_URL ?? 'http://localhost:5173'}/?debug&speed=4`);
 await page.waitForTimeout(1000);
-await page.click('#title');
+await page.click('[data-map=konbini]');
 
 const state = () => page.evaluate(() => ({
   obj: document.getElementById('objective').textContent,
@@ -23,13 +23,18 @@ const at = (x, z, yaw, pitch) => page.evaluate(([x, z, yaw, pitch]) => {
   player.yaw = yaw;
   player.pitch = pitch;
 }, [x, z, yaw, pitch]);
+// Wait for real rendered frames: software-rendered Chromium can be far slower than wall-clock waits assume.
+const frames = (n = 3) => page.evaluate((n) => new Promise((resolve) => {
+  const step = () => (--n <= 0 ? resolve() : requestAnimationFrame(step));
+  requestAnimationFrame(step);
+}), n);
 const use = async (label, x, z, yaw, pitch) => {
   await at(x, z, yaw, pitch);
-  await page.waitForTimeout(250);
+  await frames(3);
   const s = await state();
   console.log(`${label.padEnd(10)} prompt="${s.prompt}"`);
   await page.keyboard.press('e');
-  await page.waitForTimeout(250);
+  await frames(3);
 };
 const until = async (pred, label, timeout = 60000) => {
   const t = Date.now();
