@@ -79,27 +79,37 @@ export class Player {
     this.camera.rotation.set(this.pitch, this.yaw, 0);
   }
 
-  // Push the player's circle out of any overlapping oriented box (done in the box's local frame).
   resolve(colliders) {
-    const p = this.pos;
-    for (const c of colliders) {
-      const cos = Math.cos(c.rot), sin = Math.sin(c.rot);
-      const dx = p.x - c.cx, dz = p.z - c.cz;
-      let lx = dx * cos - dz * sin, lz = dx * sin + dz * cos;
-      const ox = lx - THREE.MathUtils.clamp(lx, -c.hx, c.hx);
-      const oz = lz - THREE.MathUtils.clamp(lz, -c.hz, c.hz);
-      const d = Math.hypot(ox, oz);
-      if (d >= RADIUS) continue;
-      if (d > 1e-6) {
-        lx += (ox / d) * (RADIUS - d);
-        lz += (oz / d) * (RADIUS - d);
-      } else if (c.hx - Math.abs(lx) < c.hz - Math.abs(lz)) {
-        lx = Math.sign(lx || 1) * (c.hx + RADIUS);
-      } else {
-        lz = Math.sign(lz || 1) * (c.hz + RADIUS);
-      }
-      p.x = c.cx + lx * cos + lz * sin;
-      p.z = c.cz - lx * sin + lz * cos;
+    resolveCircle(this.pos, colliders);
+  }
+}
+
+// Point (x, z) in an oriented box collider's local frame, plus its offset from the box surface.
+function toLocal(x, z, c) {
+  const cos = Math.cos(c.rot), sin = Math.sin(c.rot);
+  const dx = x - c.cx, dz = z - c.cz;
+  const lx = dx * cos - dz * sin, lz = dx * sin + dz * cos;
+  const ox = lx - THREE.MathUtils.clamp(lx, -c.hx, c.hx);
+  const oz = lz - THREE.MathUtils.clamp(lz, -c.hz, c.hz);
+  return { cos, sin, lx, lz, ox, oz, d: Math.hypot(ox, oz) };
+}
+
+export const circleHits = (x, z, c, radius = RADIUS) => toLocal(x, z, c).d < radius;
+
+// Push a circle out of every overlapping oriented box (done in each box's local frame).
+export function resolveCircle(p, colliders, radius = RADIUS) {
+  for (const c of colliders) {
+    let { cos, sin, lx, lz, ox, oz, d } = toLocal(p.x, p.z, c);
+    if (d >= radius) continue;
+    if (d > 1e-6) {
+      lx += (ox / d) * (radius - d);
+      lz += (oz / d) * (radius - d);
+    } else if (c.hx - Math.abs(lx) < c.hz - Math.abs(lz)) {
+      lx = Math.sign(lx || 1) * (c.hx + radius);
+    } else {
+      lz = Math.sign(lz || 1) * (c.hz + radius);
     }
+    p.x = c.cx + lx * cos + lz * sin;
+    p.z = c.cz - lx * sin + lz * cos;
   }
 }

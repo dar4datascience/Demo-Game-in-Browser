@@ -5,15 +5,9 @@ import { Sfx } from './engine/audio.js';
 import { createInput } from './engine/input.js';
 import { Player } from './game/player.js';
 import { createHud } from './game/hud.js';
-import * as konbini from './levels/konbini/world.js';
-import * as konbiniStory from './levels/konbini/story.js';
-import * as ceda from './levels/ceda/world.js';
-import * as cedaStory from './levels/ceda/story.js';
-
-const LEVELS = {
-  konbini: { build: konbini.buildWorld, story: konbiniStory.runStory, clock: 23 * 60 + 40 },
-  ceda: { build: ceda.buildWorld, story: cedaStory.runStory, clock: 4 * 60 + 10 },
-};
+import { createGame } from './game/scheduler.js';
+import { createInteractions } from './game/interaction.js';
+import { LEVELS } from './levels/index.js';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -37,66 +31,16 @@ pipe.resize();
 const input = createInput(canvas);
 const sfx = new Sfx();
 
-// Game-time scheduler: story steps await these, so pausing freezes the script.
-const game = {
-  time: 0,
-  waiters: [],
-  hooks: [], // per-tick callbacks; return true to unregister
-  flags: {},
-  npcs: [],
-  cam: camera,
-  inputEnabled: true,
-  shake: 0,
-  fade: { target: 1, rate: 1 },
-  started: false,
-  ended: false,
-  until(pred) {
-    return new Promise((resolve) => this.waiters.push({ pred, resolve }));
-  },
-  wait(seconds) {
-    const t = this.time + seconds;
-    return this.until(() => this.time >= t);
-  },
-  fadeTo(target, seconds) {
-    this.fade = { target, rate: 1 / Math.max(seconds, 0.001) };
-  },
-  tick(dt) {
-    this.time += dt;
-    this.hooks = this.hooks.filter((h) => !h(dt));
-    this.waiters = this.waiters.filter((w) => !(w.pred() && (w.resolve(), true)));
-  },
-};
+const game = createGame(camera);
 const hud = createHud(game);
 const player = new Player(camera);
-
-// Interaction targets share one raycast list with walls so nothing is usable through a wall.
-const targets = [];
-const interact = (objects, label, use) => {
-  const it = { label, use };
-  for (const obj of [objects].flat()) {
-    obj.traverse((m) => {
-      if (!m.isMesh) return;
-      m.userData.interact = it;
-      targets.push(m);
-    });
-  }
-};
-const raycaster = new THREE.Raycaster();
-raycaster.far = 2.3;
-const center = new THREE.Vector2();
-
-const visible = (obj) => {
-  for (let o = obj; o; o = o.parent) if (!o.visible) return false;
-  return true;
-};
+const interactions = createInteractions();
+const interact = interactions.interact;
 
 function updateInteraction() {
-  raycaster.setFromCamera(center, camera);
-  const hit = raycaster.intersectObjects(targets, false).find((h) => visible(h.object));
-  const it = hit?.object.userData.interact;
-  const label = it?.label();
-  hud.prompt(label);
-  if (label && (input.pressed.has('KeyE') || input.click)) it.use();
+  const focus = interactions.pick(camera);
+  hud.prompt(focus?.label);
+  if (focus && (input.pressed.has('KeyE') || input.click)) focus.it.use();
 }
 
 function update(dt) {
@@ -123,7 +67,7 @@ function start(levelId, character = null) {
   game.started = true;
   const level = LEVELS[levelId];
   world = level.build(scene);
-  targets.push(...world.occluders);
+  interactions.addOccluders(world.occluders);
   scene.fog = new THREE.Fog(...world.fog);
   pipe.renderer.setClearColor(world.fog[0]);
   pipe.resize();
