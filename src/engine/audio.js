@@ -146,6 +146,33 @@ export class Sfx {
     };
   }
 
+  // Roll-up metal shutter.
+  rattle(dur = 1.4) {
+    for (let t = 0; t < dur; t += 0.06) this.noise(0.05, { at: t, vol: 0.1, freq: 1400 + Math.random() * 600, type: 'bandpass' });
+  }
+
+  squeak() {
+    const osc = this.tone(1700, 0.18, { type: 'triangle', vol: 0.03 });
+    osc?.frequency.linearRampToValueAtTime(2300, this.now + 0.18);
+  }
+
+  coins() {
+    [0, 0.07, 0.15].forEach((at, i) => this.tone(3200 + i * 400, 0.12, { vol: 0.04, at }));
+  }
+
+  traffic() {
+    if (!this.ctx || this.trafficGain) return;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    src.loop = true;
+    this.trafficGain = this.loop(src, 0.04, 220);
+    this.trafficGain.connect(this.out);
+  }
+
+  whisper() {
+    this.noise(1.2, { vol: 0.08, freq: 2600, type: 'bandpass', attack: 0.4 });
+  }
+
   stinger() {
     [98, 104, 147, 208, 311, 415, 622].forEach((f) => this.tone(f, 2.8, { type: 'sawtooth', vol: 0.07, attack: 0.005 }));
     this.noise(1.5, { vol: 0.6, freq: 2500, type: 'highpass' });

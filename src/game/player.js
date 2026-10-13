@@ -13,6 +13,18 @@ export class Player {
     this.bob = 0;
     this.held = null;
     this.heldKind = null;
+    this.speedScale = 1;
+    // Phone flashlight, switched on by level scripts during blackouts.
+    this.flashlight = new THREE.SpotLight(0xfff1dc, 0, 30, 0.5, 0.55, 1.6);
+    this.flashlight.position.set(0.15, -0.15, 0);
+    this.flashlight.target.position.set(0, -0.1, -1);
+    camera.add(this.flashlight, this.flashlight.target);
+  }
+
+  spawn(x, z, yaw) {
+    this.pos.set(x, 0, z);
+    this.yaw = yaw;
+    this.pitch = 0;
   }
 
   forward() {
@@ -23,13 +35,13 @@ export class Player {
     return new THREE.Vector3(p.x - this.pos.x, 0, p.z - this.pos.z).normalize().dot(this.forward());
   }
 
-  hold(kind, mesh = null) {
+  hold(kind, mesh = null, pos = [0.32, -0.32, -0.65], rot = [0.1, -0.3, 0]) {
     if (this.held) this.camera.remove(this.held);
     this.heldKind = kind;
     this.held = mesh;
     if (!mesh) return;
-    mesh.position.set(0.32, -0.32, -0.65);
-    mesh.rotation.set(0.1, -0.3, 0);
+    mesh.position.set(...pos);
+    mesh.rotation.set(...rot);
     this.camera.add(mesh);
   }
 
@@ -42,7 +54,7 @@ export class Player {
       const f = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
       const s = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
       if (f || s) {
-        const speed = (k.has('ShiftLeft') || k.has('ShiftRight') ? 3.6 : 2.2) * dt;
+        const speed = (k.has('ShiftLeft') || k.has('ShiftRight') ? 3.6 : 2.2) * this.speedScale * dt;
         const fwd = this.forward();
         const len = Math.hypot(f, s);
         const mx = ((fwd.x * f - fwd.z * s) / len) * speed;
@@ -67,25 +79,27 @@ export class Player {
     this.camera.rotation.set(this.pitch, this.yaw, 0);
   }
 
-  // Push the player's circle out of any overlapping axis-aligned box.
+  // Push the player's circle out of any overlapping oriented box (done in the box's local frame).
   resolve(colliders) {
     const p = this.pos;
     for (const c of colliders) {
-      const nx = THREE.MathUtils.clamp(p.x, c.minX, c.maxX);
-      const nz = THREE.MathUtils.clamp(p.z, c.minZ, c.maxZ);
-      const dx = p.x - nx, dz = p.z - nz, d = Math.hypot(dx, dz);
+      const cos = Math.cos(c.rot), sin = Math.sin(c.rot);
+      const dx = p.x - c.cx, dz = p.z - c.cz;
+      let lx = dx * cos - dz * sin, lz = dx * sin + dz * cos;
+      const ox = lx - THREE.MathUtils.clamp(lx, -c.hx, c.hx);
+      const oz = lz - THREE.MathUtils.clamp(lz, -c.hz, c.hz);
+      const d = Math.hypot(ox, oz);
       if (d >= RADIUS) continue;
       if (d > 1e-6) {
-        p.x += (dx / d) * (RADIUS - d);
-        p.z += (dz / d) * (RADIUS - d);
+        lx += (ox / d) * (RADIUS - d);
+        lz += (oz / d) * (RADIUS - d);
+      } else if (c.hx - Math.abs(lx) < c.hz - Math.abs(lz)) {
+        lx = Math.sign(lx || 1) * (c.hx + RADIUS);
       } else {
-        const pushes = [
-          [c.minX - RADIUS - p.x, 0], [c.maxX + RADIUS - p.x, 0],
-          [0, c.minZ - RADIUS - p.z], [0, c.maxZ + RADIUS - p.z],
-        ].sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
-        p.x += pushes[0][0];
-        p.z += pushes[0][1];
+        lz = Math.sign(lz || 1) * (c.hz + RADIUS);
       }
+      p.x = c.cx + lx * cos + lz * sin;
+      p.z = c.cz - lx * sin + lz * cos;
     }
   }
 }

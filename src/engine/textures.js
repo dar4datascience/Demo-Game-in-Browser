@@ -209,6 +209,174 @@ export const storeSignTex = () => canvasTexture(256, 48, (g, w, h) => {
   g.fillText('24', w / 2 + 92, h / 2);
 });
 
+// --- Central de Abasto -------------------------------------------------------
+
+export const paintedWallTex = (base = '#d9d2bf', band = '#3c7a4a') => canvasTexture(32, 32, (g, w, h) => {
+  g.fillStyle = base;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = band;
+  g.fillRect(0, 26, w, 6);
+  g.fillStyle = 'rgba(40,30,20,0.25)';
+  for (let i = 0; i < 6; i++) g.fillRect(Math.floor(rand() * w), 20 + Math.floor(rand() * 6), 1 + Math.floor(rand() * 3), 6);
+  grain(g, w, h, 16);
+});
+
+// Roll-up metal shutter ("cortina"), 1 repeat per metre.
+export const cortinaTex = (tint = '#8d9298', tag = false) => canvasTexture(32, 32, (g, w, h) => {
+  g.fillStyle = tint;
+  g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 4) {
+    g.fillStyle = 'rgba(255,255,255,0.18)';
+    g.fillRect(0, y, w, 1);
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    g.fillRect(0, y + 3, w, 1);
+  }
+  g.fillStyle = 'rgba(110,60,30,0.5)';
+  for (let i = 0; i < 5; i++) g.fillRect(Math.floor(rand() * w), Math.floor(rand() * h), 2, 1 + Math.floor(rand() * 3));
+  if (tag) {
+    g.strokeStyle = pick(['#e4007c', '#111', '#1e6fd9', '#e33']);
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(3, 20);
+    for (let x = 6; x < 30; x += 4) g.lineTo(x, 12 + rand() * 10);
+    g.stroke();
+  }
+  grain(g, w, h, 12);
+});
+
+// Lit interior of an open bodega: stacked sacks, boxes and dried chiles.
+export const bodegaInteriorTex = (kind) => canvasTexture(96, 80, (g, w, h) => {
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#2a2018');
+  grad.addColorStop(0.5, '#4a3a28');
+  grad.addColorStop(1, '#2e241a');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#6a5640';
+  g.fillRect(0, 64, w, 16);
+  // Hanging bulb.
+  g.fillStyle = '#111';
+  g.fillRect(47, 0, 1, 6);
+  g.fillStyle = '#fff2c4';
+  g.fillRect(45, 6, 4, 3);
+  const fills = {
+    sacks: ['#d8c49a', '#cdb88a', '#e2d3ab', '#bfa878'],
+    boxes: ['#b98a52', '#e4007c', '#f4d03f', '#2e86c1', '#a0522d', '#c8a06a'],
+    chiles: ['#8b1a1a', '#b22222', '#5c0f0f', '#d8c49a', '#6b3e1f', '#e25822'],
+  }[kind];
+  // Back shelving with goods, then a front pile on the floor.
+  for (const shelfY of [24, 42]) {
+    g.fillStyle = '#5b4026';
+    g.fillRect(4, shelfY, w - 8, 2);
+    for (let x = 6; x < w - 10; x += 5) {
+      const ih = 6 + Math.floor(rand() * 6);
+      g.fillStyle = pick(fills);
+      g.fillRect(x, shelfY - ih, 4, ih);
+      g.fillStyle = 'rgba(255,255,255,0.2)';
+      g.fillRect(x, shelfY - ih, 4, 1);
+    }
+  }
+  for (let col = 0; col < 11; col++) {
+    const x = 4 + col * 8;
+    const stack = 1 + Math.floor(rand() * 3);
+    for (let r = 0; r < stack; r++) {
+      const y = 68 - (r + 1) * 6;
+      g.fillStyle = pick(fills);
+      g.fillRect(x, y, 7, 6);
+      g.fillStyle = 'rgba(255,255,255,0.25)';
+      g.fillRect(x + 1, y, 5, 1);
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.fillRect(x, y + 5, 7, 1);
+    }
+  }
+  g.fillStyle = '#1e1710';
+  g.fillRect(0, 0, 3, h);
+  g.fillRect(w - 3, 0, 3, h);
+  grain(g, w, h, 12);
+});
+
+const SIGN_COLORS = [['#f4d03f', '#7a1f1f'], ['#1e6fd9', '#ffffff'], ['#e4007c', '#ffffff'], ['#2bb673', '#ffffff'], ['#ffffff', '#c0392b'], ['#ff7a00', '#1b1b1b']];
+
+export const bodegaSignTex = (name, id) => canvasTexture(128, 28, (g, w, h) => {
+  const [bg, fg] = pick(SIGN_COLORS);
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = fg;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = 'bold 11px monospace';
+  g.fillText(name, w / 2, 10, w - 6);
+  g.font = 'bold 9px monospace';
+  g.fillText(`BOD. ${id}`, w / 2, 22);
+  grain(g, w, h, 18);
+});
+
+export const pasilloSignTex = (text) => signTex(text, '#1f4fa3', '#ffffff', 128, 24);
+
+export const letterTex = (letter) => canvasTexture(32, 32, (g) => {
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.arc(16, 16, 15, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#3d6fc4';
+  g.beginPath();
+  g.arc(16, 16, 12, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#ffffff';
+  g.font = 'bold 18px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(letter, 16, 17);
+});
+
+export const lonaTex = (color) => canvasTexture(16, 16, (g, w, h) => {
+  g.fillStyle = color;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,255,255,0.15)';
+  for (let x = 0; x < w; x += 4) g.fillRect(x, 0, 1, h);
+  grain(g, w, h, 16);
+});
+
+export const produceTex = () => canvasTexture(32, 32, (g, w, h) => {
+  g.fillStyle = '#6b4a2b';
+  g.fillRect(0, 0, w, h);
+  for (let cx = 0; cx < 4; cx++) {
+    for (let cy = 0; cy < 2; cy++) {
+      const c = pick(['#d32f2f', '#f57c00', '#7cb342', '#fbc02d', '#8d6e63', '#c62828', '#eceff1']);
+      for (let i = 0; i < 14; i++) {
+        g.fillStyle = c;
+        g.fillRect(cx * 8 + 1 + Math.floor(rand() * 6), cy * 16 + 1 + Math.floor(rand() * 13), 2, 2);
+      }
+    }
+  }
+  grain(g, w, h, 14);
+});
+
+export const sackTex = () => canvasTexture(16, 16, (g, w, h) => {
+  g.fillStyle = '#cdb88a';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(90,70,40,0.35)';
+  for (let i = 0; i < w; i += 2) {
+    g.fillRect(i, 0, 1, h);
+    g.fillRect(0, i, w, 1);
+  }
+  g.fillStyle = '#7a1f1f';
+  g.fillRect(4, 6, 8, 3);
+  grain(g, w, h, 14);
+});
+
+export const hazardTex = () => canvasTexture(16, 4, (g, w, h) => {
+  for (let x = -4; x < w + 4; x += 4) {
+    g.fillStyle = (x / 4) % 2 ? '#f2c230' : '#1b1b1b';
+    g.beginPath();
+    g.moveTo(x, h);
+    g.lineTo(x + 2, 0);
+    g.lineTo(x + 4, 0);
+    g.lineTo(x + 2, h);
+    g.fill();
+  }
+});
+
 export function staticScreen() {
   const canvas = document.createElement('canvas');
   canvas.width = 48;

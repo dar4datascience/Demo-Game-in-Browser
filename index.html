@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Night Shift — lo-fi konbini horror demo</title>
+    <title>Night Shift — lo-fi horror demos</title>
     <link rel="icon" href="data:," />
   </head>
   <body>
@@ -18,11 +18,37 @@
     </div>
     <div id="title" class="screen">
       <h1>NIGHT SHIFT</h1>
-      <p class="sub">a lo-fi convenience store horror demo</p>
-      <p class="credit">
-        A fan-made tribute inspired by Chilla's Art — <em>The Convenience Store</em> (2020).<br />
-        Original code and procedural assets; no content from the original game.
-      </p>
+      <p class="sub">lo-fi horror demos</p>
+      <div id="menu-maps" class="cards">
+        <button class="card" data-map="konbini">
+          <b>NightMart</b>
+          <span>11:40 PM · A konbini night shift.</span>
+          <em>Inspired by Chilla's Art — The Convenience Store</em>
+        </button>
+        <button class="card" data-map="ceda">
+          <b>Central de Abasto</b>
+          <span>4:10 AM · Iztapalapa, CDMX. Pasillos, bodegas and andenes.</span>
+          <em>Choose your character</em>
+        </button>
+      </div>
+      <div id="menu-chars" class="cards hidden">
+        <button class="card" data-char="diablero">
+          <b>Diablero</b>
+          <span>Porter with a diablito. Haul three loads from the bodegas to the trucks.</span>
+          <em>Slower, carries heavy loads</em>
+        </button>
+        <button class="card" data-char="seller">
+          <b>Seller</b>
+          <span>Bodeguero. Raise your cortina, stock the pallets, and serve customers.</span>
+          <em>Bod. B-4 · Abarrotes La Esperanza</em>
+        </button>
+        <button class="card" data-char="consumer">
+          <b>Consumer</b>
+          <span>Marchante. Buy everything on your shopping list before dawn.</span>
+          <em>Lista del mandado</em>
+        </button>
+        <button id="menu-back" class="back">← back</button>
+      </div>
       <ul class="controls">
         <li><b>WASD</b> move</li>
         <li><b>Mouse</b> look</li>
@@ -30,7 +56,10 @@
         <li><b>E / Click</b> interact</li>
         <li><b>Esc</b> pause</li>
       </ul>
-      <p class="blink">Click to start your shift</p>
+      <p class="credit">
+        Fan-made tributes with original code and procedural assets, and no content from the original games.<br />
+        The Central de Abasto map is loosely based on public floor plans; all businesses shown are fictional.
+      </p>
       <p class="hint">Headphones recommended.</p>
     </div>
     <div id="pause" class="screen hidden">
@@ -38,8 +67,8 @@
       <p class="blink">Click to resume</p>
     </div>
     <div id="end" class="screen hidden">
-      <h1>END OF SHIFT</h1>
-      <p class="sub">Thanks for playing the demo.</p>
+      <h1 id="end-title">END OF SHIFT</h1>
+      <p id="end-sub" class="sub">Thanks for playing the demo.</p>
       <p class="blink">Click to play again</p>
     </div>
     <script type="module" src="/src/main.js"></script>

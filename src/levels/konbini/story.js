@@ -1,11 +1,10 @@
 import * as THREE from 'three';
-import { NPC } from '../world/person.js';
-import { lam } from '../engine/post.js';
-import { cardboardTex } from '../engine/textures.js';
+import { lam } from '../../engine/post.js';
+import { cardboardTex } from '../../engine/textures.js';
+import { createDirector, GHOST } from '../../game/director.js';
 
 const SALARYMAN = { top: '#2c3442', bottom: '#22252b', skin: '#d6a983', hair: '#1a1612' };
 const WOMAN = { top: '#6f655a', bottom: '#2a2a2a', skin: '#e0c7b0', hair: '#0b0b0b', longHair: true, veil: true, dress: true };
-const GHOST = { top: '#e6e2d6', skin: '#d8d2c8', hair: '#060606', longHair: true, dress: true, emissive: 0.55, height: 1.04, hollow: true };
 const CLERK = { top: '#1d8a86', bottom: '#2a2c33', skin: '#d9b08c', hair: '#201810' };
 
 const ENTRANCE = [[4.5, 7], [4.5, 4.2], [-4.5, 3.9]];
@@ -19,32 +18,15 @@ const PHONE_CALL = [
   '*click*',
 ];
 
-export async function runStory({ game, world, hud, sfx, player, scene, pipe, interact, end }) {
+export async function runStory(ctx) {
+  const { game, world, hud, sfx, player, pipe, interact, end } = ctx;
   const R = world.refs, F = game.flags;
-  F.restocked = 0;
-
-  const spawn = (opts, x, z) => {
-    const npc = new NPC(opts, scene);
-    npc.place(x, z);
-    game.npcs.push(npc);
-    return npc;
-  };
-  const despawn = (npc) => {
-    npc.root.removeFromParent();
-    game.npcs.splice(game.npcs.indexOf(npc), 1);
-  };
-  const say = (text, dur = 3) => hud.say(text, dur);
+  const { spawn, despawn, say, power, flicker, jumpscare } = createDirector(ctx);
   const holding = (kind) => player.heldKind === kind;
-  const power = (on) => {
-    world.setPower(on);
-    sfx.setPower(on);
-  };
-  const flicker = async (steps) => {
-    for (const [on, dur] of steps) {
-      power(on);
-      await game.wait(dur);
-    }
-  };
+  F.restocked = 0;
+  player.spawn(4.5, 13, 0);
+  R.door.onOpen = () => sfx.chime();
+
   const serve = async () => {
     F.customerWaiting = true;
     hud.objective('Serve the customer at the register.');
@@ -194,17 +176,6 @@ export async function runStory({ game, world, hud, sfx, player, scene, pipe, int
 
   const t0 = game.time;
   await game.until(() => player.facing(lurker.pos) > 0.75 || game.time - t0 > 6);
-  game.inputEnabled = false;
-  const front = player.pos.clone().addScaledVector(player.forward(), 0.6);
-  lurker.place(front.x, front.z);
-  lurker.face(player.pos.x, player.pos.z);
-  player.pitch = 0.05;
-  sfx.stinger();
-  pipe.u.uFlash.value = 0.9;
-  game.shake = 1;
-  await game.wait(1.4);
-  game.fadeTo(1, 0.05);
-  sfx.silence();
-  await game.wait(1.6);
-  end();
+  await jumpscare(lurker);
+  end('END OF SHIFT', 'Thanks for playing the demo.');
 }

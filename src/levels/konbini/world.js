@@ -1,21 +1,10 @@
 import * as THREE from 'three';
-import { lam, basic } from '../engine/post.js';
-import * as T from '../engine/textures.js';
+import { lam, basic } from '../../engine/post.js';
+import * as T from '../../engine/textures.js';
+import { createBuilder } from '../../world/builder.js';
 
 const H = 3.2; // ceiling height
 const DOOR_X = 4.5, DOOR_Z = 6;
-
-// Scale box UVs to world metres so tiling textures keep a consistent density.
-function worldUV(geo, w, h, d, s) {
-  const uv = geo.attributes.uv;
-  const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
-  for (let f = 0; f < 6; f++) {
-    for (let i = 0; i < 4; i++) {
-      const k = f * 4 + i;
-      uv.setXY(k, uv.getX(k) * dims[f][0] * s, uv.getY(k) * dims[f][1] * s);
-    }
-  }
-}
 
 /*
  * Layout (metres, +z points out the front door):
@@ -24,7 +13,8 @@ function worldUV(geo, w, h, d, s) {
  *   parking lot   x -10..10, z 6..15
  */
 export function buildWorld(scene) {
-  const colliders = [], occluders = [], storeLights = [], glow = [];
+  const b = createBuilder(scene);
+  const { box, plane, light, glowMat } = b;
   const refs = {};
 
   const mats = {
@@ -40,51 +30,11 @@ export function buildWorld(scene) {
     dark: lam({ color: 0x1c1d21 }),
     glass: basic({ color: 0x8fb4c8, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }),
   };
-  const glowMat = (opts, off) => {
-    const m = basic(opts);
-    m.userData.on = m.color.clone();
-    m.userData.off = new THREE.Color(off);
-    glow.push(m);
-    return m;
-  };
   const products = [
     ['#d33', '#fc3', '#fff', '#e70', '#a22'],
     ['#2a6', '#9d4', '#fff', '#36c', '#147'],
     ['#c39', '#f8a', '#fe8', '#639', '#eee'],
   ].map((p) => lam({ map: T.productsTex(p) }));
-
-  function box(w, h, d, mat, x, y, z, { collide = true, occlude = false, tile = 1, parent = scene } = {}) {
-    const geo = new THREE.BoxGeometry(w, h, d);
-    if (tile) worldUV(geo, w, h, d, tile);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y, z);
-    parent.add(mesh);
-    if (collide) colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
-    if (occlude) occluders.push(mesh);
-    return mesh;
-  }
-
-  function plane(w, h, mat, x, y, z, ry = 0, rx = 0, tile = [1, 1]) {
-    const geo = new THREE.PlaneGeometry(w, h);
-    if (tile) {
-      const uv = geo.attributes.uv;
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w * tile[0], uv.getY(i) * h * tile[1]);
-    }
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y, z);
-    mesh.rotation.set(rx, ry, 0, 'YXZ');
-    scene.add(mesh);
-    return mesh;
-  }
-
-  function light(x, y, z, color, intensity, distance, store = true) {
-    const l = new THREE.PointLight(color, intensity, distance, 2);
-    l.position.set(x, y, z);
-    l.userData.base = intensity;
-    scene.add(l);
-    if (store) storeLights.push(l);
-    return l;
-  }
 
   scene.add(new THREE.AmbientLight(0x3a4260, 0.9));
 
@@ -107,7 +57,7 @@ export function buildWorld(scene) {
     box(w, 0.6, 0.2, mats.wall, cx, 0.3, 6.1, { occlude: true });
     box(w, 0.6, 0.2, mats.wall, cx, H - 0.3, 6.1, { collide: false, occlude: true });
     plane(w, H - 1.2, mats.glass, cx, 0.6 + (H - 1.2) / 2, 6.1, 0, 0, null);
-    colliders.push({ minX: x0, maxX: x1, minZ: 6, maxZ: 6.2 });
+    b.addBounds(x0, x1, 6, 6.2);
     const n = Math.max(1, Math.round(w / 2));
     for (let i = 0; i <= n; i++) box(0.08, H - 1.2, 0.12, mats.metal, x0 + (w * i) / n, 0.6 + (H - 1.2) / 2, 6.1, { collide: false });
   };
@@ -234,11 +184,9 @@ export function buildWorld(scene) {
   refs.dumpster = box(1.8, 1.2, 1.0, lam({ color: 0x2f5a3a }), -7.5, 0.6, 9.0);
   box(1.9, 0.08, 1.1, lam({ color: 0x223f2a }), -7.5, 1.24, 9.0, { collide: false });
 
-  colliders.push(
-    { minX: -11, maxX: -10.5, minZ: 6, maxZ: 16 },
-    { minX: 10.5, maxX: 11, minZ: 6, maxZ: 16 },
-    { minX: -11, maxX: 11, minZ: 15, maxZ: 15.5 },
-  );
+  b.addBounds(-11, -10.5, 6, 16);
+  b.addBounds(10.5, 11, 6, 16);
+  b.addBounds(-11, 11, 15, 15.5);
 
   // Security camera that looks back at the staff-room desk.
   const secCam = new THREE.PerspectiveCamera(80, 1, 0.05, 40);
@@ -246,17 +194,11 @@ export function buildWorld(scene) {
   secCam.lookAt(6, 0.9, -8.2);
 
   let staticTimer = 0;
-  return {
-    colliders,
-    occluders,
+  return Object.assign(b, {
     refs,
     secCam,
-    setPower(on) {
-      storeLights.forEach((l) => (l.intensity = on ? l.userData.base : 0));
-      glow.forEach((m) => m.color.copy(on ? m.userData.on : m.userData.off));
-      this.powered = on;
-    },
-    powered: true,
+    cameras: [secCam],
+    fog: [0x06070c, 4, 24],
     update(dt, movers) {
       const door = refs.door;
       const near = movers.some((p) => Math.hypot(p.x - DOOR_X, p.z - DOOR_Z) < 2.2);
@@ -272,5 +214,5 @@ export function buildWorld(scene) {
       }
       if (this.powered) staffLight.intensity = Math.random() < 0.012 ? 1.5 : staffLight.userData.base;
     },
-  };
+  });
 }

@@ -28,6 +28,7 @@ body {
   left: 22px;
   max-width: 46vw;
   color: #f0ead6;
+  white-space: pre-line;
 }
 
 #clock {
@@ -148,6 +149,69 @@ body {
 .hint {
   font-size: 13px;
   color: #666;
+}
+
+#title {
+  cursor: default;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin: 26px 0 10px;
+  max-width: 980px;
+}
+
+.card {
+  width: 280px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  font: inherit;
+  color: #cfc9b6;
+  background: rgba(20, 20, 24, 0.9);
+  border: 2px solid #3a3a40;
+  cursor: pointer;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: #e9e3cf;
+  color: #fff;
+  outline: none;
+}
+
+.card b {
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: #e9e3cf;
+}
+
+.card span {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.card em {
+  font-size: 12px;
+  color: #8f8a7a;
+}
+
+.back {
+  flex-basis: 100%;
+  background: none;
+  border: none;
+  color: #8f8a7a;
+  font: inherit;
+  cursor: pointer;
+}
+
+.back:hover {
+  color: #fff;
 }
 
 .hidden {
