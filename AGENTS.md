@@ -6,6 +6,8 @@
 - Dev server: `npm run dev` (http://localhost:5173; use `npx vite --host 0.0.0.0` to expose on the LAN)
 - Unit + integration tests (run after every change; CI runs them on push/PR): `npm test`
 - Build: `npm run build`
+- Deploy to Cloudflare Workers (needs `wrangler login` or `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`): `npm run deploy`.
+  CI deploys to https://nightshift.radarcentral.dev on every push to `main` via `.github/workflows/deploy.yml`.
 - Browser E2E playthroughs of every story (slow, needs Docker): `npm run test:e2e`
 
 ## Verification

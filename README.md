@@ -22,6 +22,17 @@ npm run dev        # open http://localhost:5173
 
 Production build: `npm run build && npm run preview`.
 
+## Deploy
+
+The site deploys to Cloudflare Workers as static assets at <https://nightshift.radarcentral.dev>.
+`.github/workflows/deploy.yml` runs tests and `vite build` on every push/PR, then `wrangler deploy`
+on pushes to `main`.
+
+- Wrangler config: `wrangler.jsonc` (assets from `dist/`, custom domain `nightshift.radarcentral.dev`).
+- Required GitHub secrets: `CLOUDFLARE_API_TOKEN` (Workers Scripts + Workers Routes edit on the
+  `radarcentral.dev` zone) and `CLOUDFLARE_ACCOUNT_ID`.
+- Manual deploy: `npm run deploy` (needs `wrangler login` or the same env vars locally).
+
 ## Controls
 
 | Input       | Action          |
