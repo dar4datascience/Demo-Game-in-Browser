@@ -222,6 +222,7 @@ export async function runStory(ctx) {
     if (!F.hasPancarta) {
       stopFlow();
       player.hold(null);
+      sfx.silence();
       end('SE TE FUE EL TRÁILER', 'La pancarta nunca llegó y el tráiler se fue sin ti.');
       return 'done';
     }
@@ -231,6 +232,7 @@ export async function runStory(ctx) {
     stopFlow();
     if (!F.pancartaDelivered) {
       player.hold(null);
+      sfx.silence();
       end('SE TE FUE EL TRÁILER', 'La pancarta nunca llegó y el tráiler se fue sin ti.');
       return 'done';
     }
@@ -357,6 +359,7 @@ export async function runStory(ctx) {
     game.fadeTo(1, 2);
     await say('Llegaste al santuario. El fantasma se detuvo entre las veladoras.', 3);
     F.ghostDone = true;
+    sfx.silence();
     end('LE GANASTE AL FANTASMA', 'Corriste más que la muerte y amaneciste para contarlo.');
   }
 
@@ -428,6 +431,7 @@ export async function runStory(ctx) {
       await game.wait(2);
       stopFire();
       F.ghostDone = true;
+      sfx.silence();
       end('TE DORMISTE', 'El fuego se apagó y el fantasma siguió contando su historia sin ti.');
       return;
     }
@@ -441,6 +445,7 @@ export async function runStory(ctx) {
     sfx.setTension(0);
     await say('Amaneció. El fantasma se desvaneció con la primera luz.', 3.5);
     F.ghostDone = true;
+    sfx.silence();
     end('AMANECISTE', 'Sobreviviste la noche y contaste la historia a tus amigos.');
   }
 

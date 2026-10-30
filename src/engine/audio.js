@@ -1,14 +1,30 @@
 // All sound is synthesized with WebAudio, so the demo ships with zero audio assets.
+import {
+  LOFI_BPM, CUMBIA_BPM, LOFI_CHORDS, LOFI_BASS,
+  CUMBIA_BASS, CUMBIA_LEAD, CUMBIA_KICK, CUMBIA_CLAP, CUMBIA_GUIRO, CUMBIA_SHAKER, CUMBIA_CHORDS,
+  midiToFreq,
+} from './music.js';
+
 export class Sfx {
   init() {
     if (this.ctx) return;
     const ctx = (this.ctx = new AudioContext());
     this.out = ctx.createGain();
     this.out.gain.value = 0.9;
-    this.out.connect(ctx.destination);
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -18;
+    comp.knee.value = 12;
+    comp.ratio.value = 4;
+    comp.attack.value = 0.005;
+    comp.release.value = 0.2;
+    this.out.connect(comp).connect(ctx.destination);
     this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const data = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    this.lofiBase = 0.045;
+    this.lofiTimer = null;
+    this.flowTimer = null;
+    this.tension = 0;
   }
 
   get now() {
@@ -21,23 +37,23 @@ export class Sfx {
     gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   }
 
-  tone(freq, dur, { type = 'sine', vol = 0.2, at = 0, attack = 0.01 } = {}) {
+  tone(freq, dur, { type = 'sine', vol = 0.2, at = 0, attack = 0.01, when = null, dest = null } = {}) {
     if (!this.ctx) return null;
-    const t = this.now + at;
+    const t = when ?? this.now + at;
     const osc = this.ctx.createOscillator();
     osc.type = type;
     osc.frequency.value = freq;
     const gain = this.ctx.createGain();
     this.env(gain, t, vol, attack, dur);
-    osc.connect(gain).connect(this.out);
+    osc.connect(gain).connect(dest ?? this.out);
     osc.start(t);
     osc.stop(t + dur + 0.05);
     return osc;
   }
 
-  noise(dur, { vol = 0.2, at = 0, freq = 1000, type = 'lowpass', attack = 0.005 } = {}) {
+  noise(dur, { vol = 0.2, at = 0, freq = 1000, type = 'lowpass', attack = 0.005, when = null, dest = null } = {}) {
     if (!this.ctx) return;
-    const t = this.now + at;
+    const t = when ?? this.now + at;
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuf;
     src.loop = true;
@@ -46,7 +62,7 @@ export class Sfx {
     filter.frequency.value = freq;
     const gain = this.ctx.createGain();
     this.env(gain, t, vol, attack, dur);
-    src.connect(filter).connect(gain).connect(this.out);
+    src.connect(filter).connect(gain).connect(dest ?? this.out);
     src.start(t, Math.random() * 1.5);
     src.stop(t + dur + 0.05);
   }
@@ -81,7 +97,8 @@ export class Sfx {
     const room = this.ctx.createBufferSource();
     room.buffer = this.noiseBuf;
     room.loop = true;
-    this.loop(room, 0.015, 500).connect(this.out);
+    this.roomGain = this.loop(room, 0.015, 500);
+    this.roomGain.connect(this.out);
     // Dread drone, raised as tension builds.
     this.droneGain = this.ctx.createGain();
     this.droneGain.gain.value = 0;
@@ -89,6 +106,7 @@ export class Sfx {
     this.loop(this.osc('sine', 41), 1, 400).connect(this.droneGain);
     this.loop(this.osc('sine', 41.7), 1, 400).connect(this.droneGain);
     this.loop(this.osc('triangle', 61.5), 0.4, 300).connect(this.droneGain);
+    this.startLofi();
   }
 
   setPower(on) {
@@ -96,7 +114,106 @@ export class Sfx {
   }
 
   setTension(v) {
+    this.tension = v;
     this.droneGain?.gain.setTargetAtTime(v * 0.14, this.now, 1.5);
+    if (!this.flowTimer) this.lofiGain?.gain.setTargetAtTime(this.lofiBase * (1 - v * 0.6), this.now, 1.5);
+  }
+
+  startSequencer(bpm, stepsPerBeat, fn) {
+    if (!this.ctx) return null;
+    const stepDur = 60 / bpm / stepsPerBeat;
+    let step = 0;
+    let next = this.now + 0.05;
+    const tick = () => {
+      if (next < this.now - 0.5) next = this.now + 0.05;
+      while (next < this.now + 0.2) {
+        fn(step, next);
+        next += stepDur;
+        step++;
+      }
+    };
+    tick();
+    return setInterval(tick, 25);
+  }
+
+  startLofi() {
+    if (!this.ctx || this.lofiTimer) return;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1700;
+    filter.Q.value = 0.4;
+    this.lofiGain = this.ctx.createGain();
+    this.lofiGain.gain.value = this.lofiBase;
+    filter.connect(this.lofiGain).connect(this.out);
+    this.lofiBus = filter;
+
+    const crackle = this.ctx.createBufferSource();
+    crackle.buffer = this.noiseBuf;
+    crackle.loop = true;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 1400;
+    this.lofiCrackle = this.ctx.createGain();
+    this.lofiCrackle.gain.value = 0.008;
+    crackle.connect(hp).connect(this.lofiCrackle).connect(this.out);
+    crackle.start();
+
+    this.lofiTimer = this.startSequencer(LOFI_BPM, 2, (step, time) => this.lofiStep(step, time));
+  }
+
+  lofiStep(step, time) {
+    const bar = Math.floor(step / 8) % LOFI_CHORDS.length;
+    const beat = step % 8;
+    const bus = this.lofiBus;
+    if (beat === 0) {
+      this.tone(midiToFreq(LOFI_BASS[bar]), 2.6, { type: 'sine', vol: 0.05, attack: 0.08, when: time, dest: bus });
+      LOFI_CHORDS[bar].forEach((n, i) => {
+        this.tone(midiToFreq(n), 2.8, { type: 'triangle', vol: 0.011, attack: 0.2, when: time + i * 0.03, dest: bus });
+      });
+    }
+    if (beat === 0 || beat === 4) {
+      this.tone(55, 0.3, { type: 'sine', vol: beat === 0 ? 0.06 : 0.04, when: time, dest: bus });
+    }
+    if (beat === 2 || beat === 6) this.noise(0.12, { vol: 0.018, freq: 1600, type: 'bandpass', when: time, dest: bus });
+    if (beat % 2 === 1) this.noise(0.03, { vol: 0.005, freq: 6500, type: 'highpass', when: time, dest: this.out });
+    if (beat === 4) {
+      const note = LOFI_CHORDS[bar][(bar + 2) % 5] + 12;
+      this.tone(midiToFreq(note), 1.3, { type: 'sine', vol: 0.009, attack: 0.05, when: time, dest: bus });
+    }
+    if (Math.random() < 0.05) this.noise(0.02, { vol: 0.012, freq: 2800, type: 'highpass', when: time, dest: this.out });
+  }
+
+  createCumbiaBus() {
+    if (this.cumbiaGain) return;
+    this.cumbiaGain = this.ctx.createGain();
+    this.cumbiaGain.gain.value = 0;
+    this.cumbiaGain.connect(this.out);
+    this.cumbiaBus = this.cumbiaGain;
+  }
+
+  cumbiaStep(step, time) {
+    const beat = step % 16;
+    const bar = Math.floor(step / 16) % CUMBIA_CHORDS.length;
+    const bus = this.cumbiaBus;
+    if (beat === 0) {
+      CUMBIA_CHORDS[bar].forEach((n, i) => {
+        this.tone(midiToFreq(n), 2.2, { type: 'triangle', vol: 0.012, attack: 0.05, when: time + i * 0.01, dest: bus });
+      });
+    }
+    if (CUMBIA_KICK.includes(beat)) this.tone(58, 0.2, { type: 'sine', vol: 0.11, when: time, dest: bus });
+    if (CUMBIA_CLAP.includes(beat)) this.noise(0.12, { vol: 0.05, freq: 1900, type: 'bandpass', when: time, dest: bus });
+    if (CUMBIA_GUIRO.includes(beat)) this.noise(0.04, { vol: 0.022, freq: 4200, type: 'highpass', when: time, dest: bus });
+    if (CUMBIA_SHAKER.includes(beat)) this.noise(0.03, { vol: 0.01, freq: 6000, type: 'highpass', when: time, dest: bus });
+    if (step % 2 === 0) {
+      const i = (step / 2) % CUMBIA_BASS.length;
+      const bass = CUMBIA_BASS[i];
+      this.tone(midiToFreq(bass), 0.14, { type: 'square', vol: 0.06, when: time, dest: bus });
+      this.tone(midiToFreq(bass + 12), 0.08, { type: 'triangle', vol: 0.018, when: time, dest: bus });
+      const lead = CUMBIA_LEAD[i];
+      this.tone(midiToFreq(lead), 0.22, { type: 'sawtooth', vol: 0.022, when: time, dest: bus });
+      this.tone(midiToFreq(lead), 0.2, { type: 'sawtooth', vol: 0.007, when: time + 0.24, dest: bus });
+      this.tone(midiToFreq(lead + 3), 0.16, { type: 'square', vol: 0.008, when: time + 0.12, dest: bus });
+    }
   }
 
   chime() {
@@ -175,21 +292,17 @@ export class Sfx {
     if (!on) {
       clearInterval(this.flowTimer);
       this.flowTimer = null;
+      this.cumbiaGain?.gain.setTargetAtTime(0, this.now, 0.15);
+      this.lofiGain?.gain.setTargetAtTime(this.lofiBase * (1 - (this.tension ?? 0) * 0.6), this.now, 0.3);
+      this.roomGain?.gain.setTargetAtTime(0.015, this.now, 0.3);
       return;
     }
     if (this.flowTimer) return;
-    const bass = [110, 110, 146.83, 110, 98, 98, 130.81, 98];
-    let step = 0;
-    const play = () => {
-      const b = bass[step % bass.length];
-      this.tone(b, 0.22, { type: 'square', vol: 0.055 });
-      this.tone(b * 2, 0.12, { type: 'triangle', vol: 0.025 });
-      this.tone(880 + (step % 4) * 110, 0.05, { type: 'square', vol: 0.012, at: 0.12 });
-      if (step % 2 === 0) this.noise(0.05, { vol: 0.045, freq: 1800, type: 'bandpass' });
-      step++;
-    };
-    play();
-    this.flowTimer = setInterval(play, 220);
+    this.createCumbiaBus();
+    this.cumbiaGain.gain.setTargetAtTime(0.28, this.now, 0.08);
+    this.lofiGain?.gain.setTargetAtTime(this.lofiBase * 0.2, this.now, 0.2);
+    this.roomGain?.gain.setTargetAtTime(0.004, this.now, 0.2);
+    this.flowTimer = this.startSequencer(CUMBIA_BPM, 4, (step, time) => this.cumbiaStep(step, time));
   }
 
   // Campfire crackle; returns a stop function.
@@ -214,7 +327,9 @@ export class Sfx {
   }
 
   silence() {
+    clearInterval(this.lofiTimer);
     clearInterval(this.flowTimer);
+    this.lofiTimer = null;
     this.flowTimer = null;
     this.out?.gain.setTargetAtTime(0, this.now, 0.4);
   }

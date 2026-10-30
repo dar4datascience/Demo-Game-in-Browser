@@ -75,7 +75,7 @@ function start(levelId, character = null, variant = null) {
   hud.setClockStart(level.clock);
   sfx.init();
   sfx.startAmbience();
-  if (DEBUG) Object.assign(window, { game, player, world, hud });
+  if (DEBUG) Object.assign(window, { game, player, world, hud, sfx });
   level.story({
     game, world, hud, sfx, player, scene, pipe, input, interact, character, variant,
     end(title, subtitle) {

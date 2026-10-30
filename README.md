@@ -110,11 +110,14 @@ Desktop browser with WebGL2 required. Headphones recommended.
 - PS1/VHS look: the scene renders to a 240p target and gets upscaled with nearest-neighbor filtering. A post shader adds
   Bayer dithering, film grain, scanlines, chromatic aberration and vignette, and vertex snapping makes polygons jitter.
 - Textures come from `<canvas>` drawing; audio (hum, chimes, shutters, diablito squeaks, stingers) is synthesized with WebAudio.
+- Music is procedural too: a 72 BPM lofi chord bed (Dm9–G13–Cmaj7–A7) with vinyl crackle, and a 98 BPM
+  electro-cumbia loop (kick, clap, guiro, shaker, bass and montuno lead) that takes over during Flow. The lofi
+  bed ducks under the cumbia and as tension rises.
 - Each level is a `buildWorld(scene)` + `runStory(ctx)` pair. Stories are `async` scripts on a game-time scheduler, so pausing freezes them.
 
 ```
 src/
-  engine/          post.js (render pipeline + PS1 material), textures.js, audio.js, input.js
+  engine/          post.js (render pipeline + PS1 material), textures.js, audio.js, music.js, input.js
   world/           builder.js (shared level helpers, oriented-box colliders), person.js (NPCs)
   game/            player.js, hud.js, scheduler.js, interaction.js, director.js, rng.js (shared story helpers)
   levels/index.js  level registry
@@ -131,7 +134,7 @@ npm run test:e2e    # browser playthroughs of every story (Docker + mcp/playwrig
 ```
 
 - **Unit** (`tests/unit/`): scheduler, collision and player movement, raycast interactions, level builder,
-  NPC walking, HUD clock, textures, seeded RNG, Central de Abasto layout invariants.
+  NPC walking, HUD clock, textures, seeded RNG, music patterns, Central de Abasto layout invariants.
 - **Integration** (`tests/integration/`): builds both levels in Node (canvas stub, no WebGL), checks that every
   mission target is reachable on foot from the spawn using the game's collision rules, and plays every story
   headlessly to its ending (NightMart, the Diablero's shrine and beer branches, all three Diablero presentations

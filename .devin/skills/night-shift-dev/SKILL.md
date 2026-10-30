@@ -47,7 +47,8 @@ runs game time 4x. E2E scripts live in `scripts/` (see `AGENTS.md` for the Docke
 src/main.js                 menu, level boot, frame loop
 src/engine/post.js          render pipeline, lam()/basic() materials (PS1 vertex snapping)
 src/engine/textures.js      canvas textures, seeded rand()
-src/engine/audio.js         WebAudio Sfx (beeps, chimes, squeaks, stingers, tension, flow, fire)
+src/engine/audio.js         WebAudio Sfx (beeps, chimes, squeaks, stingers, tension, flow, fire, lofi)
+src/engine/music.js         pure lofi/cumbia patterns, MIDI helpers and step timing
 src/engine/input.js         keys/pressed/mouse, pointer lock
 src/game/scheduler.js       createGame: game-time, waiters, hooks, flags, seed
 src/game/rng.js             mulberry32 seeded PRNG + randomSeed
@@ -208,6 +209,29 @@ the two HUD hooks the beer scene uses.
 `formatClock(startMinutes, seconds)` advances one game minute per 6 real seconds and wraps at
 midnight; keep it in sync with the start values in `LEVELS`.
 
+## Music and audio
+
+Everything is synthesized; there are no audio files. `src/engine/music.js` holds the pure patterns
+and `audio.js` turns them into nodes.
+
+- **Lofi bed** (`Sfx.startLofi`, started by `startAmbience`): 72 BPM, 4-bar Dm9–G13–Cmaj7–A7
+  progression, triangle chords, sine bass, soft kick/snare/hat, and a filtered vinyl crackle. It
+  runs through a 1700 Hz low-pass at `lofiBase = 0.045`.
+- **Tension ducking**: `setTension(v)` lowers the lofi bed to `lofiBase * (1 - v * 0.6)`, so the
+  bed recedes during the phone call and the chase.
+- **Electro cumbia** (`Sfx.flow`): 98 BPM, 16th-note grid, Am–G–F–G. Kick `[0,6,8,14]`, clap
+  `[4,12]`, guiro on even steps, shaker on odd steps, root/fifth bass, montuno lead with a short
+  echo, and a sustained chord pad. It runs through `cumbiaBus` at 0.28.
+- **Flow ducking**: `flow(true)` drops the lofi bed to 20% and starts the cumbia; `flow(false)`
+  restores it to the tension-adjusted level and fades the cumbia bus to 0.
+- **Sequencer**: `startSequencer(bpm, stepsPerBeat, fn)` schedules with a 25 ms timer and a 0.2 s
+  lookahead. `tone`/`noise` accept `when` (absolute AudioContext time) and `dest` (bus/filter).
+- **Master**: `init()` puts a `DynamicsCompressorNode` between `out` and the destination.
+- `silence()` clears both sequencers and fades `out`; call it before every ending.
+
+Tests for the patterns live in `tests/unit/music.test.js`; the browser exposes `sfx` on `window`
+under `?debug` so the lofi/flow gains and timers can be inspected.
+
 ## NightMart mission (`src/levels/konbini`)
 
 Layout: store floor `x -8..8, z -6..6`; staff room `x 3..8, z -10..-6`; parking `z 6..15`;
@@ -361,7 +385,8 @@ Pitfalls:
 - Keep story code DOM-free or the harness cannot run it.
 
 Existing coverage: scheduler semantics, collision/movement (including x3 flow sub-stepping),
-raycast gating/occlusion, builder power/colliders, NPC walking, clock, textures, seeded RNG, CEDA
+raycast gating/occlusion, builder power/colliders, NPC walking, clock, textures, seeded RNG, music
+patterns, CEDA
 layout invariants, every mission target and shrine spot reachable, the diablero pancarta/Flow and
 both ghost branches (win and lose), all three presentations, and full playthroughs of NightMart
 and the Seller/Consumer shared finale (both endings).
