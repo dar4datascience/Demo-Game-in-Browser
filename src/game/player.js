@@ -60,10 +60,14 @@ export class Player {
         const mx = ((fwd.x * f - fwd.z * s) / len) * speed;
         const mz = ((fwd.z * f + fwd.x * s) / len) * speed;
         const before = this.pos.clone();
-        this.pos.x += mx;
-        this.resolve(colliders);
-        this.pos.z += mz;
-        this.resolve(colliders);
+        // Sub-step so the x3 flow speed cannot tunnel through thin walls.
+        const steps = Math.max(1, Math.ceil(Math.hypot(mx, mz) / 0.15));
+        for (let i = 0; i < steps; i++) {
+          this.pos.x += mx / steps;
+          this.resolve(colliders);
+          this.pos.z += mz / steps;
+          this.resolve(colliders);
+        }
         moved = before.distanceTo(this.pos);
       }
     }

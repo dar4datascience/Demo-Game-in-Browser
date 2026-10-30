@@ -3,7 +3,6 @@ import { LEVELS } from '../../src/levels/index.js';
 import { createGame } from '../../src/game/scheduler.js';
 import { Player, circleHits } from '../../src/game/player.js';
 
-const IDLE_INPUT = { keys: new Set(), dx: 0, dy: 0 };
 const nextMacrotask = () => new Promise((resolve) => setImmediate(resolve));
 
 // Silent stand-in for the WebAudio Sfx: every method is a no-op that returns a no-op (e.g. ring()'s stop fn).
@@ -13,14 +12,15 @@ const silentSfx = () => new Proxy({}, { get: () => () => () => {} });
  * Runs a level headlessly (no WebGL, no DOM): real world geometry, real story script, real scheduler,
  * real player/NPC updates. Interactions are captured so tests can trigger them like a player pressing E.
  */
-export function createHarness(levelId, character = null) {
+export function createHarness(levelId, character = null, { seed = 1, variant = null } = {}) {
   const level = LEVELS[levelId];
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.05, 80);
   scene.add(camera);
   const world = level.build(scene);
-  const game = createGame(camera);
+  const game = createGame(camera, seed);
   const player = new Player(camera);
+  const input = { keys: new Set(), pressed: new Set(), dx: 0, dy: 0, click: false };
   const interactions = [];
   const log = { subtitles: [], objectives: [], used: [], ending: null };
   const pipe = { u: { uMonitor: { value: 0 }, uFlash: { value: 0 }, uFade: { value: 1 } } };
@@ -39,11 +39,12 @@ export function createHarness(levelId, character = null) {
     ending() {},
     setClockStart() {},
     clock() {},
+    qte() {},
     show() {},
     hide() {},
   };
   const ctx = {
-    game, world, hud, player, scene, pipe, character,
+    game, world, hud, player, scene, pipe, character, input, variant,
     sfx: silentSfx(),
     interact: (objects, label, use) => interactions.push({ objects: [objects].flat(), label, use }),
     end(title, subtitle) {
@@ -58,9 +59,16 @@ export function createHarness(levelId, character = null) {
 
   function step(dt = 0.1) {
     game.tick(dt);
-    player.update(dt, IDLE_INPUT, world.colliders, game.inputEnabled);
+    player.update(dt, input, world.colliders, game.inputEnabled);
     game.npcs.forEach((n) => n.update(dt));
     world.update(dt, [player.pos, ...game.npcs.map((n) => n.pos)]);
+  }
+
+  // Press a key for one tick, like a player tapping it; used by QTE tests.
+  function press(code, dt = 0.1) {
+    input.pressed.add(code);
+    step(dt);
+    input.pressed.clear();
   }
 
   const available = () => interactions.filter((i) => i.label());
@@ -90,7 +98,7 @@ export function createHarness(levelId, character = null) {
     if (error) throw error;
   }
 
-  return { scene, camera, world, game, player, hud, pipe, log, interactions, available, useAvailable, run, story, step };
+  return { scene, camera, world, game, player, hud, pipe, log, interactions, available, useAvailable, run, story, step, press, input, ctx };
 }
 
 // Free cells reachable on foot from `start`, on a grid using the player's real collision radius.

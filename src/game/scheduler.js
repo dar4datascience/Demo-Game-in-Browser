@@ -1,7 +1,8 @@
 // Game-time scheduler: story steps await these, so pausing (not ticking) freezes the script.
-export function createGame(camera) {
+export function createGame(camera, seed = (Math.random() * 2 ** 32) >>> 0) {
   return {
     time: 0,
+    seed: seed >>> 0,
     waiters: [],
     hooks: [], // per-tick callbacks; return true to unregister
     flags: {},

@@ -1,11 +1,17 @@
 // Automated Central de Abasto playthrough for one character (CHAR=diablero|seller|consumer).
-// ENDING=escape (default) runs to the Eje 5 Sur gate; ENDING=caught lets the ghost reach you.
-//   docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=seller --entrypoint node mcp/playwright /out/playthrough-ceda.mjs
+// Diablero: VARIANT=man|woman|nonbinary, CHOICE=fight|beer, OUTCOME=win|lose.
+// Seller/Consumer: ENDING=escape|caught for the shared finale.
+//   docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=diablero -e CHOICE=beer -e OUTCOME=win --entrypoint node mcp/playwright /out/playthrough-ceda.mjs
 import { chromium } from '/app/node_modules/playwright/index.mjs';
 
 const CHAR = process.env.CHAR ?? 'diablero';
+const VARIANT = process.env.VARIANT ?? 'nonbinary';
+const CHOICE = process.env.CHOICE ?? 'fight';
+const OUTCOME = process.env.OUTCOME ?? 'win';
 const ENDING = process.env.ENDING ?? 'escape';
-const URL = `${process.env.GAME_URL ?? 'http://localhost:5173'}/?debug&speed=4`;
+const SEED = process.env.SEED ?? '1';
+const SPEED = process.env.SPEED ?? '4';
+const URL = `${process.env.GAME_URL ?? 'http://localhost:5173'}/?debug&speed=${SPEED}&seed=${SEED}`;
 
 const browser = await chromium.launch({ channel: 'chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1024, height: 640 } });
@@ -15,9 +21,16 @@ page.on('console', (m) => m.type() === 'error' && logs.push(m.text()));
 await page.goto(URL);
 await page.waitForTimeout(800);
 await page.click('[data-map=ceda]');
-await page.click(`[data-char=${CHAR}]`);
+if (CHAR === 'diablero') {
+  await page.click('[data-char=diablero]');
+  await page.click(`[data-variant=${VARIANT}]`);
+} else {
+  await page.click(`[data-char=${CHAR}]`);
+}
 
-const shot = (name) => page.screenshot({ path: `/out/shots/ceda-${CHAR}-${name}.png` });
+const shot = (name) => page.screenshot({
+  path: `/out/shots/ceda-${CHAR === 'diablero' ? `${CHAR}-${VARIANT}-${CHOICE}-${OUTCOME}` : CHAR}-${name}.png`,
+});
 const state = () => page.evaluate(() => ({
   obj: document.getElementById('objective').textContent,
   prompt: document.getElementById('prompt').textContent,
@@ -77,6 +90,39 @@ if (CHAR === 'diablero') {
     await use(`deliver${i + 1}`, ...(await truckSide(truck)));
     await until((i) => game.flags.delivered === i + 1 && !document.getElementById('subtitle').textContent, `delivery ${i + 1}`, 60000, i);
   }
+
+  await until(() => game.flags.stage === 'pancarta', 'pancarta stage');
+  await shot('pancarta-start');
+  await use('pancarta', 30.2, 2.0, 31.25, 1.0, 2.0);
+  await until(() => game.flags.flow, 'flow');
+  await shot('flow');
+  await use('hang', -13, -18.0, -13, 1.35, -19.05);
+  await until(() => game.flags.pancartaDelivered, 'pancarta delivered');
+  await shot('pancarta-hung');
+  await until(() => game.flags.ghostReady, 'ghost choice');
+  await shot('ghost-choice');
+
+  if (CHOICE === 'fight') {
+    await use('fight', -13, -18.0, -11.4, 1.2, -17.4);
+    await until(() => game.flags.fightReady, 'fight ready');
+    await shot('shrine-run');
+    if (OUTCOME === 'win') {
+      const shrine = await page.evaluate(() => game.flags.shrine);
+      await page.evaluate(({ x, z }) => player.pos.set(x, 0, z), shrine);
+      await frames(4);
+      await shot('shrine');
+    }
+  } else {
+    await use('beer', -10.5, -15.8, -10.5, 0.6, -17.0);
+    await until(() => game.flags.qte?.active, 'beer qte');
+    await shot('beer');
+    if (OUTCOME === 'win') {
+      for (const key of ['w', 'a', 's', 'd', 'w', 'd', 'a', 's']) {
+        await page.keyboard.press(key);
+        await frames(1);
+      }
+    }
+  }
 } else if (CHAR === 'seller') {
   await use('cortina', -14.2, -19.6, -14.2, 1.5, -20.94);
   await until(() => world.refs.units['B-4'].roll >= 1, 'cortina open');
@@ -100,21 +146,24 @@ if (CHAR === 'diablero') {
   }
 }
 
-await until(() => game.flags.stage === 'finale' && document.getElementById('objective').textContent.includes('Eje 5'), 'finale');
-await look(0, -20, 0, 1.4, -40);
-await frames(4);
-await shot('blackout');
-await page.evaluate(() => { player.yaw += Math.PI; });
-await frames(4);
-await shot('ghost');
-if (ENDING === 'caught') {
-  await page.evaluate(() => { player.yaw += Math.PI; });
-  await until(() => game.ended || !game.inputEnabled, 'caught');
+if (CHAR !== 'diablero') {
+  await until(() => game.flags.stage === 'finale' && document.getElementById('objective').textContent.includes('Eje 5'), 'finale');
+  await look(0, -20, 0, 1.4, -40);
   await frames(4);
-  await shot('jumpscare');
-} else {
-  await look(0, -53, 0, 1.6, -60);
+  await shot('blackout');
+  await page.evaluate(() => { player.yaw += Math.PI; });
+  await frames(4);
+  await shot('ghost');
+  if (ENDING === 'caught') {
+    await page.evaluate(() => { player.yaw += Math.PI; });
+    await until(() => game.ended || !game.inputEnabled, 'caught');
+    await frames(4);
+    await shot('jumpscare');
+  } else {
+    await look(0, -53, 0, 1.6, -60);
+  }
 }
+
 await until(() => game.ended, 'end');
 await page.waitForTimeout(300);
 await shot('end');

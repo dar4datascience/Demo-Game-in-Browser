@@ -16,6 +16,16 @@ export function createHud(game) {
   return {
     objective: (text) => set('objective', text),
     prompt: (label) => set('prompt', label ? `[E] ${label}` : ''),
+    qte(text) {
+      const el = $('qte');
+      if (!el) return;
+      if (text) {
+        el.textContent = text;
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    },
     async say(text, dur = 3) {
       set('subtitle', text);
       await game.wait(dur);

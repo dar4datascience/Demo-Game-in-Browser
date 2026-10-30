@@ -169,6 +169,40 @@ export class Sfx {
     this.trafficGain.connect(this.out);
   }
 
+  // Diegetic electro-cumbia loop for the diablero's "flow" (speed boost).
+  flow(on) {
+    if (!this.ctx) return;
+    if (!on) {
+      clearInterval(this.flowTimer);
+      this.flowTimer = null;
+      return;
+    }
+    if (this.flowTimer) return;
+    const bass = [110, 110, 146.83, 110, 98, 98, 130.81, 98];
+    let step = 0;
+    const play = () => {
+      const b = bass[step % bass.length];
+      this.tone(b, 0.22, { type: 'square', vol: 0.055 });
+      this.tone(b * 2, 0.12, { type: 'triangle', vol: 0.025 });
+      this.tone(880 + (step % 4) * 110, 0.05, { type: 'square', vol: 0.012, at: 0.12 });
+      if (step % 2 === 0) this.noise(0.05, { vol: 0.045, freq: 1800, type: 'bandpass' });
+      step++;
+    };
+    play();
+    this.flowTimer = setInterval(play, 220);
+  }
+
+  // Campfire crackle; returns a stop function.
+  fire() {
+    if (!this.ctx) return () => {};
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    src.loop = true;
+    const gain = this.loop(src, 0.05, 900);
+    gain.connect(this.out);
+    return () => gain.gain.setTargetAtTime(0, this.now, 0.2);
+  }
+
   whisper() {
     this.noise(1.2, { vol: 0.08, freq: 2600, type: 'bandpass', attack: 0.4 });
   }
@@ -180,6 +214,8 @@ export class Sfx {
   }
 
   silence() {
+    clearInterval(this.flowTimer);
+    this.flowTimer = null;
     this.out?.gain.setTargetAtTime(0, this.now, 0.4);
   }
 }

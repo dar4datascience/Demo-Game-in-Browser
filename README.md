@@ -5,11 +5,69 @@
 | Map | Setting | Characters |
 | --- | ------- | ---------- |
 | **NightMart** | 11:40 PM, a 24h konbini. Clock in, restock, serve customers, survive the blackout. Inspired by *The Convenience Store* (2020). | Night clerk |
-| **Central de Abasto** | 4:10 AM, Iztapalapa, CDMX. Three covered *pasillos*, bodega rows A–D, loading docks with diagonal truck bays, a plaza of tarp stalls, and the Eje 5 Sur gate. Loosely based on the public "Abarrotes y Víveres — Lado A" floor plan. | **Diablero** (porter with a diablito), **Seller** (bodeguero), **Consumer** (marchante) |
+| **Central de Abasto** | 4:10 AM, Iztapalapa, CDMX. Three covered *pasillos*, bodega rows A–D, loading docks with diagonal truck bays, a plaza of tarp stalls, and the Eje 5 Sur gate. Loosely based on the public "Abarrotes y Víveres — Lado A" floor plan. | **Diablero** (loader with a diablito), **Seller** (bodeguero), **Consumer** (marchante) |
 
-In the Central de Abasto, each character has its own mission. Diablero hauls three loads to the trucks, Seller opens the shutter, stocks pallets and serves customers at the scale, and Consumer works through a shopping list. All three end in the same blackout chase: reach the Eje 5 Sur gate with your phone flashlight, while something that only moves when you aren't looking closes in.
+In the Central de Abasto, each character has its own mission. Diablero hauls three loads to the trucks, fetches a hand-painted price sign on a Flow-powered run, and ends the shift facing a ghost. Seller opens the shutter, stocks pallets and serves customers at the scale, and Consumer works through a shopping list. Seller and Consumer end in the shared blackout chase: reach the Eje 5 Sur gate with your phone flashlight, while something that only moves when you aren't looking closes in. The Diablero's shift ends with a different kind of ghost encounter.
 
 These are fan-made tributes built from original code. Every texture, model and sound is generated procedurally at runtime. All businesses shown are fictional.
+
+## Storylines
+
+Every map is a self-contained short story. NightMart is one linear shift. The Central de Abasto has
+three character routes: Seller and Consumer share the blackout finale, while the Diablero has its
+own end-of-shift encounter.
+
+### NightMart — the shift
+
+A single linear shift for the night clerk: clock in at the staff-room terminal, restock three empty
+shelves from the stock boxes, answer the ringing phone, serve two customers at the register, take
+the trash bag to the dumpster, then check the security monitor. The caller's warning — *"whatever
+you do... don't check the cameras"* — pays off in a CCTV jumpscare. There is no character choice on
+this map.
+
+### Central de Abasto — three routes
+
+All three start at 4:10 AM and run their own job loop. Choose the route from the character cards on
+the title screen; the Diablero also lets you play as a man, a woman or a nonbinary person. They are
+three distinct jobs — a loader, a bodega operator and a shopper — not a hierarchy.
+
+| Route | Job | Job loop | Story beat |
+| --- | --- | --- | --- |
+| **Diablero** | loader with a diablito | grab the cart, haul three loads, then fetch the pancarta de precios from the rotulista | the third truck is empty; the rotulista's sign unlocks a x3 Flow run; a ghost diablero waits at the end of the shift |
+| **Seller** | bodeguero at Bod. B-4 | raise the cortina, stock three pallets, serve two customers at the scale | the second customer is the veiled woman asking about her son, a former diablero |
+| **Consumer** | marchante with a shopping list | buy chiles, frijol and mole from three vendors | the vendors gossip about the ánimas just before the lights die |
+
+The three loops are deliberately different kinds of play:
+
+- **Hauling (Diablero)** — fetch-and-deliver. Picking up a load slows you to 0.7×; delivering
+  restores 0.9×. Only the active job's pickup and truck offer a prompt.
+- **Retail (Seller)** — open, stock, serve. Stocking interactions do not exist until the cortina is
+  up, and the scale only works while a customer is waiting.
+- **Shopping (Consumer)** — a checklist. Each counter can be used once, the objective list ticks
+  items off, and the bag visibly grows.
+
+### Diablero — the pancarta and the ghost
+
+After the three hauls, the diablero parks the cart and runs to **Pasillo 3, local 3**, where the
+best letterer in the market paints the **pancarta de precios**. Picking it up awards **Flow**: a
+bocina loaded with electro cumbia that triples movement speed for the rest of the pancarta phase.
+Carry the sign to Bod. B-4 and hang it before the truck leaves; the Flow keeps playing until you
+do.
+
+At the end of the shift, the ghost of a diablero who died in the Central offers a choice:
+
+- **Fight** — outrun him to a **Virgen María shrine** that appears in a different random spot each
+  run. Collect fruit peels with **E** and drop them behind with **Q** to make him slip.
+- **Share a beer** — sit by a fire and trade stories. Press the displayed key sequence to keep the
+  diablero awake; fall asleep and the ghost keeps the shift, stay awake and you tell the tale in the
+  morning.
+
+### Seller and Consumer — the shared finale
+
+The power dies across the Central, the crowd disappears, and you turn on your phone flashlight. A
+ghost spawns behind you and only moves while you are not looking. Reach the Eje 5 Sur gate to
+escape; let her get within arm's reach and the run ends with `TE ALCANZÓ`. Escaping ends on
+`SALISTE DE LA CENTRAL`, with the character's name in the subtitle.
 
 ## Run locally
 
@@ -35,13 +93,14 @@ on pushes to `main`.
 
 ## Controls
 
-| Input       | Action          |
-| ----------- | --------------- |
-| WASD        | Move            |
-| Mouse       | Look            |
-| Shift       | Run             |
-| E / Click   | Interact        |
-| Esc         | Pause           |
+| Input       | Action                          |
+| ----------- | ------------------------------- |
+| WASD        | Move                            |
+| Mouse       | Look                            |
+| Shift       | Run                             |
+| E / Click   | Interact                        |
+| Q           | Drop a fruit peel (shrine run)  |
+| Esc         | Pause                           |
 
 Desktop browser with WebGL2 required. Headphones recommended.
 
@@ -57,10 +116,10 @@ Desktop browser with WebGL2 required. Headphones recommended.
 src/
   engine/          post.js (render pipeline + PS1 material), textures.js, audio.js, input.js
   world/           builder.js (shared level helpers, oriented-box colliders), person.js (NPCs)
-  game/            player.js, hud.js, scheduler.js, interaction.js, director.js (shared story helpers)
+  game/            player.js, hud.js, scheduler.js, interaction.js, director.js, rng.js (shared story helpers)
   levels/index.js  level registry
   levels/konbini/  world.js, story.js
-  levels/ceda/     world.js, props.js (trucks, diablitos, stalls), story.js (3 characters + finale)
+  levels/ceda/     world.js, props.js (trucks, diablitos, pancarta, shrine, fire), story.js (3 characters)
   main.js          menu, level loading, main loop
 ```
 
@@ -72,11 +131,24 @@ npm run test:e2e    # browser playthroughs of every story (Docker + mcp/playwrig
 ```
 
 - **Unit** (`tests/unit/`): scheduler, collision and player movement, raycast interactions, level builder,
-  NPC walking, HUD clock, textures, Central de Abasto layout invariants.
+  NPC walking, HUD clock, textures, seeded RNG, Central de Abasto layout invariants.
 - **Integration** (`tests/integration/`): builds both levels in Node (canvas stub, no WebGL), checks that every
   mission target is reachable on foot from the spawn using the game's collision rules, and plays every story
-  headlessly to its ending (NightMart, plus each Central de Abasto character with both endings).
-- **E2E** (`scripts/e2e.sh`): real Chromium with WebGL plays each story through `?debug` hooks and saves screenshots.
+  headlessly to its ending (NightMart, the Diablero's shrine and beer branches, all three Diablero presentations
+  at spawn, and both Central de Abasto shared-finale endings).
+- **Mechanics** (`tests/integration/gameplay.test.js`): proves the routes are actually playable — interaction
+  gating (a shelf needs a box, the phone only rings for a while, the register needs a waiting customer), the
+  diablero's load/carry speed rules, the pancarta/Flow x3 boost for the whole phase, fruit peels slowing the ghost, the
+  seller's cortina and sack requirements, the automatic door, and the shared chase speeds and caught ending.
+- **E2E** (`scripts/e2e.sh`): real Chromium with WebGL plays each story through `?debug` hooks and saves
+  screenshots, including both Diablero ghost choices (win and lose); set `VARIANT` to pick the presentation.
+
+## Development skill
+
+`.devin/skills/night-shift-dev/SKILL.md` is a project skill for AI agents and a concise map for humans. It
+documents the frame loop and pause semantics, the scheduler, interaction gating, the level/story contracts,
+both missions (including the chase rules), the headless harness, and the conventions above. In Devin CLI it is
+available as `/night-shift-dev`.
 
 ## Debugging
 

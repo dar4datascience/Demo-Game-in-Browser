@@ -21,7 +21,10 @@ run() {
 }
 
 run playthrough.mjs
-run playthrough-ceda.mjs -e CHAR=diablero
+run playthrough-ceda.mjs -e CHAR=diablero -e CHOICE=fight -e OUTCOME=win
+run playthrough-ceda.mjs -e CHAR=diablero -e CHOICE=fight -e OUTCOME=lose
+run playthrough-ceda.mjs -e CHAR=diablero -e CHOICE=beer -e OUTCOME=win
+run playthrough-ceda.mjs -e CHAR=diablero -e CHOICE=beer -e OUTCOME=lose
 run playthrough-ceda.mjs -e CHAR=seller -e ENDING=caught
 run playthrough-ceda.mjs -e CHAR=consumer
 echo "All browser playthroughs passed. Screenshots: scripts/shots/"

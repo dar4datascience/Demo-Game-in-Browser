@@ -13,6 +13,7 @@
       <div id="clock"></div>
       <div id="crosshair"></div>
       <div id="prompt"></div>
+      <div id="qte" class="hidden"></div>
       <div id="subtitle"></div>
       <div id="cam" class="hidden"><span class="rec">● REC</span> CAM 02 — STAFF ROOM<br /><span id="camtime"></span></div>
     </div>
@@ -34,8 +35,8 @@
       <div id="menu-chars" class="cards hidden">
         <button class="card" data-char="diablero">
           <b>Diablero</b>
-          <span>Porter with a diablito. Haul three loads from the bodegas to the trucks.</span>
-          <em>Slower, carries heavy loads</em>
+          <span>Loader with a diablito. Haul the shift, fetch the price sign, and face the ghost.</span>
+          <em>Man, woman or nonbinary</em>
         </button>
         <button class="card" data-char="seller">
           <b>Seller</b>
@@ -49,11 +50,27 @@
         </button>
         <button id="menu-back" class="back">← back</button>
       </div>
+      <div id="menu-variants" class="cards hidden">
+        <button class="card" data-variant="man">
+          <b>Man</b>
+          <span>Play the diablero as a man.</span>
+        </button>
+        <button class="card" data-variant="woman">
+          <b>Woman</b>
+          <span>Play the diablero as a woman.</span>
+        </button>
+        <button class="card" data-variant="nonbinary">
+          <b>Nonbinary</b>
+          <span>Play the diablero as a nonbinary person.</span>
+        </button>
+        <button id="variants-back" class="back">← back</button>
+      </div>
       <ul class="controls">
         <li><b>WASD</b> move</li>
         <li><b>Mouse</b> look</li>
         <li><b>Shift</b> run</li>
         <li><b>E / Click</b> interact</li>
+        <li><b>Q</b> drop a peel</li>
         <li><b>Esc</b> pause</li>
       </ul>
       <p class="credit">

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createHarness } from '../helpers/harness.js';
 import { EXIT_Z } from '../../src/levels/ceda/world.js';
+import { WAKE_SEQUENCE } from '../../src/levels/ceda/story.js';
 
 // Headless end-to-end runs of each story script: real scheduler, world, NPC movement and interactions.
 // The "autoplayer" presses E on whatever is currently offered, like an impatient but obedient player.
@@ -45,15 +46,75 @@ describe('Central de Abasto stories', () => {
     h.useAvailable();
     if (h.hud.current?.includes('Eje 5 Sur')) h.player.pos.set(0, 0, EXIT_Z - 1);
   };
+  // Autoplay the diablero haul and pancarta run, stopping just before the ghost choice.
+  const toGhostChoice = (h) => h.run(() => h.game.flags.ghostReady, { onStep: () => h.useAvailable() });
+  const choose = (h, label) => {
+    const it = h.interactions.find((i) => i.label() === label);
+    expect(it, label).toBeDefined();
+    it.use();
+  };
 
-  it('Diablero hauls three loads and escapes', async () => {
+  it('Diablero hauls three loads, fetches the pancarta, and wins the shrine run', async () => {
     const h = createHarness('ceda', 'diablero');
-    await h.run(() => h.game.ended, { onStep: escape(h) });
+    await toGhostChoice(h);
     expect(h.game.flags.delivered).toBe(3);
     expect(h.log.used.filter((l) => l === 'Descargar en la camioneta')).toHaveLength(3);
+    expect(h.game.flags.hasPancarta).toBe(true);
+    expect(h.game.flags.pancartaDelivered).toBe(true);
     expect(h.player.speedScale).toBeCloseTo(0.9);
-    expect(h.log.ending.title).toBe('SALISTE DE LA CENTRAL');
-    expect(h.log.ending.subtitle).toContain('Diablero');
+
+    choose(h, 'Pelear con el fantasma');
+    await h.run(() => h.game.flags.stage === 'fight', { maxTime: h.game.time + 10 });
+    expect(h.game.flags.shrine).toBeDefined();
+    h.player.pos.set(h.game.flags.shrine.x, 0, h.game.flags.shrine.z);
+    await h.run(() => h.game.ended, { maxTime: h.game.time + 20 });
+    expect(h.log.ending.title).toBe('LE GANASTE AL FANTASMA');
+  });
+
+  it('Diablero is caught if they stand still in the shrine run', async () => {
+    const h = createHarness('ceda', 'diablero');
+    await toGhostChoice(h);
+    choose(h, 'Pelear con el fantasma');
+    await h.run(() => h.game.ended, { maxTime: h.game.time + 30 });
+    expect(h.log.ending.title).toBe('TE ALCANZÓ EL FANTASMA');
+  });
+
+  it('Diablero stays awake through the beer story', async () => {
+    const h = createHarness('ceda', 'diablero');
+    await toGhostChoice(h);
+    choose(h, 'Compartir una cerveza');
+    await h.run(() => h.game.flags.qte?.active, { maxTime: h.game.time + 40 });
+    for (const key of WAKE_SEQUENCE) {
+      h.press(key);
+      await new Promise((r) => setImmediate(r));
+    }
+    await h.run(() => h.game.ended, { maxTime: h.game.time + 20 });
+    expect(h.log.ending.title).toBe('AMANECISTE');
+    expect(h.game.flags.qte.active).toBe(false);
+  });
+
+  it('Diablero falls asleep if the keys are ignored', async () => {
+    const h = createHarness('ceda', 'diablero');
+    await toGhostChoice(h);
+    choose(h, 'Compartir una cerveza');
+    await h.run(() => h.game.ended, { maxTime: h.game.time + 60 });
+    expect(h.log.ending.title).toBe('TE DORMISTE');
+  });
+
+  it('Diablero loses the shift if the pancarta never arrives', async () => {
+    const h = createHarness('ceda', 'diablero');
+    await h.run(() => h.game.flags.stage === 'pancarta', { onStep: () => h.useAvailable() });
+    h.game.flags.pancartaDeadline = h.game.time + 0.1;
+    await h.run(() => h.game.ended, { maxTime: h.game.time + 10 });
+    expect(h.log.ending.title).toBe('SE TE FUE EL TRÁILER');
+  });
+
+  it.each(['man', 'woman', 'nonbinary'])('Diablero %s route starts with the chosen presentation', async (variant) => {
+    const h = createHarness('ceda', 'diablero', { variant });
+    await h.run(() => h.log.objectives.length > 0, { maxTime: 10 });
+    expect(h.player.pos.z).toBe(33);
+    expect(h.ctx.variant).toBe(variant);
+    expect(h.game.flags.variant).toBe(variant);
   });
 
   it('Seller opens the bodega, stocks 3 pallets, serves 2 customers, and gets caught if they stand still', async () => {

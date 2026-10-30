@@ -27,19 +27,24 @@
   It plays the whole story through `?debug&speed=4` hooks, prints each interaction prompt, exits non-zero on
   timeouts/page errors, and writes screenshots to `scripts/shots/` (gitignored).
 
-- Central de Abasto, one run per character (`CHAR=diablero|seller|consumer`, optional `ENDING=caught`):
+- Central de Abasto, one run per character (`CHAR=diablero|seller|consumer`; diablero also takes
+  `VARIANT=man|woman|nonbinary`, `CHOICE=fight|beer`, `OUTCOME=win|lose`; seller/consumer take
+  `ENDING=escape|caught`; `SEED` pins the shrine):
 
   ```bash
-  docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=seller --entrypoint node mcp/playwright /out/playthrough-ceda.mjs
+  docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=diablero -e CHOICE=beer -e OUTCOME=win --entrypoint node mcp/playwright /out/playthrough-ceda.mjs
   ```
 
 - Software rendering in that container runs at about 3 fps on the CEDA map (about 21 point lights), so each run takes a few
   minutes. The scripts wait on rendered frames, not wall-clock time. `npm run test:e2e` (`scripts/e2e.sh`) starts its
-  own Vite server on port 5199 and runs all four playthroughs.
+  own Vite server on port 5199 and runs all playthroughs (NightMart, both diablero ghost choices with
+  win/lose outcomes, and the seller/consumer shared finale).
 - `scripts/shots/` is gitignored, so agent file tools can't read it; copy the screenshots out first (`cp -r scripts/shots /tmp/`).
 
 ## Conventions
 
+- `.devin/skills/night-shift-dev/SKILL.md` is the development ground truth for engine/level contracts,
+  mission mechanics and the headless harness. Read it before changing game logic or adding tests.
 - Plain ES modules, 2-space indent, single quotes. Three.js materials must go through `lam()` / `basic()` from
   `src/engine/post.js` so they get PS1 vertex snapping.
 - Keep assets procedural (canvas textures, WebAudio). Don't add copied art, audio, names or characters from

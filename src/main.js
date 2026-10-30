@@ -12,6 +12,7 @@ import { LEVELS } from './levels/index.js';
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 const TIME_SCALE = DEBUG ? Number(params.get('speed') ?? 1) : 1;
+const SEED = params.has('seed') ? Number(params.get('seed')) >>> 0 : undefined;
 
 const canvas = document.getElementById('game');
 const pipe = new Pipeline(canvas);
@@ -31,7 +32,7 @@ pipe.resize();
 const input = createInput(canvas);
 const sfx = new Sfx();
 
-const game = createGame(camera);
+const game = createGame(camera, SEED);
 const hud = createHud(game);
 const player = new Player(camera);
 const interactions = createInteractions();
@@ -62,7 +63,7 @@ function update(dt) {
   u.uFade.value += Math.sign(df) * Math.min(Math.abs(df), game.fade.rate * dt);
 }
 
-function start(levelId, character = null) {
+function start(levelId, character = null, variant = null) {
   if (game.started) return;
   game.started = true;
   const level = LEVELS[levelId];
@@ -76,7 +77,7 @@ function start(levelId, character = null) {
   sfx.startAmbience();
   if (DEBUG) Object.assign(window, { game, player, world, hud });
   level.story({
-    game, world, hud, sfx, player, scene, pipe, interact, character,
+    game, world, hud, sfx, player, scene, pipe, input, interact, character, variant,
     end(title, subtitle) {
       game.ended = true;
       input.unlock();
@@ -95,10 +96,20 @@ document.querySelectorAll('[data-map]').forEach((el) => el.addEventListener('cli
     hud.show('menu-chars');
   } else start(el.dataset.map);
 }));
-document.querySelectorAll('[data-char]').forEach((el) => el.addEventListener('click', () => start('ceda', el.dataset.char)));
+document.querySelectorAll('[data-char]').forEach((el) => el.addEventListener('click', () => {
+  if (el.dataset.char === 'diablero') {
+    hud.hide('menu-chars');
+    hud.show('menu-variants');
+  } else start('ceda', el.dataset.char);
+}));
+document.querySelectorAll('[data-variant]').forEach((el) => el.addEventListener('click', () => start('ceda', 'diablero', el.dataset.variant)));
 $('#menu-back').addEventListener('click', () => {
   hud.hide('menu-chars');
   hud.show('menu-maps');
+});
+$('#variants-back').addEventListener('click', () => {
+  hud.hide('menu-variants');
+  hud.show('menu-chars');
 });
 $('#pause').addEventListener('click', () => {
   input.lock();

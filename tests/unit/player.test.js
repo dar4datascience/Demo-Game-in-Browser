@@ -60,6 +60,30 @@ describe('Player', () => {
     expect(player.pos.z).toBeCloseTo(-1.1);
   });
 
+  it('does not gain speed by walking diagonally', () => {
+    const player = newPlayer();
+    player.spawn(0, 0, 0);
+    player.update(1, input('KeyW', 'KeyD'), [], true);
+    expect(Math.hypot(player.pos.x, player.pos.z)).toBeCloseTo(2.2);
+  });
+
+  it('clamps looking up and down', () => {
+    const player = newPlayer();
+    player.update(1, { keys: new Set(), dx: 0, dy: -100000 }, [], true);
+    expect(player.pitch).toBeCloseTo(1.45);
+    player.update(1, { keys: new Set(), dx: 0, dy: 100000 }, [], true);
+    expect(player.pitch).toBeCloseTo(-1.45);
+  });
+
+  it('fires a footstep every 0.8 m walked', () => {
+    const player = newPlayer();
+    player.spawn(0, 0, 0);
+    let steps = 0;
+    for (let i = 0; i < 10; i++) player.update(0.1, input('KeyW'), [], true, () => steps++);
+    expect(player.pos.z).toBeCloseTo(-2.2);
+    expect(steps).toBe(2);
+  });
+
   it('does not move when input is disabled', () => {
     const player = newPlayer();
     player.update(1, input('KeyW'), [], false);
@@ -71,6 +95,15 @@ describe('Player', () => {
     player.spawn(0, 0, 0);
     const wall = box(0, -1.1, 5, 0.1);
     for (let i = 0; i < 20; i++) player.update(0.1, input('KeyW'), [wall], true);
+    expect(player.pos.z).toBeGreaterThanOrEqual(-1 + 0.3 - 1e-6);
+  });
+
+  it('cannot tunnel through a thin wall at flow speed', () => {
+    const player = newPlayer();
+    player.spawn(0, 0, 0);
+    player.speedScale = 2.7;
+    const wall = box(0, -1.1, 5, 0.1);
+    for (let i = 0; i < 20; i++) player.update(0.1, input('KeyW', 'ShiftLeft'), [wall], true);
     expect(player.pos.z).toBeGreaterThanOrEqual(-1 + 0.3 - 1e-6);
   });
 

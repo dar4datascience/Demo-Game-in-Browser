@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { lam } from '../../engine/post.js';
 import { lonaTex } from '../../engine/textures.js';
 import { createDirector, GHOST } from '../../game/director.js';
-import { makeDiablito, sackStack } from './props.js';
-import { ROWS, unitAt, EXIT_Z } from './world.js';
+import { mulberry32 } from '../../game/rng.js';
+import { makeDiablito, sackStack, hitbox, makePancarta, makeBocina, makePeel, makeBeer, makeShrine, makeFire, crate } from './props.js';
+import { ROWS, unitAt, EXIT_Z, SHRINE_SPOTS, FIRE_SPOT } from './world.js';
 
 export const CHARACTERS = {
   diablero: { label: 'Diablero', speed: 0.9 },
@@ -20,6 +21,28 @@ const PEOPLE = {
   woman: { top: '#4a4f3e', bottom: '#2a2a2a', skin: '#d8c2ae', hair: '#0b0b0b', longHair: true, veil: true, dress: true },
 };
 
+// The diablero can present as a man, a woman or nonbinary; the work clothes stay the same.
+export const DIABLERO_VARIANTS = {
+  man: { ...PEOPLE.diablero },
+  woman: { ...PEOPLE.diablero, top: '#7a2a3e', longHair: true },
+  nonbinary: { ...PEOPLE.diablero, top: '#6a2a5a', hair: '#2a2a2a' },
+};
+
+// Keys the player presses, in order, to stay awake by the fire.
+export const WAKE_SEQUENCE = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyW', 'KeyD', 'KeyA', 'KeyS'];
+
+const GHOST_DIABLERO = { ...GHOST, top: '#8a2a1e', bottom: '#2f3a4a', dress: false };
+
+function sit(npc) {
+  npc.legs.forEach((l) => (l.rotation.x = -1.1));
+  npc.arms.forEach((a) => (a.rotation.x = -0.5));
+  npc.root.position.y = -0.28;
+  npc.update = () => {};
+}
+
+const keyName = (code) => code.replace('Key', '');
+const displaySequence = (seq, at) => seq.map((k, i) => (i < at ? '✓' : i === at ? keyName(k) : '·')).join(' ');
+
 // People going about the 4 AM shift: [look, loop waypoints, speed, pushes a diablito].
 const CROWD = [
   [PEOPLE.diablero, [[-30, -44], [-30, 30]], 1.1, true],
@@ -31,11 +54,14 @@ const CROWD = [
 ];
 
 export async function runStory(ctx) {
-  const { game, world, hud, sfx, player, scene, interact, end, character } = ctx;
+  const { game, world, hud, sfx, player, scene, interact, end, character, input, variant = 'nonbinary' } = ctx;
   const R = world.refs, F = game.flags;
   const d = createDirector(ctx);
   const { spawn, despawn, say } = d;
   const label = CHARACTERS[character].label;
+  const rng = mulberry32(game.seed);
+  const look = DIABLERO_VARIANTS[variant] ?? DIABLERO_VARIANTS.nonbinary;
+  F.variant = variant;
 
   player.spawn(0, 33, 0);
   player.speedScale = CHARACTERS[character].speed;
@@ -59,7 +85,7 @@ export async function runStory(ctx) {
   // Squeaky wheels nearby sell the place.
   let squeakAt = 0;
   game.hooks.push(() => {
-    if (F.stage === 'finale') return true;
+    if (['finale', 'ghost', 'fight', 'beer'].includes(F.stage)) return true;
     if (game.time > squeakAt && game.npcs.some((n) => n.root.children.length > 1 && n.pos.distanceTo(player.pos) < 7)) {
       sfx.squeak();
       squeakAt = game.time + 1.2 + Math.random();
@@ -68,13 +94,33 @@ export async function runStory(ctx) {
 
   game.fadeTo(0, 3);
   await say('4:10 AM. Central de Abasto, Iztapalapa.', 3.5);
-  await { diablero, seller, consumer }[character]();
-  await finale();
+  const route = await { diablero, seller, consumer }[character]();
+  if (route !== 'done') await finale();
 
-  // --- Diablero: haul three loads from bodegas to trucks ---------------------------------
+  // --- Diablero: haul three loads, fetch the pancarta, then face the ghost -------------------
   async function diablero() {
     const cart = makeDiablito();
     const load = cart.userData.load;
+    const bocina = makeBocina();
+
+    const startFlow = () => {
+      if (F.flow) return;
+      F.flow = true;
+      player.speedScale = CHARACTERS.diablero.speed * 3;
+      bocina.position.set(0.42, -0.55, -0.9);
+      bocina.rotation.set(0.1, -0.4, 0);
+      player.camera.add(bocina);
+      sfx.flow(true);
+      hud.objective('¡Flow! Lleva la pancarta a Bod. B-4 y cuélgala.');
+    };
+    const stopFlow = () => {
+      if (!F.flow) return;
+      F.flow = false;
+      player.speedScale = CHARACTERS.diablero.speed;
+      bocina.removeFromParent();
+      sfx.flow(false);
+    };
+
     hud.objective('Agarra tu diablito (junto a la entrada del Pasillo 2).');
     interact(R.diablito, () => (F.hasCart ? null : 'Agarrar el diablito'), () => {
       F.hasCart = true;
@@ -133,6 +179,269 @@ export async function runStory(ctx) {
         await say('Una voz: Esa bodega está cerrada desde el temblor, joven...', 4);
       }
     }
+
+    // --- The pancarta run ----------------------------------------------------------------
+    player.hold(null);
+    F.stage = 'pancarta';
+    F.pancartaDeadline = game.time + 75;
+    const letterer = spawn(PEOPLE.vendor, 32.4, 2.0);
+    letterer.face(30, 2);
+    hud.objective('Ve al Pasillo 3, local 3: el rotulista tiene la pancarta de precios.');
+
+    interact(R.rotulista.pickup, () => (F.stage === 'pancarta' && !F.hasPancarta ? 'Recoger la pancarta' : null), () => {
+      if (F.hasPancarta) return;
+      F.hasPancarta = true;
+      R.rotulista.pancarta.scale.setScalar(0.8);
+      player.hold('pancarta', R.rotulista.pancarta, [0.05, -0.42, -0.95], [0.02, 0.12, 0]);
+      startFlow();
+      sfx.thud();
+    });
+    interact(R.pancartaDrop, () => (F.hasPancarta && !F.pancartaDelivered ? 'Colgar la pancarta' : null), () => {
+      if (!F.hasPancarta || F.pancartaDelivered) return;
+      F.pancartaDelivered = true;
+      player.hold(null);
+      R.pancartaPlaced.visible = true;
+      stopFlow();
+      sfx.coins();
+      sfx.thud();
+    });
+
+    let lastSec = -1;
+    game.hooks.push(() => {
+      if (game.ended || F.stage !== 'pancarta' || F.pancartaDelivered) return true;
+      const sec = Math.ceil(F.pancartaDeadline - game.time);
+      if (sec !== lastSec && (sec <= 10 || sec % 10 === 0)) {
+        lastSec = sec;
+        const task = F.hasPancarta ? 'Lleva la pancarta a Bod. B-4' : 'Ve al Pasillo 3, local 3';
+        hud.objective(`${task}. Quedan ${sec} s.`);
+      }
+      return false;
+    });
+
+    await game.until(() => F.hasPancarta || game.time > F.pancartaDeadline);
+    if (!F.hasPancarta) {
+      stopFlow();
+      player.hold(null);
+      end('SE TE FUE EL TRÁILER', 'La pancarta nunca llegó y el tráiler se fue sin ti.');
+      return 'done';
+    }
+    say('Rotulista: Ahí está. Que no se te moje, joven.', 2.5);
+    hud.objective('Lleva la pancarta a Bod. B-4 antes de que se acabe el flow.');
+    await game.until(() => F.pancartaDelivered || game.time > F.pancartaDeadline);
+    stopFlow();
+    if (!F.pancartaDelivered) {
+      player.hold(null);
+      end('SE TE FUE EL TRÁILER', 'La pancarta nunca llegó y el tráiler se fue sin ti.');
+      return 'done';
+    }
+
+    // --- End of shift: the ghost diablero ------------------------------------------------
+    F.stage = 'ghost';
+    hud.objective('');
+    await game.wait(1.5);
+    await say('Dejaste la pancarta en su lugar. El turno casi termina.', 3);
+
+    const gx = R.units['B-4'].x + 1.6;
+    const gz = ROWS.B + 3.6;
+    const ghost = spawn(GHOST_DIABLERO, gx, gz);
+    ghost.face(player.pos.x, player.pos.z);
+    F.ghost = ghost;
+    const beer = new THREE.Group();
+    beer.position.set(gx + 0.9, 0.34, gz + 0.4);
+    beer.add(makeBeer());
+    beer.add(hitbox(0.7, 0.8, 0.7, 0, 0.2, 0));
+    const beerCrate = crate('#7a4a2a');
+    beerCrate.position.set(beer.position.x, 0, beer.position.z);
+    scene.add(beerCrate, beer);
+    hud.objective('El fantasma de un diablero te espera. ¿Peleas con él o compartes una cerveza?');
+    await say('Fantasma: Otro diablero... Hace años que nadie se queda hasta el final del turno.', 4);
+    await say('Fantasma: ¿Qué dices? ¿Nos vamos a los golpes o nos tomamos una?', 4);
+
+    let chooseResolve;
+    const choice = new Promise((resolve) => (chooseResolve = resolve));
+    const choose = (kind) => {
+      if (F.ghostChoice) return;
+      F.ghostChoice = kind;
+      chooseResolve(kind);
+    };
+    interact(ghost.root, () => (F.ghostChoice ? null : 'Pelear con el fantasma'), () => choose('fight'));
+    interact(beer, () => (F.ghostChoice ? null : 'Compartir una cerveza'), () => choose('beer'));
+    F.ghostReady = true;
+
+    const kind = await choice;
+    beer.visible = false;
+    beerCrate.visible = false;
+    if (kind === 'fight') await fightGhost(ghost);
+    else await beerGhost(ghost);
+    return 'done';
+  }
+
+  // --- Ghost fight: outrun her to a randomly placed Virgen María shrine ----------------------
+  async function fightGhost(ghost) {
+    F.stage = 'fight';
+    const candidates = SHRINE_SPOTS.filter(([x, z]) => Math.hypot(x - player.pos.x, z - player.pos.z) > 15);
+    const [sx, sz] = candidates[Math.floor(rng() * candidates.length)] ?? SHRINE_SPOTS[0];
+    F.shrine = { x: sx, z: sz };
+    const shrine = makeShrine();
+    shrine.position.set(sx, 0, sz);
+    scene.add(shrine);
+    world.addCollider(sx, sz, 0.8, 0.5);
+    hud.objective('Corre al santuario de la Virgen María. Recoge cáscaras con E y suéltalas con Q para frenar al fantasma.');
+    await say('Fantasma: ¡A ver si sigues corriendo como cuando cargas bultos!', 3);
+
+    F.peels = 0;
+    F.droppedPeels = [];
+    for (const [dx, dz] of [[-4, 2], [-2, 3], [0, 2], [2, 3], [4, 2], [-3, 4], [3, 4], [0, 5]]) {
+      const peel = makePeel();
+      peel.position.set(player.pos.x + dx, 0, player.pos.z + dz);
+      peel.add(hitbox(0.35, 0.3, 0.35, 0, 0.15, 0));
+      scene.add(peel);
+      interact(peel, () => (F.peels < 5 ? 'Recoger cáscara' : null), () => {
+        if (F.peels >= 5) return;
+        F.peels++;
+        peel.visible = false;
+        sfx.click();
+      });
+    }
+
+    ghost.place(player.pos.x - 1.5, player.pos.z + 4.0);
+    ghost.speed = 2.8;
+    let slipUntil = 0;
+    const dropPeel = () => {
+      if (F.peels <= 0) return;
+      F.peels--;
+      const peel = makePeel();
+      const back = player.pos.clone().addScaledVector(player.forward(), -0.9);
+      peel.position.set(back.x, 0, back.z);
+      scene.add(peel);
+      F.droppedPeels.push({ mesh: peel, used: false });
+      sfx.squeak();
+    };
+
+    F.fightReady = true;
+    const outcome = await new Promise((resolve) => {
+      game.hooks.push(() => {
+        if (game.ended) return true;
+        if (input.pressed.has('KeyQ')) dropPeel();
+        if (Math.hypot(player.pos.x - sx, player.pos.z - sz) < 2.2) {
+          resolve('shrine');
+          return true;
+        }
+        if (Math.hypot(player.pos.x - ghost.pos.x, player.pos.z - ghost.pos.z) < 1.2) {
+          resolve('caught');
+          return true;
+        }
+        for (const peel of F.droppedPeels) {
+          if (peel.used) continue;
+          if (Math.hypot(ghost.pos.x - peel.mesh.position.x, ghost.pos.z - peel.mesh.position.z) < 1.0) {
+            peel.used = true;
+            slipUntil = game.time + 1.6;
+            sfx.squeak();
+          }
+        }
+        ghost.speed = game.time < slipUntil ? 1.1 : 2.8;
+        ghost.path = [[player.pos.x, player.pos.z]];
+        return false;
+      });
+    });
+
+    hud.objective('');
+    if (outcome === 'caught') {
+      await d.jumpscare(ghost);
+      F.ghostDone = true;
+      end('TE ALCANZÓ EL FANTASMA', 'El diablero que se quedó en la Central se quedó contigo.');
+      return;
+    }
+    despawn(ghost);
+    sfx.setTension(0);
+    game.fadeTo(1, 2);
+    await say('Llegaste al santuario. El fantasma se detuvo entre las veladoras.', 3);
+    F.ghostDone = true;
+    end('LE GANASTE AL FANTASMA', 'Corriste más que la muerte y amaneciste para contarlo.');
+  }
+
+  // --- Ghost beer: sit by the fire and stay awake through the stories ------------------------
+  async function beerGhost(ghost) {
+    F.stage = 'beer';
+    game.inputEnabled = false;
+    ghost.path = [];
+
+    const firePos = new THREE.Vector3(FIRE_SPOT[0], 0, FIRE_SPOT[1]);
+    const fire = makeFire();
+    fire.position.copy(firePos);
+    scene.add(fire);
+    const stopFire = sfx.fire();
+
+    const self = spawn(look, firePos.x - 0.8, firePos.z + 0.2);
+    self.face(firePos.x, firePos.z);
+    sit(self);
+    ghost.place(firePos.x + 0.8, firePos.z + 0.2);
+    ghost.face(firePos.x, firePos.z);
+    sit(ghost);
+
+    const cam = new THREE.PerspectiveCamera(60, player.camera.aspect, 0.05, 30);
+    cam.position.set(firePos.x - 3.2, 2.0, firePos.z + 3.2);
+    cam.lookAt(firePos.x, 1.0, firePos.z);
+    scene.add(cam);
+    world.cameras.push(cam);
+    game.cam = cam;
+
+    hud.objective('Siéntate junto al fuego. No te duermas.');
+    await say('Fantasma: Siéntate. La noche es larga y los dos cargamos lo mismo.', 3.5);
+    await say('Diablero: ¿Cómo te llamabas?', 2.5);
+    await say('Fantasma: Como tú. Nadie me llamaba por mi nombre.', 3.5);
+    await say('Fantasma: Cuéntame una de tus rutas. Yo te cuento la mía.', 3.5);
+
+    let index = 0;
+    let deadline = game.time + 3;
+    F.qte = { active: true, index, length: WAKE_SEQUENCE.length };
+    hud.qte(`MANTENTE DESPIERTO\n${displaySequence(WAKE_SEQUENCE, index)}`);
+
+    const outcome = await new Promise((resolve) => {
+      game.hooks.push(() => {
+        if (game.ended) return true;
+        if (game.time > deadline) {
+          resolve('sleep');
+          return true;
+        }
+        if (input.pressed.has(WAKE_SEQUENCE[index])) {
+          index++;
+          deadline = game.time + 3;
+          F.qte.index = index;
+          hud.qte(index >= WAKE_SEQUENCE.length ? 'DESPIERTO' : `MANTENTE DESPIERTO\n${displaySequence(WAKE_SEQUENCE, index)}`);
+          if (index >= WAKE_SEQUENCE.length) {
+            resolve('awake');
+            return true;
+          }
+        } else if ([...input.pressed].some((key) => WAKE_SEQUENCE.includes(key))) {
+          resolve('sleep');
+          return true;
+        }
+        return false;
+      });
+    });
+
+    F.qte.active = false;
+    hud.qte(null);
+    if (outcome === 'sleep') {
+      game.fadeTo(1, 2);
+      await game.wait(2);
+      stopFire();
+      F.ghostDone = true;
+      end('TE DORMISTE', 'El fuego se apagó y el fantasma siguió contando su historia sin ti.');
+      return;
+    }
+
+    stopFire();
+    game.inputEnabled = true;
+    game.cam = player.camera;
+    cam.removeFromParent();
+    const camIndex = world.cameras.indexOf(cam);
+    if (camIndex >= 0) world.cameras.splice(camIndex, 1);
+    sfx.setTension(0);
+    await say('Amaneció. El fantasma se desvaneció con la primera luz.', 3.5);
+    F.ghostDone = true;
+    end('AMANECISTE', 'Sobreviviste la noche y contaste la historia a tus amigos.');
   }
 
   // --- Seller: open the bodega, stock it, serve two customers --------------------------------

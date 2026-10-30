@@ -313,6 +313,32 @@ export const bodegaSignTex = (name, id) => canvasTexture(128, 28, (g, w, h) => {
 
 export const pasilloSignTex = (text) => signTex(text, '#1f4fa3', '#ffffff', 128, 24);
 
+// Hand-painted Central de Abasto price board ("pancarta de precios").
+export const pancartaTex = () => canvasTexture(128, 80, (g, w, h) => {
+  g.fillStyle = '#f7f1dc';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1e6fd9';
+  g.fillRect(0, 0, w, 5);
+  g.fillStyle = '#e4007c';
+  g.fillRect(0, h - 5, w, 5);
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillStyle = '#c0392b';
+  g.font = 'bold 13px monospace';
+  g.fillText('ABARROTES LA ESPERANZA', w / 2, 15, w - 8);
+  g.fillStyle = '#1b1b1b';
+  g.font = 'bold 10px monospace';
+  g.fillText('PRECIOS DEL DÍA', w / 2, 29);
+  g.fillStyle = '#e4007c';
+  g.font = 'bold 12px monospace';
+  g.fillText('FRIJOL $64', w / 2, 43);
+  g.fillStyle = '#1e6fd9';
+  g.fillText('ARROZ $38', w / 2, 56);
+  g.fillStyle = '#2bb673';
+  g.fillText('CHILE $120', w / 2, 69);
+  grain(g, w, h, 10);
+});
+
 export const letterTex = (letter) => canvasTexture(32, 32, (g) => {
   g.fillStyle = '#ffffff';
   g.beginPath();

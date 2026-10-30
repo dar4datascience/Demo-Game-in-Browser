@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as THREE from 'three';
 import { LEVELS } from '../../src/levels/index.js';
-import { EXIT_Z } from '../../src/levels/ceda/world.js';
+import { EXIT_Z, SHRINE_SPOTS, FIRE_SPOT } from '../../src/levels/ceda/world.js';
 import { circleHits } from '../../src/game/player.js';
 import { reachableCells, nearestDistance, worldPosition } from '../helpers/harness.js';
 
@@ -77,6 +77,8 @@ describe('Central de Abasto level', () => {
     expect(Object.keys(world.refs.counters).sort()).toEqual(['A-8', 'B-2', 'C-5']);
     expect(Object.keys(world.refs.pickups).sort()).toEqual(['A-3', 'B-11', 'C-9']);
     expect(world.refs.pallets).toHaveLength(3);
+    expect(world.refs.rotulista.pickup).toBeDefined();
+    expect(world.refs.pancartaDrop).toBeDefined();
   });
 
   it('has valid colliders and does not spawn the player inside one', () => {
@@ -90,6 +92,8 @@ describe('Central de Abasto level', () => {
       diablito: R.diablito,
       cortinaB4: R.units['B-4'].cortina,
       scale: R.scale[0],
+      rotulistaPickup: R.rotulista.pickup,
+      pancartaDrop: R.pancartaDrop,
       ...Object.fromEntries(Object.entries(R.trucks).map(([k, v]) => [`truck ${k}`, v])),
       ...Object.fromEntries(Object.entries(R.counters).map(([k, v]) => [`counter ${k}`, v])),
       ...Object.fromEntries(Object.entries(R.pickups).map(([k, v]) => [`pickup ${k}`, v])),
@@ -103,6 +107,19 @@ describe('Central de Abasto level', () => {
 
   it('lets the player escape through the Eje 5 Sur gate', () => {
     expect(cells.some(([, z]) => z < EXIT_Z)).toBe(true);
+  });
+
+  it('places every possible shrine on reachable open ground', () => {
+    for (const [x, z] of SHRINE_SPOTS) {
+      expect(world.colliders.some((c) => circleHits(x, z, c, 1.0)), `${x},${z}`).toBe(false);
+      expect(nearestDistance(cells, x, z), `${x},${z}`).toBeLessThanOrEqual(1.0);
+    }
+  });
+
+  it('keeps the beer fire and its camera clear of props', () => {
+    const [x, z] = FIRE_SPOT;
+    expect(world.colliders.some((c) => circleHits(x, z, c, 1.0))).toBe(false);
+    expect(world.colliders.some((c) => circleHits(x - 3.2, z + 3.2, c, 0.5))).toBe(false);
   });
 
   it('forces travel through the pasillos: rows block direct crossings between lanes', () => {

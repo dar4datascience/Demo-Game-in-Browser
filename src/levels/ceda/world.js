@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { lam, basic } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { createBuilder } from '../../world/builder.js';
-import { makeDiablito, makeTruck, makeStall, sackStack, crate, trashPile, hitbox } from './props.js';
+import { makeDiablito, makeTruck, makeStall, sackStack, crate, trashPile, hitbox, makePancarta } from './props.js';
 
 /*
  * Inspired by the "Abarrotes y Víveres — Lado A" floor plan of the Central de Abasto (Iztapalapa, CDMX):
@@ -16,6 +16,14 @@ export const PASILLOS = [-30, 0, 30];
 export const SEGMENTS = [[-27, -3], [3, 27]];
 export const EXIT_Z = -52;
 const DOCK = 2.5;
+
+// Open-air spots the Virgen María shrine can appear at during the diablero's ghost fight.
+export const SHRINE_SPOTS = [
+  [-34, 20], [34, 20], [0, 33], [-20, -4], [20, -4], [0, -46],
+];
+
+// Clear plaza spot for the diablero's fireside beer scene.
+export const FIRE_SPOT = [-20, -4];
 
 export const unitAt = (id) => {
   const [row, n] = id.split('-');
@@ -144,6 +152,7 @@ export function buildWorld(scene) {
   // Seller's bodega fixtures: counter + scale on the dock, three pallets for stock.
   const sellerX = unitAt('B-4').x, bFront = ROWS.B;
   refs.sellerCounter = box(1.6, 0.95, 0.6, M.wood, sellerX, 0.66, bFront + 1.6);
+  refs.sellerLamp = light(sellerX, 2.4, bFront + 2.2, 0xffd7a0, 10, 7);
   refs.scale = [
     box(0.4, 0.12, 0.3, M.metal, sellerX + 0.6, 1.2, bFront + 1.6, { collide: false }),
     box(0.16, 0.12, 0.04, glowMat({ color: 0xe8f0d0 }, 0x222222), sellerX + 0.6, 1.32, bFront + 1.45, { collide: false, tile: 0 }),
@@ -153,6 +162,46 @@ export function buildWorld(scene) {
     x,
     z: bFront + 0.7,
   }));
+
+  // Empty frame over the seller's counter where the diablero hangs the pancarta.
+  const pancartaDrop = new THREE.Group();
+  pancartaDrop.position.set(sellerX, 1.35, bFront + 1.95);
+  pancartaDrop.add(hitbox(1.2, 0.8, 0.4, 0, 0, 0));
+  const emptyBoard = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), basic({ color: 0x222222 }));
+  pancartaDrop.add(emptyBoard);
+  const frameMat = lam({ color: 0x6b4f36 });
+  for (const [w, h, x, y] of [[1.2, 0.08, 0, 0.38], [1.2, 0.08, 0, -0.38], [0.08, 0.78, -0.56, 0], [0.08, 0.78, 0.56, 0]]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), frameMat);
+    bar.position.set(x, y, 0.06);
+    pancartaDrop.add(bar);
+  }
+  const pancartaPlaced = makePancarta();
+  pancartaPlaced.position.set(0, -0.4, 0.03);
+  pancartaPlaced.scale.setScalar(1.3);
+  pancartaPlaced.visible = false;
+  pancartaDrop.add(pancartaPlaced);
+  scene.add(pancartaDrop);
+  refs.pancartaDrop = pancartaDrop;
+  refs.pancartaPlaced = pancartaPlaced;
+
+  // Rotulista stand in Pasillo 3, local 3: where the diablero picks up the pancarta.
+  const rotX = 31.8, rotZ = 2.0;
+  refs.rotulista = {};
+  refs.rotulista.stand = box(0.9, 0.9, 1.8, M.wood, rotX, 0.45, rotZ);
+  box(0.95, 0.06, 1.85, M.wood, rotX, 0.93, rotZ, { collide: false });
+  refs.rotulista.sign = plane(
+    1.8, 0.55,
+    lam({ map: T.signTex('ROTULISTA · LOCAL 3', '#f4d03f', '#7a1f1f', 256, 32) }),
+    rotX - 0.48, 2.1, rotZ, -Math.PI / 2, 0, null,
+  );
+  const pickup = new THREE.Group();
+  pickup.position.set(rotX - 0.55, 0.6, rotZ);
+  pickup.rotation.y = -Math.PI / 2;
+  refs.rotulista.pancarta = makePancarta();
+  pickup.add(refs.rotulista.pancarta);
+  pickup.add(hitbox(0.6, 0.9, 1.3, 0, 0.45, 0));
+  scene.add(pickup);
+  refs.rotulista.pickup = pickup;
 
   // Vendor counters for the consumer's shopping list, sack piles for the diablero's pickups.
   for (const id of ['B-2', 'A-8', 'C-5']) {
