@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   LOFI_BPM, CUMBIA_BPM, LOFI_CHORDS, LOFI_BASS,
-  CUMBIA_BASS, CUMBIA_LEAD, CUMBIA_KICK, CUMBIA_CLAP, CUMBIA_GUIRO, CUMBIA_SHAKER, CUMBIA_CHORDS,
+  CUMBIA_BASS, CUMBIA_LEAD, CUMBIA_KICK, CUMBIA_CLAP, CUMBIA_GUIRO, CUMBIA_SHAKER, CUMBIA_STAB, CUMBIA_CHORDS,
   midiToFreq, stepSeconds,
 } from '../../src/engine/music.js';
 
@@ -13,10 +13,10 @@ describe('procedural music patterns', () => {
   });
 
   it('keeps lofi slow and cumbia mid-tempo', () => {
-    expect(LOFI_BPM).toBe(72);
-    expect(CUMBIA_BPM).toBe(98);
-    expect(stepSeconds(72, 2)).toBeCloseTo(60 / 72 / 2);
-    expect(stepSeconds(98, 4)).toBeCloseTo(60 / 98 / 4);
+    expect(LOFI_BPM).toBe(68);
+    expect(CUMBIA_BPM).toBe(92);
+    expect(stepSeconds(68, 2)).toBeCloseTo(60 / 68 / 2);
+    expect(stepSeconds(92, 4)).toBeCloseTo(60 / 92 / 4);
   });
 
   it('defines a four-bar lofi progression with a bass root per bar', () => {
@@ -31,7 +31,7 @@ describe('procedural music patterns', () => {
     }
   });
 
-  it('defines two bars of cumbia bass and lead', () => {
+  it('defines four bars of cumbia bass and lead', () => {
     expect(CUMBIA_BASS).toHaveLength(32);
     expect(CUMBIA_LEAD).toHaveLength(32);
     for (const note of [...CUMBIA_BASS, ...CUMBIA_LEAD]) {
@@ -41,12 +41,14 @@ describe('procedural music patterns', () => {
   });
 
   it('keeps every drum step inside one 16-step bar', () => {
-    for (const step of [...CUMBIA_KICK, ...CUMBIA_CLAP, ...CUMBIA_GUIRO, ...CUMBIA_SHAKER]) {
+    for (const step of [...CUMBIA_KICK, ...CUMBIA_CLAP, ...CUMBIA_GUIRO, ...CUMBIA_SHAKER, ...CUMBIA_STAB]) {
       expect(step).toBeGreaterThanOrEqual(0);
       expect(step).toBeLessThan(16);
     }
     expect(CUMBIA_GUIRO.every((step) => step % 2 === 0)).toBe(true);
     expect(CUMBIA_SHAKER.every((step) => step % 2 === 1)).toBe(true);
+    expect(CUMBIA_KICK).toContain(0);
+    expect(CUMBIA_CLAP).toEqual([4, 12]);
   });
 
   it('adds a four-bar chord bed over the cumbia progression', () => {
