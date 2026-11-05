@@ -22,7 +22,7 @@ const res = await page.evaluate(async () => {
   s.noiseBuf = ctx.createBuffer(1, 44100 * 2, 44100);
   const noise = s.noiseBuf.getChannelData(0);
   for (let i = 0; i < noise.length; i++) noise[i] = Math.random() * 2 - 1;
-  s.lofiBase = 0.5;
+  s.lofiBase = 0.8;
   s.tension = 0;
   s.startLofi();
   clearInterval(s.lofiTimer);
