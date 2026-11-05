@@ -79,10 +79,7 @@ export function mergeMeshes(meshes, parent) {
     parent.add(mesh);
     out.push(mesh);
   }
-  for (const o of meshes) {
-    o.removeFromParent();
-    o.geometry.dispose();
-  }
+  for (const o of meshes) o.removeFromParent();
   return out;
 }
 

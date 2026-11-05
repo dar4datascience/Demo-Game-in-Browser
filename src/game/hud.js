@@ -9,6 +9,7 @@ export function formatClock(startMinutes, seconds) {
 
 export function createHud(game) {
   let clockStart = 0;
+  let flowShown = null;
   const set = (id, text) => {
     const el = $(id);
     if (el.textContent !== text) el.textContent = text;
@@ -31,13 +32,17 @@ export function createHud(game) {
       const el = $('flow');
       if (!el) return;
       if (seconds == null) {
+        flowShown = null;
         el.classList.add('hidden');
         return;
       }
+      const shown = Math.max(0, Math.ceil(seconds));
+      if (shown === flowShown) return;
+      flowShown = shown;
       el.classList.remove('hidden');
-      el.classList.toggle('low', seconds <= 10);
+      el.classList.toggle('low', shown <= 10);
       el.style.setProperty('--flow', String(Math.max(0, Math.min(1, seconds / total))));
-      set('flow-time', `${Math.max(0, Math.ceil(seconds))}s`);
+      set('flow-time', `${shown}s`);
     },
     async say(text, dur = 3) {
       set('subtitle', text);
