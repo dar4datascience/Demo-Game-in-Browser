@@ -4,3 +4,5 @@ dist/
 .dev.vars
 .devin/mcp_config.local.json
 scripts/shots/
+
+docs/raw/
