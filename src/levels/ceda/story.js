@@ -110,8 +110,9 @@ export async function runStory(ctx) {
       F.flow = true;
       F.flowEnd = game.time + FLOW_SECONDS;
       player.speedScale = CHARACTERS.diablero.speed * 1.6;
-      bocina.position.set(0.42, -0.55, -0.9);
-      bocina.rotation.set(0.1, -0.4, 0);
+      bocina.position.set(0.55, -0.62, -1.05);
+      bocina.rotation.set(0.1, -0.5, 0);
+      bocina.scale.setScalar(0.7);
       player.camera.add(bocina);
       sfx.flow(true);
       hud.objective(`¡Flow! Lleva la pancarta a Bod. B-4. Tienes ${FLOW_SECONDS} s.`);

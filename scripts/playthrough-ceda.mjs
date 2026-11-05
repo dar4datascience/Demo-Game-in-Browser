@@ -76,7 +76,7 @@ await frames(20);
 console.log(`fps (software renderer): ${(20000 / (Date.now() - t0)).toFixed(1)}`);
 await look(-26, -18, -26, 1.5, -30);
 await shot('start');
-await look(-35.5, 1.2, -35.5, 1.6, 3.4);
+await look(-35.5, -2.4, -35.5, 2.2, 3.4);
 await shot('dock-b');
 await look(-26, 40, -26, 1.6, 60);
 await shot('pasillo2');
