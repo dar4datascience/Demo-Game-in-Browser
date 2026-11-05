@@ -46,25 +46,25 @@ describe('Player', () => {
     expect(player.forward().z).toBeCloseTo(1);
   });
 
-  it('walks forward at 2.2 m/s and runs at 3.6 m/s, scaled by speedScale', () => {
+  it('walks forward at 4.2 m/s and runs at 6.8 m/s, scaled by speedScale', () => {
     const player = newPlayer();
     player.spawn(0, 0, 0);
     player.update(1, input('KeyW'), [], true);
-    expect(player.pos.z).toBeCloseTo(-2.2);
+    expect(player.pos.z).toBeCloseTo(-4.2);
     player.spawn(0, 0, 0);
     player.update(1, input('KeyW', 'ShiftLeft'), [], true);
-    expect(player.pos.z).toBeCloseTo(-3.6);
+    expect(player.pos.z).toBeCloseTo(-6.8);
     player.spawn(0, 0, 0);
     player.speedScale = 0.5;
     player.update(1, input('KeyW'), [], true);
-    expect(player.pos.z).toBeCloseTo(-1.1);
+    expect(player.pos.z).toBeCloseTo(-2.1);
   });
 
   it('does not gain speed by walking diagonally', () => {
     const player = newPlayer();
     player.spawn(0, 0, 0);
     player.update(1, input('KeyW', 'KeyD'), [], true);
-    expect(Math.hypot(player.pos.x, player.pos.z)).toBeCloseTo(2.2);
+    expect(Math.hypot(player.pos.x, player.pos.z)).toBeCloseTo(4.2);
   });
 
   it('clamps looking up and down', () => {
@@ -80,8 +80,8 @@ describe('Player', () => {
     player.spawn(0, 0, 0);
     let steps = 0;
     for (let i = 0; i < 10; i++) player.update(0.1, input('KeyW'), [], true, () => steps++);
-    expect(player.pos.z).toBeCloseTo(-2.2);
-    expect(steps).toBe(2);
+    expect(player.pos.z).toBeCloseTo(-4.2);
+    expect(steps).toBe(5);
   });
 
   it('does not move when input is disabled', () => {
@@ -101,7 +101,7 @@ describe('Player', () => {
   it('cannot tunnel through a thin wall at flow speed', () => {
     const player = newPlayer();
     player.spawn(0, 0, 0);
-    player.speedScale = 2.7;
+    player.speedScale = 1.6;
     const wall = box(0, -1.1, 5, 0.1);
     for (let i = 0; i < 20; i++) player.update(0.1, input('KeyW', 'ShiftLeft'), [wall], true);
     expect(player.pos.z).toBeGreaterThanOrEqual(-1 + 0.3 - 1e-6);

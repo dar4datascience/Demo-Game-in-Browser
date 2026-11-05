@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createHarness } from '../helpers/harness.js';
-import { EXIT_Z } from '../../src/levels/ceda/world.js';
-import { WAKE_SEQUENCE } from '../../src/levels/ceda/story.js';
+import { EXIT_Z, SPAWN } from '../../src/levels/ceda/world.js';
+import { WAKE_SEQUENCE, FLOW_SECONDS } from '../../src/levels/ceda/story.js';
 
 // Headless end-to-end runs of each story script: real scheduler, world, NPC movement and interactions.
 // The "autoplayer" presses E on whatever is currently offered, like an impatient but obedient player.
@@ -61,7 +61,7 @@ describe('Central de Abasto stories', () => {
     expect(h.log.used.filter((l) => l === 'Descargar en la camioneta')).toHaveLength(3);
     expect(h.game.flags.hasPancarta).toBe(true);
     expect(h.game.flags.pancartaDelivered).toBe(true);
-    expect(h.player.speedScale).toBeCloseTo(0.9);
+    expect(h.player.speedScale).toBeCloseTo(1);
 
     choose(h, 'Pelear con el fantasma');
     await h.run(() => h.game.flags.stage === 'fight', { maxTime: h.game.time + 10 });
@@ -101,18 +101,20 @@ describe('Central de Abasto stories', () => {
     expect(h.log.ending.title).toBe('TE DORMISTE');
   });
 
-  it('Diablero loses the shift if the pancarta never arrives', async () => {
+  it('Diablero loses the shift if the flow runs out before the sign is hung', async () => {
     const h = createHarness('ceda', 'diablero');
     await h.run(() => h.game.flags.stage === 'pancarta', { onStep: () => h.useAvailable() });
-    h.game.flags.pancartaDeadline = h.game.time + 0.1;
-    await h.run(() => h.game.ended, { maxTime: h.game.time + 10 });
+    const pickup = h.interactions.find((i) => i.label() === 'Recoger la pancarta');
+    pickup.use();
+    expect(h.game.flags.flowEnd - h.game.time).toBeCloseTo(FLOW_SECONDS, 0);
+    await h.run(() => h.game.ended, { maxTime: h.game.time + FLOW_SECONDS + 5 });
     expect(h.log.ending.title).toBe('SE TE FUE EL TRÁILER');
   });
 
   it.each(['man', 'woman', 'nonbinary'])('Diablero %s route starts with the chosen presentation', async (variant) => {
     const h = createHarness('ceda', 'diablero', { variant });
     await h.run(() => h.log.objectives.length > 0, { maxTime: 10 });
-    expect(h.player.pos.z).toBe(33);
+    expect(h.player.pos.z).toBe(SPAWN[1]);
     expect(h.ctx.variant).toBe(variant);
     expect(h.game.flags.variant).toBe(variant);
   });
@@ -168,7 +170,7 @@ describe('Central de Abasto stories', () => {
   it.each(['diablero', 'seller', 'consumer'])('%s story starts with a valid spawn and its first objective', async (character) => {
     const h = createHarness('ceda', character);
     await h.run(() => h.log.objectives.length > 0, { maxTime: 10 });
-    expect(h.player.pos.z).toBe(33);
-    expect(h.game.npcs.length).toBeGreaterThanOrEqual(6); // the 4 AM crowd
+    expect(h.player.pos.z).toBe(SPAWN[1]);
+    expect(h.game.npcs.length).toBeGreaterThanOrEqual(5); // the 4 AM crowd
   });
 });

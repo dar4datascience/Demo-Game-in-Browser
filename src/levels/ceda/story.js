@@ -4,13 +4,16 @@ import { lonaTex } from '../../engine/textures.js';
 import { createDirector, GHOST } from '../../game/director.js';
 import { mulberry32 } from '../../game/rng.js';
 import { makeDiablito, sackStack, hitbox, makePancarta, makeBocina, makePeel, makeBeer, makeShrine, makeFire, crate } from './props.js';
-import { ROWS, unitAt, EXIT_Z, SHRINE_SPOTS, FIRE_SPOT } from './world.js';
+import { ROWS, ROW_FACE, unitAt, EXIT_Z, SPAWN, SHRINE_SPOTS, FIRE_SPOT, BRIDGE, NORTH_Z, SOUTH_Z, aisleZ } from './world.js';
 
+// Every route walks at the same base speed; the loaded diablito is the only real slowdown.
 export const CHARACTERS = {
-  diablero: { label: 'Diablero', speed: 0.9 },
+  diablero: { label: 'Diablero', speed: 1 },
   seller: { label: 'Seller', speed: 1 },
-  consumer: { label: 'Consumer', speed: 1.05 },
+  consumer: { label: 'Consumer', speed: 1 },
 };
+// The pancarta run: picked up at the rotulista, then 70 seconds to hang it at B-4.
+export const FLOW_SECONDS = 70;
 
 const PEOPLE = {
   diablero: { top: '#8a2a1e', bottom: '#2f3a4a', skin: '#a8754f', hair: '#141210' },
@@ -45,12 +48,11 @@ const displaySequence = (seq, at) => seq.map((k, i) => (i < at ? '✓' : i === a
 
 // People going about the 4 AM shift: [look, loop waypoints, speed, pushes a diablito].
 const CROWD = [
-  [PEOPLE.diablero, [[-30, -44], [-30, 30]], 1.1, true],
-  [PEOPLE.cargador, [[30, 30], [30, -44]], 1.0, false],
-  [PEOPLE.diablero, [[-26, ROWS.A + 2], [-4, ROWS.A + 2]], 0.9, true],
-  [PEOPLE.buyer, [[-20, -11.5], [20, -11.5], [20, 2.2], [-20, 2.2]], 1.0, false],
-  [PEOPLE.vendora, [[4, ROWS.C + 2], [26, ROWS.C + 2]], 0.8, false],
-  [PEOPLE.diablero, [[-4, ROWS.D + 2], [-26, ROWS.D + 2]], 1.0, true],
+  [PEOPLE.diablero, [[-26, -6], [-26, 168]], 1.5, true],
+  [PEOPLE.cargador, [[-52, 140], [-52, 6]], 1.4, false],
+  [PEOPLE.diablero, [[-68, -1.2], [-6, -1.2]], 1.3, true],
+  [PEOPLE.buyer, [[0, 60], [0, 30], [58, 30], [58, 60]], 1.3, false],
+  [PEOPLE.vendora, [[4, 60], [48, 60]], 1.1, false],
 ];
 
 export async function runStory(ctx) {
@@ -63,7 +65,7 @@ export async function runStory(ctx) {
   const look = DIABLERO_VARIANTS[variant] ?? DIABLERO_VARIANTS.nonbinary;
   F.variant = variant;
 
-  player.spawn(0, 33, 0);
+  player.spawn(SPAWN[0], SPAWN[1], Math.PI);
   player.speedScale = CHARACTERS[character].speed;
   sfx.traffic();
 
@@ -106,12 +108,14 @@ export async function runStory(ctx) {
     const startFlow = () => {
       if (F.flow) return;
       F.flow = true;
-      player.speedScale = CHARACTERS.diablero.speed * 3;
+      F.flowEnd = game.time + FLOW_SECONDS;
+      player.speedScale = CHARACTERS.diablero.speed * 1.6;
       bocina.position.set(0.42, -0.55, -0.9);
       bocina.rotation.set(0.1, -0.4, 0);
       player.camera.add(bocina);
       sfx.flow(true);
-      hud.objective('¡Flow! Lleva la pancarta a Bod. B-4 y cuélgala.');
+      hud.objective(`¡Flow! Lleva la pancarta a Bod. B-4. Tienes ${FLOW_SECONDS} s.`);
+      hud.flow?.(FLOW_SECONDS, FLOW_SECONDS);
     };
     const stopFlow = () => {
       if (!F.flow) return;
@@ -119,9 +123,10 @@ export async function runStory(ctx) {
       player.speedScale = CHARACTERS.diablero.speed;
       bocina.removeFromParent();
       sfx.flow(false);
+      hud.flow?.(null);
     };
 
-    hud.objective('Agarra tu diablito (junto a la entrada del Pasillo 2).');
+    hud.objective('Agarra tu diablito (junto a la puerta del Eje 5 Sur).');
     interact(R.diablito, () => (F.hasCart ? null : 'Agarrar el diablito'), () => {
       F.hasCart = true;
       R.diablito.visible = false;
@@ -129,9 +134,9 @@ export async function runStory(ctx) {
       sfx.squeak();
     });
     const jobs = [
-      ['A-3', 'd1', 'la camioneta roja del andén C'],
-      ['C-9', 'd2', 'la camioneta azul del andén A'],
-      ['B-11', 'd3', 'la camioneta blanca del andén D'],
+      ['A-3', 'd1', 'la camioneta roja del andén norte'],
+      ['C-9', 'd2', 'la camioneta azul del andén de la C-D'],
+      ['B-11', 'd3', 'la camioneta blanca del andén de la A-B'],
     ];
     F.delivered = 0;
     // A job is active only until it's delivered (no re-loading the same pickup during the driver's lines).
@@ -139,7 +144,7 @@ export async function runStory(ctx) {
     jobs.forEach(([pickup, truck], i) => {
       interact(R.pickups[pickup], () => (active(i) && F.hasCart && !load.visible ? 'Cargar los bultos' : null), () => {
         load.visible = true;
-        player.speedScale = 0.7;
+        player.speedScale = 0.75;
         sfx.thud();
       });
       interact(R.trucks[truck], () => (active(i) && load.visible ? 'Descargar en la camioneta' : null), () => {
@@ -180,19 +185,18 @@ export async function runStory(ctx) {
       }
     }
 
-    // --- The pancarta run ----------------------------------------------------------------
+    // --- The pancarta run: no timer until the sign is in your hands ------------------------
     player.hold(null);
     F.stage = 'pancarta';
-    F.pancartaDeadline = game.time + 75;
-    const letterer = spawn(PEOPLE.vendor, 32.4, 2.0);
-    letterer.face(30, 2);
-    hud.objective('Ve al Pasillo 3, local 3: el rotulista tiene la pancarta de precios.');
+    const letterer = spawn(PEOPLE.vendor, 5.2, aisleZ(6));
+    letterer.face(0, aisleZ(6));
+    hud.objective('Ve al Pasillo 3, local 3, al fondo del mercado: el rotulista tiene la pancarta de precios.');
 
     interact(R.rotulista.pickup, () => (F.stage === 'pancarta' && !F.hasPancarta ? 'Recoger la pancarta' : null), () => {
       if (F.hasPancarta) return;
       F.hasPancarta = true;
       R.rotulista.pancarta.scale.setScalar(0.8);
-      player.hold('pancarta', R.rotulista.pancarta, [0.05, -0.42, -0.95], [0.02, 0.12, 0]);
+      player.hold('pancarta', R.rotulista.pancarta, [0.12, -0.5, -1.5], [0.02, 0.14, 0]);
       startFlow();
       sfx.thud();
     });
@@ -207,33 +211,34 @@ export async function runStory(ctx) {
     });
 
     let lastSec = -1;
+    let bridgeDone = false;
     game.hooks.push(() => {
       if (game.ended || F.stage !== 'pancarta' || F.pancartaDelivered) return true;
-      const sec = Math.ceil(F.pancartaDeadline - game.time);
+      if (!F.flow) return false;
+      const sec = Math.ceil(F.flowEnd - game.time);
+      hud.flow?.(sec, FLOW_SECONDS);
       if (sec !== lastSec && (sec <= 10 || sec % 10 === 0)) {
         lastSec = sec;
-        const task = F.hasPancarta ? 'Lleva la pancarta a Bod. B-4' : 'Ve al Pasillo 3, local 3';
-        hud.objective(`${task}. Quedan ${sec} s.`);
+        hud.objective(`Lleva la pancarta a Bod. B-4. Flow: quedan ${sec} s.`);
+      }
+      // The bridge over Pasillo 2 is where loaded diablitos lose control.
+      if (!bridgeDone && Math.abs(player.pos.x - BRIDGE.x) < BRIDGE.hx && Math.abs(player.pos.z - BRIDGE.z) < BRIDGE.hz) {
+        bridgeDone = true;
+        game.shake = 0.9;
+        sfx.rattle(1);
+        say('¡Aguanta el diablo en la bajada del puente!', 2.5);
       }
       return false;
     });
 
-    await game.until(() => F.hasPancarta || game.time > F.pancartaDeadline);
-    if (!F.hasPancarta) {
-      stopFlow();
-      player.hold(null);
-      sfx.silence();
-      end('SE TE FUE EL TRÁILER', 'La pancarta nunca llegó y el tráiler se fue sin ti.');
-      return 'done';
-    }
+    await game.until(() => F.hasPancarta);
     say('Rotulista: Ahí está. Que no se te moje, joven.', 2.5);
-    hud.objective('Lleva la pancarta a Bod. B-4 antes de que se acabe el flow.');
-    await game.until(() => F.pancartaDelivered || game.time > F.pancartaDeadline);
+    await game.until(() => F.pancartaDelivered || game.time > F.flowEnd);
     stopFlow();
     if (!F.pancartaDelivered) {
       player.hold(null);
       sfx.silence();
-      end('SE TE FUE EL TRÁILER', 'La pancarta nunca llegó y el tráiler se fue sin ti.');
+      end('SE TE FUE EL TRÁILER', `El flow se acabó con ${FLOW_SECONDS} segundos y la pancarta nunca llegó.`);
       return 'done';
     }
 
@@ -244,7 +249,7 @@ export async function runStory(ctx) {
     await say('Dejaste la pancarta en su lugar. El turno casi termina.', 3);
 
     const gx = R.units['B-4'].x + 1.6;
-    const gz = ROWS.B + 3.6;
+    const gz = ROWS.B + ROW_FACE.B * 3.6;
     const ghost = spawn(GHOST_DIABLERO, gx, gz);
     ghost.face(player.pos.x, player.pos.z);
     F.ghost = ghost;
@@ -307,7 +312,7 @@ export async function runStory(ctx) {
     }
 
     ghost.place(player.pos.x - 1.5, player.pos.z + 4.0);
-    ghost.speed = 2.8;
+    ghost.speed = 4.6;
     let slipUntil = 0;
     const dropPeel = () => {
       if (F.peels <= 0) return;
@@ -341,7 +346,7 @@ export async function runStory(ctx) {
             sfx.squeak();
           }
         }
-        ghost.speed = game.time < slipUntil ? 1.1 : 2.8;
+        ghost.speed = game.time < slipUntil ? 1.9 : 4.6;
         ghost.path = [[player.pos.x, player.pos.z]];
         return false;
       });
@@ -490,8 +495,10 @@ export async function runStory(ctx) {
       sfx.beep();
       sfx.coins();
     });
-    const { x, z } = unitAt('B-4');
-    const path = [[-3.5, z + 2.4], [x, z + 2.4]];
+    const { x, z, face } = unitAt('B-4');
+    const lane = z + face * 2.4;
+    const path = [[x + 7, lane], [x, lane]];
+    const leave = [[x + 7, lane], [x + 11, lane]];
     const serve = async () => {
       F.customerWaiting = true;
       hud.objective('Atiende al cliente en la báscula.');
@@ -500,16 +507,16 @@ export async function runStory(ctx) {
     };
 
     hud.objective('Espera a los clientes.');
-    const buyer = spawn(PEOPLE.buyer, 0, z + 2.4);
+    const buyer = spawn(PEOPLE.buyer, x + 7, lane);
     await buyer.walk(path, 1.1);
     buyer.face(x, z);
     await say('Cliente: Buenos días. Medio kilo de frijol y un kilo de arroz.', 3);
     await serve();
     await say('Cliente: Gracias, joven. Que le vaya bonito.', 2.5);
-    buyer.walk([[-3.5, z + 2.4], [0, z + 6]], 1.1).then(() => despawn(buyer));
+    buyer.walk(leave, 1.1).then(() => despawn(buyer));
 
     await game.wait(6);
-    const woman = spawn(PEOPLE.woman, 0, z + 2.4);
+    const woman = spawn(PEOPLE.woman, x + 7, lane);
     woman.head.rotation.z = 0.35;
     sfx.setTension(0.45);
     await woman.walk(path, 0.55);
@@ -518,7 +525,7 @@ export async function runStory(ctx) {
     await serve();
     await say('Clienta: Llevo años buscando a mi hijo aquí. Era diablero.', 3.5);
     await say('Clienta: ¿No lo ha visto pasar... esta noche?', 3.5);
-    await woman.walk([[-3.5, z + 2.4], [0, z + 6]], 0.55);
+    await woman.walk(leave, 0.55);
     despawn(woman);
   }
 
@@ -533,8 +540,9 @@ export async function runStory(ctx) {
     ];
     const bought = new Set();
     for (const [id, item, price, line] of list) {
-      const { x, z } = unitAt(id);
-      spawn(id === 'C-5' ? PEOPLE.vendora : PEOPLE.vendor, x, z + 0.6).face(x, z + 5);
+      const { x, z, face } = unitAt(id);
+      // The vendor stands beside the counter, in the andador, leaving the customer a clear line.
+      spawn(id === 'C-5' ? PEOPLE.vendora : PEOPLE.vendor, x + 1.2, z + face * 2.2).face(x, z);
       interact(R.counters[id], () => (bought.has(id) ? null : `Comprar ${item} (${price})`), async () => {
         bought.add(id);
         sfx.coins();
@@ -568,7 +576,7 @@ export async function runStory(ctx) {
     hud.objective('Sal de la Central por la puerta del Eje 5 Sur (al norte, por el Pasillo 2).');
 
     const back = player.pos.clone().addScaledVector(player.forward(), -18);
-    const ghost = spawn(GHOST, THREE.MathUtils.clamp(back.x, -36, 36), THREE.MathUtils.clamp(back.z, -49, 34));
+    const ghost = spawn(GHOST, THREE.MathUtils.clamp(back.x, -70, 70), THREE.MathUtils.clamp(back.z, NORTH_Z + 2, SOUTH_Z - 4));
     let blinkAt = game.time + 7;
     const blink = async () => {
       player.flashlight.intensity = 0;

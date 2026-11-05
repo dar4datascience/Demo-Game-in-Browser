@@ -75,4 +75,16 @@ describe('interactions', () => {
     interactions.pick(camera).it.use();
     expect(used).toBe(1);
   });
+
+  it('lets a carried item be aimed past instead of blocking the crosshair', () => {
+    const { scene, camera, update, interactions } = setup();
+    const carried = cube(-0.9, scene);
+    carried.userData.held = true;
+    interactions.interact(carried, () => 'Held sign', () => {});
+    interactions.interact(cube(-1.8, scene), () => 'Hang it', () => {});
+    update();
+    expect(interactions.pick(camera)?.label).toBe('Hang it');
+    carried.userData.held = false;
+    expect(interactions.pick(camera)?.label).toBe('Held sign');
+  });
 });

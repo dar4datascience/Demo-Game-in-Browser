@@ -15,14 +15,14 @@ const silentSfx = () => new Proxy({}, { get: () => () => () => {} });
 export function createHarness(levelId, character = null, { seed = 1, variant = null } = {}) {
   const level = LEVELS[levelId];
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.05, 80);
+  const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 80);
   scene.add(camera);
   const world = level.build(scene);
   const game = createGame(camera, seed);
   const player = new Player(camera);
   const input = { keys: new Set(), pressed: new Set(), dx: 0, dy: 0, click: false };
   const interactions = [];
-  const log = { subtitles: [], objectives: [], used: [], ending: null };
+  const log = { subtitles: [], objectives: [], used: [], ending: null, flow: undefined };
   const pipe = { u: { uMonitor: { value: 0 }, uFlash: { value: 0 }, uFade: { value: 1 } } };
   const hud = {
     objective(text) {
@@ -40,6 +40,9 @@ export function createHarness(levelId, character = null, { seed = 1, variant = n
     setClockStart() {},
     clock() {},
     qte() {},
+    flow(seconds) {
+      log.flow = seconds;
+    },
     show() {},
     hide() {},
   };
@@ -102,15 +105,30 @@ export function createHarness(levelId, character = null, { seed = 1, variant = n
 }
 
 // Free cells reachable on foot from `start`, on a grid using the player's real collision radius.
-export function reachableCells(colliders, { minX, maxX, minZ, maxZ }, start, cell = 0.5) {
+// Colliders are bucketed in a coarse grid first: the A–Z market has ~450 of them and a 1 m grid.
+export function reachableCells(colliders, { minX, maxX, minZ, maxZ }, start, cell = 1) {
   const nx = Math.ceil((maxX - minX) / cell), nz = Math.ceil((maxZ - minZ) / cell);
   const idx = (i, j) => j * nx + i;
   const pos = (i, j) => [minX + (i + 0.5) * cell, minZ + (j + 0.5) * cell];
+  const B = 8;
+  const buckets = new Map();
+  const bkey = (i, j) => `${i},${j}`;
+  for (const c of colliders) {
+    const r = Math.hypot(c.hx, c.hz) + 0.5;
+    for (let bi = Math.floor((c.cx - r) / B); bi <= Math.floor((c.cx + r) / B); bi++) {
+      for (let bj = Math.floor((c.cz - r) / B); bj <= Math.floor((c.cz + r) / B); bj++) {
+        const k = bkey(bi, bj);
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(c);
+      }
+    }
+  }
   const free = new Uint8Array(nx * nz);
   for (let j = 0; j < nz; j++) {
     for (let i = 0; i < nx; i++) {
       const [x, z] = pos(i, j);
-      free[idx(i, j)] = colliders.some((c) => circleHits(x, z, c)) ? 0 : 1;
+      const near = buckets.get(bkey(Math.floor(x / B), Math.floor(z / B))) ?? [];
+      free[idx(i, j)] = near.some((c) => circleHits(x, z, c)) ? 0 : 1;
     }
   }
   const si = Math.floor((start.x - minX) / cell), sj = Math.floor((start.z - minZ) / cell);

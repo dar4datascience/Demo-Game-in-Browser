@@ -17,10 +17,23 @@ function worldUV(geo, w, h, d, s) {
  * Shared level-construction helpers. Colliders are oriented boxes on the XZ plane:
  * { cx, cz, hx, hz, rot } where rot matches the mesh's rotation.y.
  */
-export function createBuilder(scene) {
+export function createBuilder(scene, { poolSize = 8 } = {}) {
   const colliders = [], occluders = [], powered = [], glow = [];
+  const lights = []; // every light the level asks for; only the nearest `poolSize` are real
+  const pool = [];
+  const poolAt = new THREE.Vector3();
 
-  const addCollider = (cx, cz, hx, hz, rot = 0) => colliders.push({ cx, cz, hx, hz, rot });
+  for (let i = 0; i < poolSize; i++) {
+    const l = new THREE.PointLight(0xffffff, 0, 10, 2);
+    scene.add(l);
+    pool.push(l);
+  }
+
+  const addCollider = (cx, cz, hx, hz, rot = 0) => {
+    const c = { cx, cz, hx, hz, rot };
+    colliders.push(c);
+    return c;
+  };
   const addBounds = (minX, maxX, minZ, maxZ) => addCollider((minX + maxX) / 2, (minZ + maxZ) / 2, (maxX - minX) / 2, (maxZ - minZ) / 2);
 
   function box(w, h, d, mat, x, y, z, { collide = true, occlude = false, tile = 1, parent = scene, ry = 0 } = {}) {
@@ -30,7 +43,7 @@ export function createBuilder(scene) {
     mesh.position.set(x, y, z);
     mesh.rotation.y = ry;
     parent.add(mesh);
-    if (collide) addCollider(x, z, w / 2, d / 2, ry);
+    if (collide) mesh.userData.collider = addCollider(x, z, w / 2, d / 2, ry);
     if (occlude) occluders.push(mesh);
     return mesh;
   }
@@ -48,14 +61,45 @@ export function createBuilder(scene) {
     return mesh;
   }
 
-  // Lights flagged `onGrid` go dark when the power is cut.
+  /*
+   * Lights are registered as data and copied into a fixed pool of real PointLights near the player.
+   * Keeping the count constant avoids shader recompiles, and 22 lamps never cost 22 lights per
+   * fragment. `l.intensity` is still live, so flicker and setPower work on the returned object.
+   */
   function light(x, y, z, color, intensity, distance, onGrid = true) {
     const l = new THREE.PointLight(color, intensity, distance, 2);
     l.position.set(x, y, z);
     l.userData.base = intensity;
-    scene.add(l);
+    lights.push(l);
     if (onGrid) powered.push(l);
     return l;
+  }
+
+  function updateLights(at) {
+    if (at) poolAt.set(at.x ?? 0, 0, at.z ?? 0);
+    // Keep the nearest `pool.length` lights that are actually in range, without sorting the whole list.
+    const chosen = [];
+    for (const l of lights) {
+      if (l.intensity <= 0) continue;
+      const d2 = (l.position.x - poolAt.x) ** 2 + (l.position.z - poolAt.z) ** 2;
+      if (d2 > l.distance * l.distance) continue;
+      if (chosen.length === pool.length && d2 >= chosen[chosen.length - 1][1]) continue;
+      let i = chosen.length;
+      while (i > 0 && chosen[i - 1][1] > d2) i--;
+      chosen.splice(i, 0, [l, d2]);
+      if (chosen.length > pool.length) chosen.pop();
+    }
+    pool.forEach((p, i) => {
+      const l = chosen[i]?.[0];
+      if (!l) {
+        p.intensity = 0;
+        return;
+      }
+      p.position.copy(l.position);
+      p.color.copy(l.color);
+      p.distance = l.distance;
+      p.intensity = l.intensity;
+    });
   }
 
   // Unlit "emissive" material that dims to `off` during blackouts.
@@ -76,12 +120,15 @@ export function createBuilder(scene) {
     box,
     plane,
     light,
+    lights,
+    updateLights,
     glowMat,
     powered: true,
     setPower(on) {
       powered.forEach((l) => (l.intensity = on ? l.userData.base : 0));
       glow.forEach((m) => m.color.copy(on ? m.userData.on : m.userData.off));
       this.powered = on;
+      updateLights();
     },
   };
 }

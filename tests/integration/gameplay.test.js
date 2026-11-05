@@ -95,18 +95,18 @@ describe('Central de Abasto mechanics', () => {
     expect(laterPickup.label()).toBe(null); // only the active job's pickup
     pickup.use();
     expect(h.player.held.userData.load.visible).toBe(true);
-    expect(h.player.speedScale).toBeCloseTo(0.7);
+    expect(h.player.speedScale).toBeCloseTo(0.75);
     expect(pickup.label()).toBe(null); // already loaded
 
     const truck = byObject(h, h.world.refs.trucks.d1);
     expect(truck.label()).toBe('Descargar en la camioneta');
     truck.use();
     expect(h.game.flags.delivered).toBe(1);
-    expect(h.player.speedScale).toBeCloseTo(0.9);
+    expect(h.player.speedScale).toBeCloseTo(1);
     expect(truck.label()).toBe(null);
   });
 
-  it('the pancarta grants x3 flow until it is hung at B-4', async () => {
+  it('the pancarta starts a 70 second flow until it is hung at B-4', async () => {
     const h = createHarness('ceda', 'diablero');
     await h.run(() => h.game.flags.stage === 'pancarta', { onStep: () => h.useAvailable() });
 
@@ -114,36 +114,47 @@ describe('Central de Abasto mechanics', () => {
     const drop = byObject(h, h.world.refs.pancartaDrop);
     expect(pickup.label()).toBe('Recoger la pancarta');
     expect(drop.label()).toBe(null);
-    expect(h.player.speedScale).toBeCloseTo(0.9);
+    expect(h.player.speedScale).toBeCloseTo(1);
 
     pickup.use();
     expect(h.game.flags.flow).toBe(true);
     expect(h.game.flags.hasPancarta).toBe(true);
-    expect(h.player.speedScale).toBeCloseTo(2.7);
+    expect(h.player.speedScale).toBeCloseTo(1.6);
+    expect(h.game.flags.flowEnd - h.game.time).toBeCloseTo(70, 0);
+    expect(h.log.flow).toBe(70);
     expect(pickup.label()).toBe(null);
     expect(drop.label()).toBe('Colgar la pancarta');
 
     drop.use();
     expect(h.game.flags.pancartaDelivered).toBe(true);
     expect(h.game.flags.flow).toBe(false);
-    expect(h.player.speedScale).toBeCloseTo(0.9);
+    expect(h.log.flow).toBe(null);
+    expect(h.player.speedScale).toBeCloseTo(1);
     expect(h.world.refs.pancartaPlaced.visible).toBe(true);
   });
 
-  it('flow lasts the whole pancarta phase, until the sign is hung', async () => {
+  it('flow lasts exactly the pancarta run, then the tráiler leaves without you', async () => {
     const h = createHarness('ceda', 'diablero');
     await h.run(() => h.game.flags.stage === 'pancarta', { onStep: () => h.useAvailable() });
     byObject(h, h.world.refs.rotulista.pickup).use();
-    h.game.flags.pancartaDeadline = h.game.time + 120;
     const t0 = h.game.time;
 
-    await h.run(() => h.game.time >= t0 + 25, { maxTime: t0 + 30 });
+    // 69 seconds in, the sign can still be hung.
+    await h.run(() => h.game.time >= t0 + 69, { maxTime: t0 + 80 });
     expect(h.game.flags.flow).toBe(true);
-    expect(h.player.speedScale).toBeCloseTo(2.7);
-
+    expect(h.player.speedScale).toBeCloseTo(1.6);
     byObject(h, h.world.refs.pancartaDrop).use();
     expect(h.game.flags.flow).toBe(false);
-    expect(h.player.speedScale).toBeCloseTo(0.9);
+    expect(h.game.flags.pancartaDelivered).toBe(true);
+
+    // A fresh run that sits on the sign for 71 seconds loses the shift.
+    const late = createHarness('ceda', 'diablero');
+    await late.run(() => late.game.flags.stage === 'pancarta', { onStep: () => late.useAvailable() });
+    byObject(late, late.world.refs.rotulista.pickup).use();
+    const t1 = late.game.time;
+    await late.run(() => late.game.ended, { maxTime: t1 + 90 });
+    expect(late.log.ending.title).toBe('SE TE FUE EL TRÁILER');
+    expect(late.game.time - t1).toBeLessThan(72);
   });
 
   it('fruit peels slow the ghost in the shrine run', async () => {
@@ -168,7 +179,7 @@ describe('Central de Abasto mechanics', () => {
     const dropped = h.game.flags.droppedPeels[0];
     h.game.flags.ghost.place(dropped.mesh.position.x, dropped.mesh.position.z);
     h.step(0.1);
-    expect(h.game.flags.ghost.speed).toBe(1.1);
+    expect(h.game.flags.ghost.speed).toBe(1.9);
   });
 
   it('seller must raise the cortina before stocking, and a pallet needs a sack', async () => {
@@ -224,8 +235,8 @@ describe('Central de Abasto mechanics', () => {
     await h.run(() => h.hud.current?.includes('Eje 5 Sur'), { onStep: () => h.useAvailable() });
     const ghost = h.game.npcs[0];
 
-    h.player.spawn(0, -40, 0); // at the gate, but not through it
-    ghost.place(0, -41);
+    h.player.spawn(-26, -19, 0); // inside the Eje 5 Sur apron, not through the gate yet
+    ghost.place(-26, -20);
     await h.run(() => h.game.ended, { maxTime: 30 });
 
     expect(h.log.ending.title).toBe('TE ALCANZÓ');

@@ -1,5 +1,14 @@
 import * as THREE from 'three';
 import { lam } from '../engine/post.js';
+import { batchStatic } from './batch.js';
+
+// Shared by every NPC so the crowd does not upload one material per body part.
+const MATS = new Map();
+const personMat = (c, emissive) => {
+  const key = `${c}|${emissive}`;
+  if (!MATS.has(key)) MATS.set(key, lam({ color: c, emissive: c, emissiveIntensity: emissive }));
+  return MATS.get(key);
+};
 
 // Low-poly box humanoid facing +z.
 function makePerson({
@@ -10,7 +19,7 @@ function makePerson({
   const body = new THREE.Group();
   body.scale.setScalar(height);
   root.add(body);
-  const mat = (c) => lam({ color: c, emissive: c, emissiveIntensity: emissive });
+  const mat = (c) => personMat(c, emissive);
   const part = (w, h, d, c, x, y, z, parent = body) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c));
     mesh.position.set(x, y, z);
@@ -51,6 +60,10 @@ function makePerson({
     for (const x of [-0.06, 0.06]) part(w, h, 0.01, '#000', x, 0.02, 0.131, head);
     if (hollow) part(0.05, 0.08, 0.01, '#000', 0.01, -0.08, 0.131, head);
   }
+  // Merge the static boxes of each rigid part: the pivots (head, legs, arms) still animate.
+  batchStatic(body, new Set([head, ...legs, ...arms]));
+  batchStatic(head);
+  for (const pivot of [...legs, ...arms]) batchStatic(pivot);
   return { root, legs, arms, head };
 }
 

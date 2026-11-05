@@ -4,7 +4,7 @@ import { createBuilder } from '../../src/world/builder.js';
 import { NPC } from '../../src/world/person.js';
 import { formatClock } from '../../src/game/hud.js';
 import { rand, canvasTexture } from '../../src/engine/textures.js';
-import { ROWS, UNIT_X, PASILLOS, SEGMENTS, unitAt } from '../../src/levels/ceda/world.js';
+import { ROWS, ROW_FACE, UNIT_X, UNIT_W, PASILLOS, SEGMENTS, LETTERS, NAVES, PITCH, unitAt } from '../../src/levels/ceda/world.js';
 
 describe('level builder', () => {
   it('adds oriented colliders matching box size and rotation', () => {
@@ -95,19 +95,36 @@ describe('procedural textures', () => {
 
 describe('Central de Abasto layout', () => {
   it('maps bodega ids to storefront positions', () => {
-    expect(unitAt('B-4')).toEqual({ x: UNIT_X[3], z: ROWS.B });
-    expect(unitAt('D-12')).toEqual({ x: 25, z: ROWS.D });
+    expect(unitAt('B-4')).toEqual({ x: UNIT_X[3], z: ROWS.B, face: ROW_FACE.B, w: UNIT_W[3] });
+    expect(unitAt('D-12')).toEqual({ x: UNIT_X[11], z: ROWS.D, face: ROW_FACE.D, w: UNIT_W[11] });
+  });
+
+  it('runs the full alphabet A to Z as thirteen letter-pair naves, north to south', () => {
+    expect(LETTERS).toHaveLength(26);
+    expect(NAVES).toHaveLength(13);
+    expect(NAVES[0]).toEqual(['A', 'B']);
+    expect(NAVES[12]).toEqual(['Y', 'Z']);
+    for (let i = 1; i < LETTERS.length; i++) expect(ROWS[LETTERS[i]]).toBeGreaterThan(ROWS[LETTERS[i - 1]]);
+    expect(ROWS.B - ROWS.A).toBeLessThan(PITCH); // the two rows of a nave share one andador
+    expect(ROWS.C - ROWS.B).toBeGreaterThan(ROWS.B - ROWS.A); // and a truck street separates naves
+  });
+
+  it('alternates the storefronts so both rows of a nave face their andador', () => {
+    expect(ROW_FACE.A).toBe(1);
+    expect(ROW_FACE.B).toBe(-1);
+    expect(ROW_FACE.C).toBe(1);
+    expect(ROW_FACE.Z).toBe(-1);
   });
 
   it('keeps every bodega unit inside a building segment, clear of the pasillos', () => {
-    for (const x of UNIT_X) {
-      expect(SEGMENTS.some(([a, b]) => x - 2 >= a && x + 2 <= b)).toBe(true);
-      for (const px of PASILLOS) expect(Math.abs(x - px)).toBeGreaterThanOrEqual(3 + 2);
-    }
+    UNIT_X.forEach((x, i) => {
+      expect(SEGMENTS.some(([a, b]) => x - UNIT_W[i] / 2 >= a - 1e-6 && x + UNIT_W[i] / 2 <= b + 1e-6), `${x}`).toBe(true);
+      for (const px of PASILLOS) expect(Math.abs(x - px)).toBeGreaterThanOrEqual(UNIT_W[i] / 2);
+    });
   });
 
-  it('orders rows north to south with room for docks and truck bays between them', () => {
-    const fronts = Object.values(ROWS);
-    for (let i = 1; i < fronts.length; i++) expect(fronts[i] - 6 - fronts[i - 1]).toBeGreaterThanOrEqual(8);
+  it('numbers the five pasillos west to east, with the main one in the middle', () => {
+    expect(PASILLOS).toHaveLength(5);
+    for (let i = 1; i < PASILLOS.length; i++) expect(PASILLOS[i]).toBeGreaterThan(PASILLOS[i - 1]);
   });
 });

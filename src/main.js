@@ -13,12 +13,30 @@ const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 const TIME_SCALE = DEBUG ? Number(params.get('speed') ?? 1) : 1;
 const SEED = params.has('seed') ? Number(params.get('seed')) >>> 0 : undefined;
+const SHOW_COLLIDERS = params.has('colliders');
+
+// `?debug&colliders` draws every collision footprint, so a prop that can be walked through stands out.
+function drawColliders(world) {
+  const verts = [];
+  for (const c of world.colliders) {
+    const cos = Math.cos(c.rot), sin = Math.sin(c.rot);
+    const corners = [[-c.hx, -c.hz], [c.hx, -c.hz], [c.hx, c.hz], [-c.hx, c.hz]]
+      .map(([lx, lz]) => [c.cx + lx * cos + lz * sin, c.cz - lx * sin + lz * cos]);
+    for (let i = 0; i < 4; i++) {
+      const [ax, az] = corners[i], [bx, bz] = corners[(i + 1) % 4];
+      verts.push(ax, 0.02, az, bx, 0.02, bz, ax, 2.4, az, bx, 2.4, bz, ax, 0.02, az, ax, 2.4, az);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  scene.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x00ff88 })));
+}
 
 const canvas = document.getElementById('game');
 const pipe = new Pipeline(canvas);
 pipe.renderer.setClearColor(0x06070c);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 80);
+const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 80);
 scene.add(camera);
 let world = null;
 pipe.onResize = (aspect) => {
@@ -68,6 +86,7 @@ function start(levelId, character = null, variant = null) {
   game.started = true;
   const level = LEVELS[levelId];
   world = level.build(scene);
+  if (SHOW_COLLIDERS) drawColliders(world);
   interactions.addOccluders(world.occluders);
   scene.fog = new THREE.Fog(...world.fog);
   pipe.renderer.setClearColor(world.fog[0]);
@@ -75,7 +94,7 @@ function start(levelId, character = null, variant = null) {
   hud.setClockStart(level.clock);
   sfx.init();
   sfx.startAmbience();
-  if (DEBUG) Object.assign(window, { game, player, world, hud, sfx });
+  if (DEBUG) Object.assign(window, { game, player, world, hud, sfx, pipe, scene, interactions });
   level.story({
     game, world, hud, sfx, player, scene, pipe, input, interact, character, variant,
     end(title, subtitle) {

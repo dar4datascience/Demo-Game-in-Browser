@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { lam } from './post.js';
 
 // Seeded RNG so the procedural store looks the same on every load.
 let seed = 1337;
@@ -312,6 +313,67 @@ export const bodegaSignTex = (name, id) => canvasTexture(128, 28, (g, w, h) => {
 });
 
 export const pasilloSignTex = (text) => signTex(text, '#1f4fa3', '#ffffff', 128, 24);
+
+/*
+ * One texture for every sign in the market (bodega fronts, pasillo ends, andén markers), so the
+ * whole set shares a single material and merges into one draw call. Cells are drawn by the caller.
+ */
+export function signAtlas(cells, { cellW = 128, cellH = 28, cols = 6 } = {}) {
+  const rows = Math.max(1, Math.ceil(cells.length / cols));
+  const canvas = document.createElement('canvas');
+  canvas.width = cellW * cols;
+  canvas.height = cellH * rows;
+  const g = canvas.getContext('2d');
+  g.fillStyle = '#14161b';
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  cells.forEach((cell, i) => {
+    g.save();
+    g.translate((i % cols) * cellW, Math.floor(i / cols) * cellH);
+    g.beginPath();
+    g.rect(0, 0, cellW, cellH);
+    g.clip();
+    cell(g, cellW, cellH);
+    g.restore();
+  });
+  const texture = finish(new THREE.CanvasTexture(canvas));
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  const uv = (i) => {
+    const c = i % cols, r = Math.floor(i / cols);
+    return [c / cols, 1 - (r + 1) / rows, (c + 1) / cols, 1 - r / rows];
+  };
+  return { texture, material: lam({ map: texture }), uv };
+}
+
+// Map a plane's 0..1 UVs into one atlas cell.
+export function setUV(geometry, [u0, v0, u1, v1]) {
+  const uv = geometry.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (v1 - v0));
+  return geometry;
+}
+
+export const bodegaSignCell = (name, id, bg, fg) => (g, w, h) => {
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = fg;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = 'bold 11px monospace';
+  g.fillText(name, w / 2, 10, w - 6);
+  g.font = 'bold 9px monospace';
+  g.fillText(`BOD. ${id}`, w / 2, 22);
+  g.fillStyle = 'rgba(0,0,0,0.14)';
+  for (let i = 0; i < 14; i++) g.fillRect(Math.floor(rand() * w), Math.floor(rand() * h), 1, 1);
+};
+
+export const signCell = (text, bg, fg, size = 12) => (g, w, h) => {
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = fg;
+  g.font = `bold ${size}px monospace`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2 + 1, w - 4);
+};
 
 // Hand-painted Central de Abasto price board ("pancarta de precios").
 export const pancartaTex = () => canvasTexture(128, 80, (g, w, h) => {

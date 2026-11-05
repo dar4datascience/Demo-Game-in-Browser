@@ -41,6 +41,7 @@ export function makeDiablito() {
   const load = new THREE.Group();
   for (let i = 0; i < 3; i++) part(load, 0.42, 0.26, 0.3, sackMat(), (i % 2) * 0.03 - 0.015, 0.17 + i * 0.27, 0.2);
   load.visible = false;
+  load.userData.noBatch = true;
   g.add(load);
   g.userData.load = load;
   return g;

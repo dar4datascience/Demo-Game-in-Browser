@@ -26,6 +26,19 @@ export function createHud(game) {
         el.classList.add('hidden');
       }
     },
+    // Flow countdown bar: pass seconds left, or null to hide it.
+    flow(seconds, total = 70) {
+      const el = $('flow');
+      if (!el) return;
+      if (seconds == null) {
+        el.classList.add('hidden');
+        return;
+      }
+      el.classList.remove('hidden');
+      el.classList.toggle('low', seconds <= 10);
+      el.style.setProperty('--flow', String(Math.max(0, Math.min(1, seconds / total))));
+      set('flow-time', `${Math.max(0, Math.ceil(seconds))}s`);
+    },
     async say(text, dur = 3) {
       set('subtitle', text);
       await game.wait(dur);

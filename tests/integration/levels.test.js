@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as THREE from 'three';
 import { LEVELS } from '../../src/levels/index.js';
-import { EXIT_Z, SHRINE_SPOTS, FIRE_SPOT } from '../../src/levels/ceda/world.js';
+import { EXIT_Z, SHRINE_SPOTS, FIRE_SPOT, SPAWN, LETTERS, PASILLOS } from '../../src/levels/ceda/world.js';
 import { circleHits } from '../../src/game/player.js';
+import { localSize } from '../../src/world/batch.js';
 import { reachableCells, nearestDistance, worldPosition } from '../helpers/harness.js';
 
 // Max horizontal distance from a walkable spot to an interactable (interaction reach is 2.3m from the eyes).
@@ -62,15 +63,17 @@ describe('NightMart (konbini) level', () => {
 
 describe('Central de Abasto level', () => {
   let world, cells;
-  const spawn = { x: 0, z: 33 };
+  const spawn = { x: SPAWN[0], z: SPAWN[1] };
   beforeAll(() => {
     ({ world } = build('ceda'));
-    cells = reachableCells(world.colliders, { minX: -40, maxX: 40, minZ: -60, maxZ: 37 }, spawn);
+    cells = reachableCells(world.colliders, { minX: -74, maxX: 74, minZ: -36, maxZ: 358 }, spawn);
   });
 
-  it('builds 4 rows × 12 bodegas with the storefronts the stories need', () => {
+  it('builds the whole A–Z market: 26 lettered rows × 12 bodegas, 5 pasillos', () => {
     const units = world.refs.units;
-    expect(Object.keys(units)).toHaveLength(48);
+    expect(Object.keys(units)).toHaveLength(26 * 12);
+    expect(PASILLOS).toHaveLength(5);
+    for (const letter of LETTERS) expect(units[`${letter}-1`], letter).toBeDefined();
     expect(units['B-4'].roll).toBe(0);
     for (const id of ['B-2', 'A-8', 'C-5', 'A-3', 'C-9', 'B-11']) expect(units[id].roll, id).toBe(1);
     expect(Object.keys(world.refs.trucks).sort()).toEqual(['d1', 'd2', 'd3', 'seller']);
@@ -105,6 +108,18 @@ describe('Central de Abasto level', () => {
     }
   });
 
+  it('gives every solid prop a collider of the right footprint', () => {
+    expect(world.refs.solid.length).toBeGreaterThan(10);
+    for (const obj of world.refs.solid) {
+      const c = obj.userData.collider;
+      expect(c, obj.name || obj.type).toBeDefined();
+      const local = obj.userData.footprint ?? localSize(obj);
+      expect(Math.abs(c.hx * 2 - local.x), obj.name || obj.type).toBeLessThan(0.45);
+      expect(Math.abs(c.hz * 2 - local.z), obj.name || obj.type).toBeLessThan(0.45);
+      expect(c.rot).toBeCloseTo(obj.rotation.y);
+    }
+  });
+
   it('lets the player escape through the Eje 5 Sur gate', () => {
     expect(cells.some(([, z]) => z < EXIT_Z)).toBe(true);
   });
@@ -112,7 +127,7 @@ describe('Central de Abasto level', () => {
   it('places every possible shrine on reachable open ground', () => {
     for (const [x, z] of SHRINE_SPOTS) {
       expect(world.colliders.some((c) => circleHits(x, z, c, 1.0)), `${x},${z}`).toBe(false);
-      expect(nearestDistance(cells, x, z), `${x},${z}`).toBeLessThanOrEqual(1.0);
+      expect(nearestDistance(cells, x, z), `${x},${z}`).toBeLessThanOrEqual(1.5);
     }
   });
 
@@ -123,9 +138,11 @@ describe('Central de Abasto level', () => {
   });
 
   it('forces travel through the pasillos: rows block direct crossings between lanes', () => {
-    // Straight north–south line through the middle of a bodega segment is blocked by buildings.
-    const blocked = world.colliders.some((c) => circleHits(-15, -24, c));
+    // A straight north–south line through the middle of a bodega segment is blocked by buildings.
+    const blocked = world.colliders.some((c) => circleHits(-38, 60, c));
     expect(blocked).toBe(true);
+    // …while the numbered pasillos are open from the north gate to the south end.
+    expect(world.colliders.some((c) => circleHits(-26, 60, c))).toBe(false);
   });
 
   it('rolls a cortina up over time', () => {

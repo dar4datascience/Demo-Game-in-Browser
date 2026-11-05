@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 
 const EYE = 1.6, RADIUS = 0.3, SENS = 0.0022;
+const WALK = 4.2, RUN = 6.8;
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+const scratch = new THREE.Vector3();
+const before = new THREE.Vector3();
 
 export class Player {
   constructor(camera) {
@@ -28,7 +32,7 @@ export class Player {
   }
 
   forward() {
-    return new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    return scratch.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
   }
 
   facing(p) {
@@ -36,10 +40,14 @@ export class Player {
   }
 
   hold(kind, mesh = null, pos = [0.32, -0.32, -0.65], rot = [0.1, -0.3, 0]) {
-    if (this.held) this.camera.remove(this.held);
+    if (this.held) {
+      this.held.userData.held = false;
+      this.camera.remove(this.held);
+    }
     this.heldKind = kind;
     this.held = mesh;
     if (!mesh) return;
+    mesh.userData.held = true;
     mesh.position.set(...pos);
     mesh.rotation.set(...rot);
     this.camera.add(mesh);
@@ -49,18 +57,18 @@ export class Player {
     let moved = 0;
     if (enabled) {
       this.yaw -= input.dx * SENS;
-      this.pitch = THREE.MathUtils.clamp(this.pitch - input.dy * SENS, -1.45, 1.45);
+      this.pitch = clamp(this.pitch - input.dy * SENS, -1.45, 1.45);
       const k = input.keys;
       const f = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
       const s = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
       if (f || s) {
-        const speed = (k.has('ShiftLeft') || k.has('ShiftRight') ? 3.6 : 2.2) * this.speedScale * dt;
+        const speed = (k.has('ShiftLeft') || k.has('ShiftRight') ? RUN : WALK) * this.speedScale * dt;
         const fwd = this.forward();
         const len = Math.hypot(f, s);
         const mx = ((fwd.x * f - fwd.z * s) / len) * speed;
         const mz = ((fwd.z * f + fwd.x * s) / len) * speed;
-        const before = this.pos.clone();
-        // Sub-step so the x3 flow speed cannot tunnel through thin walls.
+        before.copy(this.pos);
+        // Sub-step so the fastest flow speed cannot tunnel through thin walls.
         const steps = Math.max(1, Math.ceil(Math.hypot(mx, mz) / 0.15));
         for (let i = 0; i < steps; i++) {
           this.pos.x += mx / steps;
@@ -88,23 +96,24 @@ export class Player {
   }
 }
 
-// Point (x, z) in an oriented box collider's local frame, plus its offset from the box surface.
-function toLocal(x, z, c) {
+export const circleHits = (x, z, c, radius = RADIUS) => {
   const cos = Math.cos(c.rot), sin = Math.sin(c.rot);
   const dx = x - c.cx, dz = z - c.cz;
   const lx = dx * cos - dz * sin, lz = dx * sin + dz * cos;
-  const ox = lx - THREE.MathUtils.clamp(lx, -c.hx, c.hx);
-  const oz = lz - THREE.MathUtils.clamp(lz, -c.hz, c.hz);
-  return { cos, sin, lx, lz, ox, oz, d: Math.hypot(ox, oz) };
-}
-
-export const circleHits = (x, z, c, radius = RADIUS) => toLocal(x, z, c).d < radius;
+  const ox = lx - clamp(lx, -c.hx, c.hx), oz = lz - clamp(lz, -c.hz, c.hz);
+  return ox * ox + oz * oz < radius * radius;
+};
 
 // Push a circle out of every overlapping oriented box (done in each box's local frame).
 export function resolveCircle(p, colliders, radius = RADIUS) {
   for (const c of colliders) {
-    let { cos, sin, lx, lz, ox, oz, d } = toLocal(p.x, p.z, c);
-    if (d >= radius) continue;
+    const cos = Math.cos(c.rot), sin = Math.sin(c.rot);
+    const dx = p.x - c.cx, dz = p.z - c.cz;
+    let lx = dx * cos - dz * sin, lz = dx * sin + dz * cos;
+    const ox = lx - clamp(lx, -c.hx, c.hx), oz = lz - clamp(lz, -c.hz, c.hz);
+    const d2 = ox * ox + oz * oz;
+    if (d2 >= radius * radius) continue;
+    const d = Math.sqrt(d2);
     if (d > 1e-6) {
       lx += (ox / d) * (radius - d);
       lz += (oz / d) * (radius - d);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { lam, basic } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { createBuilder } from '../../world/builder.js';
+import { batchWorld } from '../../world/batch.js';
 
 const H = 3.2; // ceiling height
 const DOOR_X = 4.5, DOOR_Z = 6;
@@ -194,6 +195,10 @@ export function buildWorld(scene) {
   secCam.lookAt(6, 0.9, -8.2);
 
   let staticTimer = 0;
+  b.updateLights({ x: 4.5, z: 13 });
+  const batched = batchWorld(scene, refs, { occluders: b.occluders });
+  b.occluders.length = 0;
+  b.occluders.push(...batched.occluders);
   return Object.assign(b, {
     refs,
     secCam,
@@ -213,6 +218,7 @@ export function buildWorld(scene) {
         refs.staticScreen.update();
       }
       if (this.powered) staffLight.intensity = Math.random() < 0.012 ? 1.5 : staffLight.userData.base;
+      this.updateLights(movers?.[0]);
     },
   });
 }

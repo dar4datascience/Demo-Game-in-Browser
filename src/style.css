@@ -57,8 +57,49 @@ body {
   color: #fff;
 }
 
-#qte {
+#flow {
   position: absolute;
+  top: 64px;
+  left: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffd24a;
+  letter-spacing: 2px;
+}
+
+.flow-label {
+  font-size: 15px;
+  color: #ffd24a;
+}
+
+.flow-track {
+  width: 220px;
+  height: 10px;
+  border: 2px solid #ffd24a;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#flow-fill {
+  height: 100%;
+  width: calc(var(--flow, 1) * 100%);
+  background: #ffd24a;
+  transition: width 0.1s linear;
+}
+
+#flow.low #flow-fill {
+  background: #ff4a4a;
+}
+
+#flow.low {
+  color: #ff4a4a;
+}
+
+#flow.low .flow-track {
+  border-color: #ff4a4a;
+}
+
+#qte {  position: absolute;
   bottom: 22vh;
   left: 50%;
   transform: translateX(-50%);

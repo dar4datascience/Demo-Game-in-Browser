@@ -50,7 +50,12 @@ const frames = (n = 3) => page.evaluate((n) => new Promise((resolve) => {
 const use = async (label, ...args) => {
   await look(...args);
   await frames(3);
-  console.log(`${label.padEnd(12)} prompt="${(await state()).prompt}"`);
+  let prompt = (await state()).prompt;
+  if (!prompt) {
+    await frames(8);
+    prompt = (await state()).prompt;
+  }
+  console.log(`${label.padEnd(12)} prompt="${prompt}"`);
   await page.keyboard.press('e');
   await frames(3);
 };
@@ -63,57 +68,62 @@ const until = async (pred, label, timeout = 90000, arg = null) => {
   console.log(`TIMEOUT waiting for ${label}`, JSON.stringify(await state()));
   process.exitCode = 1;
 };
-// A point beside a diagonally parked truck (rot 0.45) and the truck's bed.
-const truckSide = (key) => page.evaluate((key) => {
-  const p = world.refs.trucks[key].position;
-  return [p.x - 1.6 * Math.cos(0.45), p.z + 1.6 * Math.sin(0.45), p.x, 1.0, p.z];
-}, key);
+// A point in the andén, three metres off a truck's nose, and the truck itself.
 
 await page.waitForTimeout(1500);
 const t0 = Date.now();
 await frames(20);
 console.log(`fps (software renderer): ${(20000 / (Date.now() - t0)).toFixed(1)}`);
-await look(0, 33, 0, 1.5, 0);
+await look(-26, -18, -26, 1.5, -30);
 await shot('start');
-await look(-20, -14, -21, 1.6, -21);
+await look(-35.5, 1.2, -35.5, 1.6, 3.4);
 await shot('dock-b');
-await look(10, 2.5, -10, 1.6, -7);
-await shot('plaza');
+await look(-26, 40, -26, 1.6, 60);
+await shot('pasillo2');
 
 if (CHAR === 'diablero') {
-  await use('diablito', 1.8, 32.4, 1.8, 0.6, 31);
+  await use('diablito', -23.4, -13.4, -22, 0.6, -14);
   await shot('diablito');
-  const jobs = [['d1', -16.1, -37.2], ['d2', 13.9, 10.8], ['d3', 21.9, -20.2]];
-  for (const [i, [truck, px, pz]] of jobs.entries()) {
-    await use(`pickup${i + 1}`, px, pz + 1.6, px, 0.5, pz);
+  const jobs = [
+    { id: 'A-3', truck: 'd1', pickup: [-44.5, -2.7], face: 1, truckAt: [-44.5, -14] },
+    { id: 'C-9', truck: 'd2', pickup: [34, 25.3], face: 1, truckAt: [44, 14] },
+    { id: 'B-11', truck: 'd3', pickup: [59.25, 2.7], face: -1, truckAt: [59.25, 14] },
+  ];
+  for (const [i, job] of jobs.entries()) {
+    const [px, pz] = job.pickup;
+    const [tx, tz] = job.truckAt;
+    await until((id) => document.getElementById('objective').textContent.includes(`Bod. ${id}`), `job ${job.id}`, 30000, job.id);
+    await use(`pickup${i + 1}`, px + 0.9, pz + job.face * 1.6, px + 0.9, 0.5, pz);
     if (i === 0) await shot('loaded');
-    await use(`deliver${i + 1}`, ...(await truckSide(truck)));
+    await use(`deliver${i + 1}`, tx - 2.5, tz, tx, 1.0, tz);
     await until((i) => game.flags.delivered === i + 1 && !document.getElementById('subtitle').textContent, `delivery ${i + 1}`, 60000, i);
   }
 
   await until(() => game.flags.stage === 'pancarta', 'pancarta stage');
   await shot('pancarta-start');
-  await use('pancarta', 30.2, 2.0, 31.25, 1.0, 2.0);
+  await use('pancarta', -0.5, 168, 1.65, 1.0, 168);
   await until(() => game.flags.flow, 'flow');
   await shot('flow');
-  await use('hang', -13, -18.0, -13, 1.35, -19.05);
+  await use('hang', -35.5, -0.2, -35.5, 1.35, 1.55);
   await until(() => game.flags.pancartaDelivered, 'pancarta delivered');
   await shot('pancarta-hung');
   await until(() => game.flags.ghostReady, 'ghost choice');
   await shot('ghost-choice');
 
   if (CHOICE === 'fight') {
-    await use('fight', -13, -18.0, -11.4, 1.2, -17.4);
+    await use('fight', -34, -1.5, -33.9, 1.2, -0.1);
     await until(() => game.flags.fightReady, 'fight ready');
-    await shot('shrine-run');
     if (OUTCOME === 'win') {
+      // Reach the shrine before the screenshot: at 4x game speed the ghost closes in fast.
       const shrine = await page.evaluate(() => game.flags.shrine);
       await page.evaluate(({ x, z }) => player.pos.set(x, 0, z), shrine);
       await frames(4);
       await shot('shrine');
+    } else {
+      await shot('shrine-run');
     }
   } else {
-    await use('beer', -10.5, -15.8, -10.5, 0.6, -17.0);
+    await use('beer', -31.8, -0.8, -33, 0.6, 0.3);
     await until(() => game.flags.qte?.active, 'beer qte');
     await shot('beer');
     if (OUTCOME === 'win') {
@@ -124,31 +134,31 @@ if (CHAR === 'diablero') {
     }
   }
 } else if (CHAR === 'seller') {
-  await use('cortina', -14.2, -19.6, -14.2, 1.5, -20.94);
+  await use('cortina', -35.5, 1.2, -35.5, 1.5, 3.44);
   await until(() => world.refs.units['B-4'].roll >= 1, 'cortina open');
   await shot('bodega-open');
-  for (const x of [-14.8, -11.2, -10.0]) {
-    await use('take-sack', ...(await truckSide('seller')));
-    await use('pallet', x, -19.0, x, 0.3, -20.3);
+  for (const x of [-37.3, -33.7, -32.5]) {
+    await use('take-sack', -35.5, 11.8, -35.5, 1.0, 14);
+    await use('pallet', x, 1.2, x, 0.3, 2.8);
   }
   for (let i = 1; i <= 2; i++) {
     await until(() => game.flags.customerWaiting, `customer ${i}`);
-    await look(-12.7, -20.4, -12.7, 1.4, -18.6);
+    await look(-35.5, 0.6, -35.5, 1.4, 1.9);
     await frames(4);
     await shot(`customer${i}`);
-    await use('scale', -12.4, -20.4, -12.4, 1.25, -19.4);
+    await use('scale', -34.9, 0.6, -34.9, 1.25, 2.05);
   }
 } else {
   await shot('bag');
-  for (const [id, x, z] of [['B-2', -21, -19.7], ['A-8', 9, -36.7], ['C-5', -9, 11.3]]) {
-    await use(`buy ${id}`, x, z + 1.3, x, 0.95, z);
+  for (const [id, x, z, stand] of [['B-2', -59.25, 2.2, 0.6], ['A-8', 18, -2.2, -0.6], ['C-5', -16.5, 25.8, 27.4]]) {
+    await use(`buy ${id}`, x, stand, x, 0.95, z);
     if (id === 'B-2') await shot('vendor');
   }
 }
 
 if (CHAR !== 'diablero') {
   await until(() => game.flags.stage === 'finale' && document.getElementById('objective').textContent.includes('Eje 5'), 'finale');
-  await look(0, -20, 0, 1.4, -40);
+  await look(-26, -10, -26, 1.4, -30);
   await frames(4);
   await shot('blackout');
   await page.evaluate(() => { player.yaw += Math.PI; });
@@ -160,7 +170,7 @@ if (CHAR !== 'diablero') {
     await frames(4);
     await shot('jumpscare');
   } else {
-    await look(0, -53, 0, 1.6, -60);
+    await look(-26, -24, -26, 1.6, -34);
   }
 }
 
