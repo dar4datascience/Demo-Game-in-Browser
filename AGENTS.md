@@ -43,6 +43,11 @@
 - `scripts/profile.mjs` prints draw calls, mesh/light counts and frame time (`CHAR=diablero`); `scripts/look.mjs`
   saves a screenshot tour of the market plus a top-down map check; `scripts/audio-check.mjs` renders both music
   beds offline and reports peak/RMS. All three use the same Docker invocation with `-v "$PWD/scripts:/out"`.
+- `scripts/map.mjs` generates `docs/ceda-map.svg` from the level constants; render the PNG with
+  `docker run --rm --network host -v "$PWD:/repo" --entrypoint node mcp/playwright /repo/scripts/render-map.mjs`.
+- `scripts/record-controls.mjs` records the controls and Flow clips (`-v "$PWD:/repo"`); then run
+  `bash scripts/make-controls-video.sh` on the host (needs ffmpeg) to produce `docs/diablero-controls.mp4` and
+  the README GIF.
 - `scripts/shots/` is gitignored, so agent file tools can't read it; copy the screenshots out first (`cp -r scripts/shots /tmp/`).
 
 ## Conventions

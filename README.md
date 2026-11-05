@@ -46,6 +46,34 @@ The three loops are deliberately different kinds of play:
 - **Shopping (Consumer)** — a checklist. Each counter can be used once, the objective list ticks
   items off, and the bag visibly grows.
 
+### Central de Abasto — the A–Z map
+
+[![Top-down map of the in-game Central de Abasto: naves A–N and O–Z, five pasillos, andenes and the Eje 5 Sur gate](docs/ceda-map.png)](docs/ceda-map.png)
+
+The level compresses the real market into **144 × 376 m**: 26 lettered rows in 13 letter-pair naves,
+five numbered pasillos, a truck street (andén) between every pair of naves, and the pasillo 2 bridge
+between the abarrotes (A–H) and the vegetable halls (I–Z). Bodegas are numbered 1–12 west to east;
+the diablero's pickups, trucks, the rotulista and the B-4 delivery are marked and listed in the
+legend. Click the map for the full-size version.
+
+`scripts/map.mjs` generates it straight from `src/levels/ceda/world.js`, so it cannot drift from the
+level geometry.
+
+### Diablero — controls
+
+[![Diablero controls: WASD to walk, Shift to run, mouse to look, E to interact, and the 70-second Flow run](docs/diablero-controls.gif)](docs/diablero-controls.mp4)
+
+| Input | Action |
+| --- | --- |
+| **W A S D** | walk (diagonal movement is normalized) |
+| **Shift** | run; the loaded diablito slows you to 0.75× |
+| **Mouse** | look |
+| **E** | interact: grab the diablito, load and unload, pick up the pancarta, hang it |
+| **Q** | drop a fruit peel in the shrine run |
+
+The clip is recorded by `scripts/record-controls.mjs` against the real game (the raw WebM is trimmed
+and converted with `scripts/make-controls-video.sh`). Click it to watch the MP4.
+
 ### Diablero — the pancarta and the ghost
 
 After the three hauls, the diablero parks the cart and runs to **Pasillo 3, local 3**, deep in the
@@ -165,3 +193,7 @@ available as `/night-shift-dev`.
 - `scripts/playthrough.mjs` (NightMart) and `scripts/playthrough-ceda.mjs` (Central de Abasto) play the full stories automatically and save screenshots. See `AGENTS.md`.
 - `scripts/profile.mjs` prints draw calls, mesh/light counts and frame time; `scripts/look.mjs` saves a screenshot
   tour of the market; `scripts/audio-check.mjs` renders both music beds offline and reports peak/RMS.
+- `scripts/map.mjs` writes `docs/ceda-map.svg` from the level constants. Render it with
+  `docker run --rm --network host -v "$PWD:/repo" --entrypoint node mcp/playwright /repo/scripts/render-map.mjs`.
+- `scripts/record-controls.mjs` records the two raw control clips; `scripts/make-controls-video.sh` trims,
+  concatenates and converts them into `docs/diablero-controls.mp4` and the README GIF.
