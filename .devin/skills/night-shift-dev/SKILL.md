@@ -56,7 +56,8 @@ src/game/player.js          Player movement, collision, held items, flashlight
 src/game/interaction.js     raycast interactions with label gating + occlusion
 src/game/hud.js             objective/prompt/subtitle/clock/camera/ending
 src/game/director.js        story helpers: spawn/despawn/say/power/flicker/jumpscare + GHOST
-src/world/builder.js        createBuilder: meshes, oriented colliders, lights, power
+src/world/builder.js        createBuilder: meshes, oriented colliders, pooled lights, power
+src/world/batch.js          static geometry merging + light budget helpers for draw calls
 src/world/person.js         NPC box humanoid + walk/face/update
 src/levels/index.js         LEVELS registry
 src/levels/konbini/         world.js, story.js
@@ -124,13 +125,14 @@ assume the player presses things in order — the label function is the only ord
 
 `EYE = 1.6`, collision `RADIUS = 0.3`, mouse `SENS = 0.0022`, default spawn `(4.5, 0, 13)`.
 
-- Walk 2.2 m/s, run 3.6 m/s (Shift), both multiplied by `player.speedScale`. The diablero's Flow
-  sets `speedScale = 2.7`; movement is sub-stepped at 0.15 m so that speed cannot tunnel through
+- Walk 4.2 m/s, run 6.8 m/s (Shift), both multiplied by `player.speedScale`. The diablero's Flow
+  sets `speedScale = 1.6`; movement is sub-stepped at 0.15 m so that speed cannot tunnel through
   thin walls.
 - Diagonal movement is normalized (no diagonal speed boost).
 - Collision: oriented boxes `{ cx, cz, hx, hz, rot }`, resolved per axis by `resolveCircle`.
   `circleHits(x, z, collider, radius)` is the predicate tests reuse for reachability.
-- `forward()` is `(-sin yaw, 0, -cos yaw)`; yaw 0 faces north (-z).
+- `forward()` is `(-sin yaw, 0, -cos yaw)`; yaw 0 faces north (-z). It returns a shared scratch
+  vector: use it immediately, never keep the reference.
 - Pitch clamps to ±1.45 rad. Head bob is visual only.
 - `onStep` fires every 0.8 m walked (footstep sfx).
 - `hold(kind, mesh?, pos?, rot?)` parents a mesh to the camera and sets `heldKind`; `hold(null)`
@@ -174,12 +176,20 @@ diablero presentation (`man`, `woman`, `nonbinary`); other routes ignore it.
 Builder (`src/world/builder.js`):
 
 - `box(w,h,d,mat,x,y,z,{collide=true, occlude=false, tile=1, parent=scene, ry=0})` adds an
-  oriented collider `{cx,cz,hx,hz,rot:ry}` and optionally an occluder.
+  oriented collider `{cx,cz,hx,hz,rot:ry}` (also returned as `mesh.userData.collider`) and
+  optionally an occluder.
 - `plane(...)` is visual only (no collision).
-- `light(..., onGrid=true)` joins the power grid; `glowMat(opts, offColor)` dims with power.
+- `light(..., onGrid=true)` registers a light; only the nearest `poolSize` (8) are copied into the
+  real PointLight pool each frame, so authored lamps never cost 20 lights per fragment.
 - `setPower(false)` kills grid lights and swaps glow colors; `powered` reflects state.
 - `addBounds(minX,maxX,minZ,maxZ)` adds a wall collider.
 - Materials must come from `lam()` / `basic()` in `engine/post.js` so PS1 vertex snapping applies.
+- `batchWorld(scene, refs, { occluders })` (in `world/batch.js`) merges static geometry by material
+  after the level is built: everything referenced from `refs` keeps its identity, and each
+  referenced group is merged internally. Call it at the end of `buildWorld`, replace
+  `b.occluders` with the returned merged occluders, and mark any hidden/animated subtree
+  `userData.noBatch`. This is what keeps the A–Z market at ~140 draw calls instead of ~900.
+- Signs use one shared atlas (`T.signAtlas` + `T.setUV`), so hundreds of bodega signs are one call.
 
 ## Director and NPCs
 
@@ -214,15 +224,16 @@ midnight; keep it in sync with the start values in `LEVELS`.
 Everything is synthesized; there are no audio files. `src/engine/music.js` holds the pure patterns
 and `audio.js` turns them into nodes.
 
-- **Lofi bed** (`Sfx.startLofi`, started by `startAmbience`): 72 BPM, 4-bar Dm9–G13–Cmaj7–A7
-  progression, triangle chords, sine bass, soft kick/snare/hat, and a filtered vinyl crackle. It
-  runs through a 1700 Hz low-pass at `lofiBase = 0.045`.
+- **Lofi bed** (`Sfx.startLofi`, started by `startAmbience`): 68 BPM, 4-bar Dm9–Bbmaj9–Gm9–A7b9
+  progression, detuned triangle pads (`pad()`), sine bass, soft kick/rim/hat, and a filtered vinyl
+  crackle. It runs through a 1400 Hz low-pass and an 85 Hz high-pass at `lofiBase = 0.8`.
 - **Tension ducking**: `setTension(v)` lowers the lofi bed to `lofiBase * (1 - v * 0.6)`, so the
   bed recedes during the phone call and the chase.
-- **Electro cumbia** (`Sfx.flow`): 98 BPM, 16th-note grid, Am–G–F–G. Kick `[0,6,8,14]`, clap
-  `[4,12]`, guiro on even steps, shaker on odd steps, root/fifth bass, montuno lead with a short
-  echo, and a sustained chord pad. It runs through `cumbiaBus` at 0.28.
-- **Flow ducking**: `flow(true)` drops the lofi bed to 20% and starts the cumbia; `flow(false)`
+- **Sonidera cumbia** (`Sfx.flow`): 92 BPM, 16th-note grid, Am–F–C–G. Kick `[0,6,8]`, clap
+  `[4,12]`, guiro on even steps, shaker on odd steps, tumbao root/fifth/octave bass, organ stabs on
+  `[2,6,10,14]`, and an accordion-style `reed()` lead with a short echo. It runs through
+  `cumbiaBus` (high-pass 55, low-pass 6500) at 0.7.
+- **Flow ducking**: `flow(true)` drops the lofi bed to 18% and starts the cumbia; `flow(false)`
   restores it to the tension-adjusted level and fades the cumbia bus to 0.
 - **Sequencer**: `startSequencer(bpm, stepsPerBeat, fn)` schedules with a 25 ms timer and a 0.2 s
   lookahead. `tone`/`noise` accept `when` (absolute AudioContext time) and `dest` (bus/filter).
@@ -256,26 +267,40 @@ Door: `world.update` opens `refs.door` when any mover is within 2.2 m of `(4.5, 
 
 ## Central de Abasto mission (`src/levels/ceda`)
 
-Geometry (`src/levels/ceda/world.js`):
+Geometry (`src/levels/ceda/world.js`), compressed from the real CEDA organisation:
 
-- `ROWS = { A: -38, B: -21, C: 10, D: 27 }` (storefront z), `UNIT_X` 12 positions per row,
-  `PASILLOS = [-30, 0, 30]`, `SEGMENTS = [[-27,-3],[3,27]]`, `DOCK = 2.5`, `EXIT_Z = -52`.
-- `unitAt(id)` maps `"B-4"` to `{x, z}`; ids are `<row>-<1..12>`.
+- 26 lettered rows, A north to Z south, in 13 letter-pair naves (`NAVES`). Each nave is two rows
+  facing one pedestrian **andador** (`AISLE = 7` m); a **street** (`STREET = 7`) with the loading
+  andenes separates naves, on a `PITCH = 28` m grid. Bodega bodies are `DEPTH = 7` (real ones are
+  20 m).
+- `UNIT_X` / `UNIT_W`: 12 bodegas per row, numbered 1..12 west to east. `unitAt(id)` returns
+  `{ x, z, face, w }`; `ROWS[letter]` is the storefront z and `ROW_FACE[letter]` is `+1` when the
+  shop faces south (+z) and `-1` when it faces north. Props in front of a shop use
+  `z + face * d`, never `z + d`.
+- `PASILLOS = [-52, -26, 0, 26, 52]`, `PASILLO_W = [6, 10, 6, 6, 6]`: five numbered walkways that
+  cut through every row. Pasillo 2 is the main artery, has the wide deck, and carries the bridge.
+- `BRIDGE = { x: -26, z: streetZ(4), hx: 5, hz: 4.5 }`: the pasillo 2 bridge between the abarrotes
+  (A–H) and the vegetable halls (I–Z). Crossing it during Flow shakes the camera and rattles the
+  cart.
+- `EXIT_Z = -23`, `NORTH_Z = -22` (Eje 5 Sur gate wall with a 10 m gap at pasillo 2), `SOUTH_Z =
+  356` (Eje 6 Sur). `SPAWN = [-26, -18]`, facing south into the market.
 - Key storefronts: `B-4` seller (closed), `B-2/A-8/C-5` consumer counters,
   `A-3/C-9/B-11` diablero pickups.
-- Key trucks: `d1` (row C, red), `d2` (row A, blue), `d3` (row D, white), `seller` (row B).
-- `refs.rotulista.pickup` is the pancarta stand in Pasillo 3, local 3; `refs.pancartaDrop` is the
-  empty frame over the B-4 counter; `refs.pancartaPlaced` appears after delivery.
+- Key trucks: `d1` (row A's andén, north street), `d2` (row C), `d3` (row B), `seller` (row B).
+- `refs.rotulista.pickup` is the pancarta stand in Pasillo 3, local 3, at `aisleZ(6)`;
+  `refs.pancartaDrop` is the empty frame over the B-4 counter; `refs.pancartaPlaced` appears after
+  delivery.
 - `SHRINE_SPOTS` (exported) are the open-air candidates for the diablero's shrine; tests check all
   of them are free and reachable. `FIRE_SPOT` is the clear plaza spot for the beer scene, and the
   test also checks its camera offset.
-- Player spawns `(0, 33)` facing north toward the Eje 5 Sur gate.
+- `refs.solid` lists every prop that owns a collider (`obj.userData.collider`); the level test
+  checks each footprint against the prop's local geometry size.
 - `refs.lamps` flicker while powered; `setPower(false)` is the blackout.
-- Four AM crowd patrols loops; a squeak hook is removed once `F.stage` is `finale`, `ghost`,
+- Five AM crowd patrols loops; a squeak hook is removed once `F.stage` is `finale`, `ghost`,
   `fight` or `beer`.
 
-Character speeds: diablero 0.9, seller 1, consumer 1.05. Seller and Consumer end in the shared
-finale; the Diablero has its own end-of-shift ghost encounter.
+Character speeds: all routes use `speed: 1` (the 4.2/6.8 m/s base). Seller and Consumer end in the
+shared finale; the Diablero has its own end-of-shift ghost encounter.
 
 The three routes are **distinct jobs, not a hierarchy**: diablero (loader), seller (bodega
 operator) and consumer (shopper). Write and speak about them that way — no role is "lower" or
@@ -285,19 +310,20 @@ valid (`DIABLERO_VARIANTS` in `story.js`), selected from the `menu-variants` car
 
 ### Diablero
 
-- Grab `refs.diablito` at `(1.8, 31)` → `F.hasCart`.
+- Grab `refs.diablito` near the Eje 5 Sur gate → `F.hasCart`.
 - Three jobs (`F.job` 0→2, `F.delivered` counts completed):
   `A-3 → d1`, `C-9 → d2`, `B-11 → d3`.
-- Loading requires the cart and no visible load; it sets `player.speedScale = 0.7`.
-- Delivering hides the load, restores `0.9`, increments `delivered`.
+- Loading requires the cart and no visible load; it sets `player.speedScale = 0.75`.
+- Delivering hides the load, restores `1`, increments `delivered`.
 - A pickup/truck only offers its label for the active job and correct load state, so the same
   load cannot be re-picked after delivery.
 - After the haul, `F.stage = 'pancarta'`: park the cart, run to `refs.rotulista.pickup` in
-  Pasillo 3, local 3, and take the pancarta. `refs.pancartaDrop` at B-4 is the delivery target.
-  `F.pancartaDeadline` is 75 s; missing it ends with `SE TE FUE EL TRÁILER`.
-- Picking up the pancarta starts **Flow**: `player.speedScale = 2.7` (0.9 × 3), a bocina on the
-  camera, and `sfx.flow(true)`. It lasts until the sign is hung (or the phase ends), so the whole
-  return run is at x3.
+  Pasillo 3, local 3 (at `aisleZ(6)`, a real walk across the market), and take the pancarta.
+  `refs.pancartaDrop` at B-4 is the delivery target. There is **no timer before the pickup**.
+- Picking up the pancarta starts **Flow**: `player.speedScale = 1.6`, a bocina on the camera, and
+  `sfx.flow(true)`. `F.flowEnd = game.time + FLOW_SECONDS` (70), exposed on the HUD bar
+  (`hud.flow(seconds, total)`); the whole run must be finished within those 70 s or the shift ends
+  with `SE TE FUE EL TRÁILER`. Crossing `BRIDGE` during Flow shakes the camera and rattles the cart.
 - At the end of the shift, `F.ghostReady` gates the choice interactions:
   - **Fight** (`F.stage = 'fight'`): `SHRINE_SPOTS` (exported by `world.js`) is filtered to spots
     more than 15 m away and picked with `mulberry32(game.seed)`. Reaching within 2.2 m wins;
@@ -363,8 +389,9 @@ h.log;                            // { subtitles, objectives, used, ending }
 
 `run` yields to the event loop every tick, rethrows story errors, and fails on timeout with the
 current objective. **`maxTime` is absolute game time**, not a duration: after a long haul, use
-`maxTime: h.game.time + 20`. `reachableCells(colliders, bounds, start, cell)` returns free cells
-reachable on foot using the player radius; `nearestDistance(cells, x, z)` and
+`maxTime: h.game.time + 20`. `reachableCells(colliders, bounds, start, cell = 1)` returns free
+cells reachable on foot using the player radius (colliders are bucketed in an 8 m grid first, so
+the 144 × 376 m market still runs in under a second); `nearestDistance(cells, x, z)` and
 `worldPosition(object)` are the companions used by `tests/integration/levels.test.js`
 (`REACH = 2.0` against a 2.3 m reach).
 
@@ -384,12 +411,13 @@ Pitfalls:
   `F.stage === 'restock'` leaves the next interactions untouched.
 - Keep story code DOM-free or the harness cannot run it.
 
-Existing coverage: scheduler semantics, collision/movement (including x3 flow sub-stepping),
+Existing coverage: scheduler semantics, collision/movement (including flow-speed sub-stepping),
 raycast gating/occlusion, builder power/colliders, NPC walking, clock, textures, seeded RNG, music
 patterns, CEDA
-layout invariants, every mission target and shrine spot reachable, the diablero pancarta/Flow and
-both ghost branches (win and lose), all three presentations, and full playthroughs of NightMart
-and the Seller/Consumer shared finale (both endings).
+layout invariants (26 rows, 13 naves, pasillo numbering, prop collider footprints), every mission
+target and shrine spot reachable, the diablero pancarta/Flow 70 s window and both ghost branches
+(win and lose), all three presentations, and full playthroughs of NightMart and the
+Seller/Consumer shared finale (both endings).
 
 When adding a level: `world.js` + `story.js`, register in `LEVELS`, add a menu card in
 `index.html`, add a story autoplay test, and add every new interactable to the reachability test.

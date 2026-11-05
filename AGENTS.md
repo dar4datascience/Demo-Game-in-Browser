@@ -35,10 +35,14 @@
   docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=diablero -e CHOICE=beer -e OUTCOME=win --entrypoint node mcp/playwright /out/playthrough-ceda.mjs
   ```
 
-- Software rendering in that container runs at about 3 fps on the CEDA map (about 21 point lights), so each run takes a few
-  minutes. The scripts wait on rendered frames, not wall-clock time. `npm run test:e2e` (`scripts/e2e.sh`) starts its
-  own Vite server on port 5199 and runs all playthroughs (NightMart, both diablero ghost choices with
-  win/lose outcomes, and the seller/consumer shared finale).
+- Software rendering in that container runs at about 25-30 fps on the CEDA map (the level merges static
+  geometry and keeps only 8 point lights live), so a full run takes a couple of minutes. The scripts wait on
+  rendered frames, not wall-clock time. `npm run test:e2e` (`scripts/e2e.sh`) starts its own Vite server on
+  port 5199 and runs all playthroughs (NightMart, both diablero ghost choices with win/lose outcomes, and the
+  seller/consumer shared finale).
+- `scripts/profile.mjs` prints draw calls, mesh/light counts and frame time (`CHAR=diablero`); `scripts/look.mjs`
+  saves a screenshot tour of the market plus a top-down map check; `scripts/audio-check.mjs` renders both music
+  beds offline and reports peak/RMS. All three use the same Docker invocation with `-v "$PWD/scripts:/out"`.
 - `scripts/shots/` is gitignored, so agent file tools can't read it; copy the screenshots out first (`cp -r scripts/shots /tmp/`).
 
 ## Conventions

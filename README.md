@@ -5,7 +5,7 @@
 | Map | Setting | Characters |
 | --- | ------- | ---------- |
 | **NightMart** | 11:40 PM, a 24h konbini. Clock in, restock, serve customers, survive the blackout. Inspired by *The Convenience Store* (2020). | Night clerk |
-| **Central de Abasto** | 4:10 AM, Iztapalapa, CDMX. Three covered *pasillos*, bodega rows A–D, loading docks with diagonal truck bays, a plaza of tarp stalls, and the Eje 5 Sur gate. Loosely based on the public "Abarrotes y Víveres — Lado A" floor plan. | **Diablero** (loader with a diablito), **Seller** (bodeguero), **Consumer** (marchante) |
+| **Central de Abasto** | 4:10 AM, Iztapalapa, CDMX. The full **A–Z** market: thirteen letter-pair naves, five numbered pasillos, andenes with diagonal truck bays, the pasillo 2 bridge, and the Eje 5 Sur gate. Compressed from the real CEDA layout (26 lettered rows, bodegas numbered west to east). | **Diablero** (loader with a diablito), **Seller** (bodeguero), **Consumer** (marchante) |
 
 In the Central de Abasto, each character has its own mission. Diablero hauls three loads to the trucks, fetches a hand-painted price sign on a Flow-powered run, and ends the shift facing a ghost. Seller opens the shutter, stocks pallets and serves customers at the scale, and Consumer works through a shopping list. Seller and Consumer end in the shared blackout chase: reach the Eje 5 Sur gate with your phone flashlight, while something that only moves when you aren't looking closes in. The Diablero's shift ends with a different kind of ghost encounter.
 
@@ -33,14 +33,14 @@ three distinct jobs — a loader, a bodega operator and a shopper — not a hier
 
 | Route | Job | Job loop | Story beat |
 | --- | --- | --- | --- |
-| **Diablero** | loader with a diablito | grab the cart, haul three loads, then fetch the pancarta de precios from the rotulista | the third truck is empty; the rotulista's sign unlocks a x3 Flow run; a ghost diablero waits at the end of the shift |
+| **Diablero** | loader with a diablito | grab the cart, haul three loads, then fetch the pancarta de precios from the rotulista | the third truck is empty; the rotulista's sign starts a 70-second Flow run; a ghost diablero waits at the end of the shift |
 | **Seller** | bodeguero at Bod. B-4 | raise the cortina, stock three pallets, serve two customers at the scale | the second customer is the veiled woman asking about her son, a former diablero |
 | **Consumer** | marchante with a shopping list | buy chiles, frijol and mole from three vendors | the vendors gossip about the ánimas just before the lights die |
 
 The three loops are deliberately different kinds of play:
 
-- **Hauling (Diablero)** — fetch-and-deliver. Picking up a load slows you to 0.7×; delivering
-  restores 0.9×. Only the active job's pickup and truck offer a prompt.
+- **Hauling (Diablero)** — fetch-and-deliver. Picking up a load slows you to 0.75×; delivering
+  restores normal speed. Only the active job's pickup and truck offer a prompt.
 - **Retail (Seller)** — open, stock, serve. Stocking interactions do not exist until the cortina is
   up, and the scale only works while a customer is waiting.
 - **Shopping (Consumer)** — a checklist. Each counter can be used once, the objective list ticks
@@ -48,11 +48,12 @@ The three loops are deliberately different kinds of play:
 
 ### Diablero — the pancarta and the ghost
 
-After the three hauls, the diablero parks the cart and runs to **Pasillo 3, local 3**, where the
-best letterer in the market paints the **pancarta de precios**. Picking it up awards **Flow**: a
-bocina loaded with electro cumbia that triples movement speed for the rest of the pancarta phase.
-Carry the sign to Bod. B-4 and hang it before the truck leaves; the Flow keeps playing until you
-do.
+After the three hauls, the diablero parks the cart and runs to **Pasillo 3, local 3**, deep in the
+market, where the best letterer in the Central paints the **pancarta de precios**. Picking it up
+starts **Flow**: a bocina loaded with sonidera cumbia, 1.6× movement speed, and exactly **70
+seconds of game time** to carry the sign to Bod. B-4 and hang it. The clock starts the moment you
+take the sign, not before; if it runs out, the trailer leaves without you (`SE TE FUE EL TRÁILER`).
+The run crosses the bridge over Pasillo 2, where a loaded diablito is hard to hold back.
 
 At the end of the shift, the ghost of a diablero who died in the Central offers a choice:
 
@@ -110,9 +111,10 @@ Desktop browser with WebGL2 required. Headphones recommended.
 - PS1/VHS look: the scene renders to a 240p target and gets upscaled with nearest-neighbor filtering. A post shader adds
   Bayer dithering, film grain, scanlines, chromatic aberration and vignette, and vertex snapping makes polygons jitter.
 - Textures come from `<canvas>` drawing; audio (hum, chimes, shutters, diablito squeaks, stingers) is synthesized with WebAudio.
-- Music is procedural too: a 72 BPM lofi chord bed (Dm9–G13–Cmaj7–A7) with vinyl crackle, and a 98 BPM
-  electro-cumbia loop (kick, clap, guiro, shaker, bass and montuno lead) that takes over during Flow. The lofi
-  bed ducks under the cumbia and as tension rises.
+- Music is procedural too: a 68 BPM lofi bed (Dm9–Bbmaj9–Gm9–A7b9) with warm detuned pads, vinyl
+  crackle and a soft brushed beat, and a 92 BPM sonidera cumbia loop (tumbao bass, guiro, clap,
+  organ stabs and an accordion-style reed lead) that takes over during Flow. The lofi bed ducks
+  under the cumbia and as tension rises.
 - Each level is a `buildWorld(scene)` + `runStory(ctx)` pair. Stories are `async` scripts on a game-time scheduler, so pausing freezes them.
 
 ```
@@ -141,8 +143,9 @@ npm run test:e2e    # browser playthroughs of every story (Docker + mcp/playwrig
   at spawn, and both Central de Abasto shared-finale endings).
 - **Mechanics** (`tests/integration/gameplay.test.js`): proves the routes are actually playable — interaction
   gating (a shelf needs a box, the phone only rings for a while, the register needs a waiting customer), the
-  diablero's load/carry speed rules, the pancarta/Flow x3 boost for the whole phase, fruit peels slowing the ghost, the
-  seller's cortina and sack requirements, the automatic door, and the shared chase speeds and caught ending.
+  diablero's load/carry speed rules, the 70-second Flow timer (a delivery at 69 s wins, an idle run loses at
+  70 s), fruit peels slowing the ghost, the seller's cortina and sack requirements, the automatic door, and the
+  shared chase speeds and caught ending.
 - **E2E** (`scripts/e2e.sh`): real Chromium with WebGL plays each story through `?debug` hooks and saves
   screenshots, including both Diablero ghost choices (win and lose); set `VARIANT` to pick the presentation.
 
@@ -155,6 +158,10 @@ available as `/night-shift-dev`.
 
 ## Debugging
 
-- `/?debug` keeps the game running without pointer lock and exposes `game`, `player`, `world`, `hud` on `window`.
+- `/?debug` keeps the game running without pointer lock and exposes `game`, `player`, `world`, `hud`, `sfx`,
+  `pipe` and `scene` on `window`.
 - `/?debug&speed=4` also runs game time 4x faster.
+- `/?debug&colliders` draws every collision footprint as a wireframe, for checking prop boundaries.
 - `scripts/playthrough.mjs` (NightMart) and `scripts/playthrough-ceda.mjs` (Central de Abasto) play the full stories automatically and save screenshots. See `AGENTS.md`.
+- `scripts/profile.mjs` prints draw calls, mesh/light counts and frame time; `scripts/look.mjs` saves a screenshot
+  tour of the market; `scripts/audio-check.mjs` renders both music beds offline and reports peak/RMS.
