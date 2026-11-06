@@ -22,6 +22,11 @@ body {
   font-size: 18px;
 }
 
+/* Showcase: only the caption survives. */
+#hud.cinema > :not(#subtitle) {
+  display: none;
+}
+
 #objective {
   position: absolute;
   top: 18px;

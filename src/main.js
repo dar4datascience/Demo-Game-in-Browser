@@ -14,6 +14,8 @@ const DEBUG = params.has('debug');
 const TIME_SCALE = DEBUG ? Number(params.get('speed') ?? 1) : 1;
 const SEED = params.has('seed') ? Number(params.get('seed')) >>> 0 : undefined;
 const SHOW_COLLIDERS = params.has('colliders');
+const SHOT = params.has('shot') ? Number(params.get('shot')) : null;
+const RENDER_H = params.has('renderH') ? Number(params.get('renderH')) : null;
 
 // `?debug&colliders` draws every collision footprint, so a prop that can be walked through stands out.
 function drawColliders(world) {
@@ -84,27 +86,31 @@ function update(dt) {
 function start(levelId, character = null, variant = null) {
   if (game.started) return;
   game.started = true;
+  game.level = levelId;
   const level = LEVELS[levelId];
   world = level.build(scene);
   if (SHOW_COLLIDERS) drawColliders(world);
   interactions.addOccluders(world.occluders);
   scene.fog = new THREE.Fog(...world.fog);
   pipe.renderer.setClearColor(world.fog[0]);
+  pipe.setProfile({ ...world.render, ...(RENDER_H ? { height: RENDER_H } : {}) });
   pipe.resize();
   hud.setClockStart(level.clock);
   sfx.init();
   sfx.startAmbience();
+  // Showcases are watched, not played: no pointer lock, no pause gate, no HUD furniture.
+  document.getElementById('hud').classList.toggle('cinema', !!level.showcase);
   if (DEBUG) Object.assign(window, { game, player, world, hud, sfx, pipe, scene, interactions });
   level.story({
-    game, world, hud, sfx, player, scene, pipe, input, interact, character, variant,
+    game, world, hud, sfx, player, scene, pipe, input, interact, character, variant, shot: SHOT,
     end(title, subtitle) {
       game.ended = true;
       input.unlock();
       hud.ending(title, subtitle);
     },
   });
-  input.lock();
-  if (DEBUG) hud.hide('title');
+  if (!level.showcase) input.lock();
+  hud.hide('title');
 }
 
 // --- Menu ----------------------------------------------------------------------
@@ -147,7 +153,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000) * TIME_SCALE;
   last = now;
-  if (game.started && !game.ended && (input.locked || DEBUG)) update(dt);
+  if (game.started && !game.ended && (input.locked || DEBUG || LEVELS[game.level]?.showcase)) update(dt);
   else if (game.ended) game.tick(dt);
   input.consume();
   pipe.render(scene, game.cam, now / 1000);
