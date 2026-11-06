@@ -7,6 +7,7 @@ function createContext2d() {
     getImageData: (x, y, w, h) => imageData(w, h),
     createImageData: (w, h) => imageData(w, h),
     createLinearGradient: () => ({ addColorStop() {} }),
+    createRadialGradient: () => ({ addColorStop() {} }),
     measureText: (text) => ({ width: String(text).length * 6 }),
   };
   return new Proxy(state, {

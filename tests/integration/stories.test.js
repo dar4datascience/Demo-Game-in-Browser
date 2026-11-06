@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createHarness } from '../helpers/harness.js';
 import { EXIT_Z, SPAWN } from '../../src/levels/ceda/world.js';
 import { WAKE_SEQUENCE, FLOW_SECONDS } from '../../src/levels/ceda/story.js';
+import { SHOTS } from '../../src/levels/cdmx/story.js';
 
 // Headless end-to-end runs of each story script: real scheduler, world, NPC movement and interactions.
 // The "autoplayer" presses E on whatever is currently offered, like an impatient but obedient player.
@@ -165,6 +166,23 @@ describe('Central de Abasto stories', () => {
     h.player.yaw = Math.PI; // look away
     await advance(2);
     expect(ghost.pos.distanceTo(before)).toBeGreaterThan(1);
+  });
+
+  it('CDMX showcase plays the whole shot list and ends on the title card', async () => {
+    const h = createHarness('cdmx');
+    await h.run(() => h.game.ended, { maxTime: 400 });
+    expect(h.log.ending.title).toBe('CIUDAD DE MÉXICO');
+    expect(h.game.flags.shot).toBe(SHOTS.at(-1).id);
+    expect(h.game.cam).toBe(h.world.shotCam);
+    expect(h.log.subtitles).toContain('3:00 AM');
+  });
+
+  it('CDMX showcase can play a single shot', async () => {
+    const h = createHarness('cdmx', null, { shot: 4 });
+    await h.run(() => h.game.ended, { maxTime: 60 });
+    expect(h.game.flags.shot).toBe(SHOTS[3].id);
+    expect(h.log.subtitles).toContain(SHOTS[3].caption);
+    expect(h.log.subtitles).not.toContain(SHOTS[0].caption);
   });
 
   it.each(['diablero', 'seller', 'consumer'])('%s story starts with a valid spawn and its first objective', async (character) => {

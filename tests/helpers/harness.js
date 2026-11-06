@@ -12,7 +12,7 @@ const silentSfx = () => new Proxy({}, { get: () => () => () => {} });
  * Runs a level headlessly (no WebGL, no DOM): real world geometry, real story script, real scheduler,
  * real player/NPC updates. Interactions are captured so tests can trigger them like a player pressing E.
  */
-export function createHarness(levelId, character = null, { seed = 1, variant = null } = {}) {
+export function createHarness(levelId, character = null, { seed = 1, variant = null, shot = null } = {}) {
   const level = LEVELS[levelId];
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 80);
@@ -47,7 +47,7 @@ export function createHarness(levelId, character = null, { seed = 1, variant = n
     hide() {},
   };
   const ctx = {
-    game, world, hud, player, scene, pipe, character, input, variant,
+    game, world, hud, player, scene, pipe, character, input, variant, shot,
     sfx: silentSfx(),
     interact: (objects, label, use) => interactions.push({ objects: [objects].flat(), label, use }),
     end(title, subtitle) {

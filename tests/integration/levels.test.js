@@ -5,6 +5,7 @@ import { EXIT_Z, SHRINE_SPOTS, FIRE_SPOT, SPAWN, LETTERS, PASILLOS } from '../..
 import { circleHits } from '../../src/game/player.js';
 import { localSize } from '../../src/world/batch.js';
 import { reachableCells, nearestDistance, worldPosition } from '../helpers/harness.js';
+import { SHOTS, applyShot } from '../../src/levels/cdmx/story.js';
 
 // Max horizontal distance from a walkable spot to an interactable (interaction reach is 2.3m from the eyes).
 const REACH = 2.0;
@@ -151,5 +152,49 @@ describe('Central de Abasto level', () => {
     for (let i = 0; i < 40; i++) world.update(0.1, []);
     expect(unit.roll).toBe(1);
     expect(unit.cortina.scale.y).toBeLessThan(0.01);
+  });
+});
+
+describe('Ciudad de México showcase', () => {
+  let world, scene;
+  beforeAll(() => {
+    ({ world, scene } = build('cdmx'));
+  });
+
+  it('builds the world contract main.js relies on, plus the photo profile', () => {
+    expect(validColliders(world.colliders)).toBe(true);
+    expect(world.fog).toHaveLength(3);
+    expect(world.cameras).toContain(world.shotCam);
+    expect(typeof world.update).toBe('function');
+    expect(world.render).toEqual({ height: 480, photo: true });
+    expect(world.refs.sky.dome).toBeDefined();
+    expect(world.refs.road.car).toBeDefined();
+    expect(world.refs.bride.doll).toBeDefined();
+  });
+
+  it('keeps every shot camera out of the scenery at ground level', () => {
+    for (const shot of SHOTS) {
+      for (const k of [0, 0.5, 1]) {
+        applyShot(world.shotCam, scene, shot, k);
+        const { x, z } = world.shotCam.position;
+        if (world.shotCam.position.y < 3) {
+          expect(world.colliders.some((c) => circleHits(x, z, c, 0.4)), `${shot.id} @${k}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('aims every shot at something in front of the camera', () => {
+    for (const shot of SHOTS) {
+      applyShot(world.shotCam, scene, shot, 1);
+      const dir = world.shotCam.getWorldDirection(new THREE.Vector3());
+      const target = new THREE.Vector3(...shot.look[1]).sub(world.shotCam.position).normalize();
+      expect(dir.dot(target), shot.id).toBeGreaterThan(0.99);
+      expect(shot.dur).toBeGreaterThan(3);
+    }
+  });
+
+  it('leaves the default player spawn clear of geometry', () => {
+    expect(world.colliders.some((c) => circleHits(4.5, 13, c))).toBe(false);
   });
 });
