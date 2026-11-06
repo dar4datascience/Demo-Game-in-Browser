@@ -9,6 +9,20 @@
 - Deploy to Cloudflare Workers (needs `wrangler login` or `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`): `npm run deploy`.
   CI deploys to https://nightshift.radarcentral.dev on every push to `main` via `.github/workflows/deploy.yml`.
 - Browser E2E playthroughs of every story (slow, needs Docker): `npm run test:e2e`
+- CDMX showcase tour (non-playable, camera-driven): open the "Ciudad de México" menu card, or
+  `?debug&shot=N` (1–10) to play one shot. `?renderH=240` drops the internal render height for fast recording.
+- Record the showcase to `docs/cdmx-night.mp4` (needs the dev server on :5173):
+
+  ```bash
+  docker run --rm --network host -v "$PWD:/repo" --entrypoint node mcp/playwright /repo/scripts/record-cdmx.mjs   # per-shot webms
+  docker run --rm --network host -v "$PWD:/repo" --entrypoint node mcp/playwright /repo/scripts/record-cdmx-audio.mjs # lofi bed wav
+  bash scripts/make-cdmx-video.sh                                                                              # stitch + mux
+  ```
+
+  `record-cdmx.mjs` uses the page's own `canvas.captureStream` + MediaRecorder (much faster than
+  Playwright's screencast under SwiftShader) at 270×480 with `renderH=240`, then `make-cdmx-video.sh`
+  upscales to 1080×1920 H.264 24fps and muxes the offline-rendered lofi bed.
+- Screenshot tour of every shot: `docker run --rm --network host -v "$PWD/scripts:/out" --entrypoint node mcp/playwright /out/look-cdmx.mjs`
 
 ## Verification
 
