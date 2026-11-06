@@ -264,6 +264,9 @@ export const bodegaInteriorTex = (kind) => canvasTexture(96, 80, (g, w, h) => {
     sacks: ['#d8c49a', '#cdb88a', '#e2d3ab', '#bfa878'],
     boxes: ['#b98a52', '#e4007c', '#f4d03f', '#2e86c1', '#a0522d', '#c8a06a'],
     chiles: ['#8b1a1a', '#b22222', '#5c0f0f', '#d8c49a', '#6b3e1f', '#e25822'],
+    abarrotes: ['#d8c49a', '#c8a06a', '#e9c46a', '#a0522d', '#f4f1de', '#b5179e'],
+    vinos: ['#5a1f28', '#7a2a3a', '#d8c49a', '#3a1a2a', '#e0b060', '#2b3f6e'],
+    tortilla: ['#f2f0d8', '#e9e2c0', '#d8c49a', '#c8b890', '#faf6e6', '#bfa878'],
   }[kind];
   // Back shelving with goods, then a front pile on the floor.
   for (const shelfY of [24, 42]) {
@@ -461,6 +464,189 @@ export const hazardTex = () => canvasTexture(16, 4, (g, w, h) => {
     g.lineTo(x + 2, 0);
     g.lineTo(x + 4, 0);
     g.lineTo(x + 2, h);
+    g.fill();
+  }
+});
+
+// --- CDMX showcase ---------------------------------------------------------
+// 128–256 px painted textures: the showcase renders at 480p and frames them close, so the
+// 32 px store tiles would read as noise.
+
+const blotches = (g, w, h, n, color, size = 18) => {
+  g.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    g.beginPath();
+    g.ellipse(rand() * w, rand() * h, size * (0.4 + rand()), size * (0.3 + rand()), rand() * 3, 0, Math.PI * 2);
+    g.fill();
+  }
+};
+
+export const cobbleTex = (base = '#6a6280') => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#3a3448';
+  g.fillRect(0, 0, w, h);
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      const v = 0.75 + rand() * 0.45;
+      g.fillStyle = base;
+      g.globalAlpha = 0.55 + rand() * 0.45;
+      g.fillRect(x * 16 + 1, y * 16 + 1, 14, 14);
+      g.globalAlpha = v * 0.3;
+      g.fillStyle = '#b0a6c8';
+      g.fillRect(x * 16 + 2, y * 16 + 2, 12, 4);
+      g.globalAlpha = 1;
+    }
+  }
+  blotches(g, w, h, 10, 'rgba(20,16,28,0.2)', 22);
+  grain(g, w, h, 16);
+});
+
+export const plasterTex = (base = '#5b4f66', shade = '#2e2740') => canvasTexture(128, 128, (g, w, h) => {
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, base);
+  grad.addColorStop(0.7, base);
+  grad.addColorStop(1, shade);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+  blotches(g, w, h, 14, 'rgba(18,14,26,0.28)', 26);
+  blotches(g, w, h, 8, 'rgba(150,130,170,0.10)', 20);
+  g.fillStyle = 'rgba(10,8,14,0.35)';
+  for (let i = 0; i < 14; i++) g.fillRect(rand() * w, 0, 1 + rand() * 2, h * (0.2 + rand() * 0.7));
+  grain(g, w, h, 12);
+});
+
+// Lit office windows on a near-black slab. Used with basic() so it glows on its own.
+export const facadeTex = (cols = 6, rows = 14, tint = '#9fd0ff') => canvasTexture(128, 256, (g, w, h) => {
+  g.fillStyle = '#0b0d18';
+  g.fillRect(0, 0, w, h);
+  const cw = w / cols, ch = h / rows;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const r = rand();
+      if (r < 0.42) continue;
+      const warm = rand() < 0.3;
+      g.fillStyle = warm ? `rgba(255,206,140,${0.45 + rand() * 0.5})` : tint;
+      g.globalAlpha = 0.35 + rand() * 0.6;
+      g.fillRect(x * cw + cw * 0.18, y * ch + ch * 0.22, cw * 0.64, ch * 0.4);
+    }
+  }
+  g.globalAlpha = 1;
+  g.fillStyle = '#151a2c';
+  for (let y = 0; y < rows; y++) g.fillRect(0, y * ch + ch * 0.78, w, 2);
+});
+
+// Abstract stone-and-tile mural: geometry only, no copied artwork.
+export const mosaicTex = () => canvasTexture(256, 128, (g, w, h) => {
+  g.fillStyle = '#3c3026';
+  g.fillRect(0, 0, w, h);
+  const palette = ['#c2703a', '#d8a24a', '#3f7f83', '#8a3a3a', '#d9cfae', '#5b4a7a', '#6b7f3f'];
+  for (let i = 0; i < 260; i++) {
+    g.fillStyle = palette[Math.floor(rand() * palette.length)];
+    const x = rand() * w, y = rand() * h, s = 3 + rand() * 13;
+    if (rand() < 0.5) {
+      g.beginPath();
+      g.arc(x, y, s * 0.5, 0, Math.PI * 2);
+      g.fill();
+    } else {
+      g.save();
+      g.translate(x, y);
+      g.rotate(rand() * 3);
+      g.fillRect(-s / 2, -s / 2, s, s * (0.4 + rand()));
+      g.restore();
+    }
+  }
+  // Grout lines and a darker stone course every 16 px: reads as tilework, not wallpaper.
+  g.fillStyle = 'rgba(12,9,6,0.55)';
+  for (let x = 0; x < w; x += 8) g.fillRect(x, 0, 1, h);
+  for (let y = 0; y < h; y += 8) g.fillRect(0, y, w, 1);
+  g.fillStyle = 'rgba(10,7,5,0.7)';
+  for (let y = 0; y < h; y += 32) g.fillRect(0, y, w, 3);
+  grain(g, w, h, 18);
+});
+
+export const stationTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#cfc7b4';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#a9a08d';
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) g.strokeRect(x * 32 + 0.5, y * 32 + 0.5, 32, 32);
+  blotches(g, w, h, 12, 'rgba(70,60,50,0.18)', 20);
+  g.fillStyle = 'rgba(30,24,20,0.5)';
+  g.fillRect(0, h - 6, w, 6);
+  grain(g, w, h, 10);
+});
+
+export const metroSeatTex = () => canvasTexture(64, 64, (g, w, h) => {
+  g.fillStyle = '#1f6f7a';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(150,220,220,0.18)';
+  for (let i = 0; i < 120; i++) g.fillRect(rand() * w, rand() * h, 1, 1);
+  g.fillStyle = 'rgba(10,40,44,0.5)';
+  for (let y = 0; y < h; y += 8) g.fillRect(0, y, w, 1);
+  grain(g, w, h, 10);
+});
+
+export const cursiveSignTex = (text, bg = '#e9e0cc', fg = '#2b2320') => canvasTexture(256, 64, (g, w, h) => {
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(90,70,50,0.15)';
+  for (let i = 0; i < 40; i++) g.fillRect(rand() * w, rand() * h, 2, 1);
+  g.fillStyle = fg;
+  g.font = 'italic 34px "Brush Script MT", "Segoe Script", cursive';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2 + 2);
+  grain(g, w, h, 8);
+});
+
+// Night sky: gradient, stars, painterly violet clouds and a moon.
+export const skyTex = () => canvasTexture(1024, 512, (g, w, h) => {
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#080a16');
+  grad.addColorStop(0.45, '#1d1630');
+  grad.addColorStop(0.72, '#3a2b4d');
+  grad.addColorStop(1, '#241a33');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 420; i++) {
+    const y = rand() * h * 0.75;
+    g.fillStyle = `rgba(255,255,255,${0.15 + rand() * 0.7})`;
+    g.fillRect(rand() * w, y, rand() < 0.1 ? 2 : 1, 1);
+  }
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = `rgba(${120 + rand() * 40},${100 + rand() * 40},${160 + rand() * 50},${0.05 + rand() * 0.09})`;
+    g.beginPath();
+    g.ellipse(rand() * w, h * (0.35 + rand() * 0.5), 60 + rand() * 180, 10 + rand() * 26, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  const mx = w * 0.63, my = h * 0.3;
+  const halo = g.createRadialGradient(mx, my, 4, mx, my, 46);
+  halo.addColorStop(0, 'rgba(255,244,206,0.95)');
+  halo.addColorStop(0.45, 'rgba(255,232,170,0.35)');
+  halo.addColorStop(1, 'rgba(255,232,170,0)');
+  g.fillStyle = halo;
+  g.fillRect(mx - 50, my - 50, 100, 100);
+  g.fillStyle = '#f6ecc9';
+  g.beginPath();
+  g.arc(mx, my, 14, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = 'rgba(200,190,160,0.5)';
+  g.beginPath();
+  g.arc(mx - 5, my - 3, 3, 0, Math.PI * 2);
+  g.arc(mx + 6, my + 4, 2, 0, Math.PI * 2);
+  g.fill();
+});
+
+export const moonTex = () => canvasTexture(64, 64, (g, w, h) => {
+  const halo = g.createRadialGradient(w / 2, h / 2, 6, w / 2, h / 2, 32);
+  halo.addColorStop(0, 'rgba(255,246,214,1)');
+  halo.addColorStop(0.42, 'rgba(255,238,190,0.9)');
+  halo.addColorStop(0.62, 'rgba(255,232,170,0.28)');
+  halo.addColorStop(1, 'rgba(255,232,170,0)');
+  g.fillStyle = halo;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(210,198,160,0.45)';
+  for (let i = 0; i < 8; i++) {
+    g.beginPath();
+    g.arc(w / 2 + (rand() - 0.5) * 26, h / 2 + (rand() - 0.5) * 26, 1 + rand() * 3, 0, Math.PI * 2);
     g.fill();
   }
 });
