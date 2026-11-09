@@ -21,6 +21,117 @@ function whiteColors(geo) {
 }
 
 /*
+ * Chamfered box: every edge cut at 45 degrees so shelves, counters and crates stop reading as
+ * raw cubes. Indexed (like BoxGeometry) so it merges into the same batch buckets — no extra draw
+ * calls. UVs are planar-projected in world metres, so `tile` keeps the 1 repeat == 1 metre
+ * contract without worldUV's fixed six-face layout.
+ */
+export function chamferedBox(w, h, d, c = 0.02, tile = 1, faceUV = false) {
+  const he = [w / 2, h / 2, d / 2];
+  c = Math.max(0, Math.min(c, Math.min(he[0], he[1], he[2]) * 0.45));
+  const pos = [], nor = [], uv = [], idx = [];
+  const HINTS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+
+  const emit = (pts, hint) => {
+    // Newell normal decides winding; reversed when it points into the box.
+    let nx = 0, ny = 0, nz = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      nx += (a[1] - b[1]) * (a[2] + b[2]);
+      ny += (a[2] - b[2]) * (a[0] + b[0]);
+      nz += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    const nl = Math.hypot(nx, ny, nz) || 1;
+    nx /= nl; ny /= nl; nz /= nl;
+    // Reversing the polygon negates its normal, so flip the stored normal too.
+    if (nx * hint[0] + ny * hint[1] + nz * hint[2] < 0) {
+      pts = pts.slice().reverse();
+      nx = -nx; ny = -ny; nz = -nz;
+    }
+    // Tangent basis for planar UVs (metres, scaled by tile).
+    const up = Math.abs(ny) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+    let t1 = [
+      ny * up[2] - nz * up[1],
+      nz * up[0] - nx * up[2],
+      nx * up[1] - ny * up[0],
+    ];
+    const tl = Math.hypot(t1[0], t1[1], t1[2]) || 1;
+    t1 = [t1[0] / tl, t1[1] / tl, t1[2] / tl];
+    const t2 = [
+      ny * t1[2] - nz * t1[1],
+      nz * t1[0] - nx * t1[2],
+      nx * t1[1] - ny * t1[0],
+    ];
+    const base = pos.length / 3;
+    // faceUV mode stretches each face to 0..1 like BoxGeometry does, so props that mix beveled
+    // and plain parts keep one texture density; world mode keeps metre-scaled tiling.
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+    const proj = pts.map((p) => [
+      p[0] * t1[0] + p[1] * t1[1] + p[2] * t1[2],
+      p[0] * t2[0] + p[1] * t2[1] + p[2] * t2[2],
+    ]);
+    if (faceUV) for (const [a, b] of proj) {
+      u0 = Math.min(u0, a); u1 = Math.max(u1, a);
+      v0 = Math.min(v0, b); v1 = Math.max(v1, b);
+    }
+    const du = faceUV ? Math.max(1e-6, u1 - u0) : 1, dv = faceUV ? Math.max(1e-6, v1 - v0) : 1;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], [a, b] = proj[i];
+      pos.push(p[0], p[1], p[2]);
+      nor.push(nx, ny, nz);
+      uv.push(faceUV ? (a - u0) / du : a * tile, faceUV ? (b - v0) / dv : b * tile);
+    }
+    for (let i = 1; i < pts.length - 1; i++) idx.push(base, base + i, base + i + 1);
+  };
+
+  // Six flat faces, each inset by the chamfer on all sides.
+  for (let i = 0; i < 3; i++) {
+    const j = (i + 1) % 3, k = (i + 2) % 3;
+    for (const s of [-1, 1]) {
+      const pts = [];
+      for (const [sj, sk] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const p = [0, 0, 0];
+        p[i] = s * he[i]; p[j] = sj * (he[j] - c); p[k] = sk * (he[k] - c);
+        pts.push(p);
+      }
+      emit(pts, HINTS[i * 2 + (s > 0 ? 0 : 1)]);
+    }
+  }
+  // Twelve chamfer quads, one per original edge.
+  for (let i = 0; i < 3; i++) {
+    const j = (i + 1) % 3, k = (i + 2) % 3;
+    for (const si of [-1, 1]) for (const sj of [-1, 1]) {
+      const hint = [0, 0, 0];
+      hint[i] = si; hint[j] = sj;
+      const pts = [];
+      for (const sk of [-1, 1]) {
+        const p1 = [0, 0, 0], p2 = [0, 0, 0];
+        p1[i] = si * he[i]; p1[j] = sj * (he[j] - c); p1[k] = sk * (he[k] - c);
+        p2[j] = sj * he[j]; p2[i] = si * (he[i] - c); p2[k] = sk * (he[k] - c);
+        pts.push(p1, p2);
+      }
+      // Order p1(-k), p2(-k), p2(+k), p1(+k) for a clean quad.
+      emit([pts[0], pts[1], pts[3], pts[2]], hint);
+    }
+  }
+  // Eight corner triangles where three chamfer planes meet.
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+    emit([
+      [sx * he[0], sy * (he[1] - c), sz * (he[2] - c)],
+      [sx * (he[0] - c), sy * he[1], sz * (he[2] - c)],
+      [sx * (he[0] - c), sy * (he[1] - c), sz * he[2]],
+    ], [sx, sy, sz]);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nor), 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
+  geo.setIndex(idx);
+  return geo;
+}
+
+/*
  * Baked ambient occlusion as a vertex colour: the underside goes darkest, the lower quarter
  * of the sides fade up to full brightness and the top edge picks up a little ceiling-junction
  * shading. Materials opt in with `vertexColors: true`; unlit/basic materials ignore it.
@@ -137,9 +248,10 @@ export function createBuilder(scene, { poolSize = 8 } = {}) {
   };
   const addBounds = (minX, maxX, minZ, maxZ) => addCollider((minX + maxX) / 2, (minZ + maxZ) / 2, (maxX - minX) / 2, (maxZ - minZ) / 2);
 
-  function box(w, h, d, mat, x, y, z, { collide = true, occlude = false, tile = 1, parent = scene, ry = 0 } = {}) {
-    const geo = bakeAO(new THREE.BoxGeometry(w, h, d));
-    if (tile) worldUV(geo, w, h, d, tile);
+  function box(w, h, d, mat, x, y, z, { collide = true, occlude = false, tile = 1, bevel = 0, parent = scene, ry = 0 } = {}) {
+    const geo = bevel > 0
+      ? bakeAO(chamferedBox(w, h, d, bevel, tile))
+      : (() => { const g = bakeAO(new THREE.BoxGeometry(w, h, d)); if (tile) worldUV(g, w, h, d, tile); return g; })();
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z);
     mesh.rotation.y = ry;

@@ -99,13 +99,13 @@ export function buildWorld(scene) {
 
   // --- Store fixtures ----------------------------------------------------
   const fridgeMat = glowMat({ map: T.fridgeTex() }, 0x2a2a2a);
-  box(10, 2.3, 0.8, mats.metal, -2.8, 1.15, -5.6);
+  box(10, 2.3, 0.8, mats.metal, -2.8, 1.15, -5.6, { bevel: 0.04 });
   plane(10, 2, fridgeMat, -2.8, 1.1, -5.19, 0, 0, [1, 0.5]);
 
   const shelf = (x, z0, z1, mi) => {
     const len = z1 - z0, zc = (z0 + z1) / 2;
-    box(0.7, 1.7, len, mats.metal, x, 0.85, zc);
-    box(0.76, 0.05, len + 0.04, mats.metal, x, 1.72, zc, { collide: false });
+    box(0.7, 1.7, len, mats.metal, x, 0.85, zc, { bevel: 0.03 });
+    box(0.76, 0.05, len + 0.04, mats.metal, x, 1.72, zc, { collide: false, bevel: 0.01 });
     for (const s of [-1, 1]) plane(len, 1.5, products[(mi + (s > 0 ? 1 : 0)) % 3], x + s * 0.36, 0.85, zc, (s * Math.PI) / 2, 0, [1, 1 / 1.5]);
   };
   shelf(-1.2, -3.5, 0.5, 0);
@@ -127,16 +127,16 @@ export function buildWorld(scene) {
   });
 
   // Register counter.
-  box(6.4, 1.0, 0.8, mats.counter, -4.7, 0.5, 2.8);
-  box(6.5, 0.06, 0.9, mats.dark, -4.7, 1.03, 2.8, { collide: false });
+  box(6.4, 1.0, 0.8, mats.counter, -4.7, 0.5, 2.8, { bevel: 0.03 });
+  box(6.5, 0.06, 0.9, mats.dark, -4.7, 1.03, 2.8, { collide: false, bevel: 0.012 });
   const screenMat = glowMat({ color: 0x7fd1ff }, 0x10161a);
   const screen = box(0.24, 0.15, 0.03, screenMat, -5.3, 1.36, 2.6, { collide: false, tile: 0 });
   screen.rotation.x = -0.35;
-  refs.register = [box(0.4, 0.2, 0.36, mats.dark, -5.3, 1.16, 2.72, { collide: false }), screen];
+  refs.register = [box(0.4, 0.2, 0.36, mats.dark, -5.3, 1.16, 2.72, { collide: false, bevel: 0.02 }), screen];
   box(0.7, 0.45, 0.45, glowMat({ color: 0xffa648 }, 0x2a1c10), -2.3, 1.28, 2.8, { collide: false, tile: 0 });
-  box(0.4, 1.5, 2.4, products[2], -7.75, 1.25, 1.0, { tile: 1 / 1.5 });
-  box(4, 1.0, 0.4, products[1], 0.5, 0.5, 5.6, { tile: 1 / 1.5 });
-  box(0.8, 1.1, 6, mats.metal, 7.55, 0.55, -1.5);
+  box(0.4, 1.5, 2.4, products[2], -7.75, 1.25, 1.0, { tile: 1 / 1.5, bevel: 0.02 });
+  box(4, 1.0, 0.4, products[1], 0.5, 0.5, 5.6, { tile: 1 / 1.5, bevel: 0.025 });
+  box(0.8, 1.1, 6, mats.metal, 7.55, 0.55, -1.5, { bevel: 0.03 });
   plane(6, 0.9, glowMat({ map: T.productsTex(['#f4e7c9', '#e94', '#6a3', '#fff', '#c33']) }, 0x2a2a2a), 7.13, 0.6, -1.5, -Math.PI / 2, 0, [1, 1 / 1.5]);
   plane(1.2, 0.3, lam({ map: T.signTex('STAFF ONLY', '#ddd', '#222') }), 5.25, 2.55, -5.99, 0, 0, null);
 
@@ -146,25 +146,25 @@ export function buildWorld(scene) {
     plane(0.22, 0.1, basic({ color: 0x55ee88 }), 3.165, 1.48, -7.4, Math.PI / 2, 0, null),
   ];
   refs.boxes = [
-    box(0.6, 0.4, 0.5, mats.cardboard, 7.3, 0.2, -9.4, { tile: 0 }),
-    box(0.6, 0.4, 0.5, mats.cardboard, 7.25, 0.6, -9.35, { collide: false, tile: 0 }),
-    box(0.6, 0.4, 0.5, mats.cardboard, 7.32, 1.0, -9.42, { collide: false, tile: 0 }),
+    box(0.6, 0.4, 0.5, mats.cardboard, 7.3, 0.2, -9.4, { tile: 0, bevel: 0.02 }),
+    box(0.6, 0.4, 0.5, mats.cardboard, 7.25, 0.6, -9.35, { collide: false, tile: 0, bevel: 0.02 }),
+    box(0.6, 0.4, 0.5, mats.cardboard, 7.32, 1.0, -9.42, { collide: false, tile: 0, bevel: 0.02 }),
   ];
-  box(2.0, 0.75, 0.7, mats.wood, 5.6, 0.375, -9.6);
+  box(2.0, 0.75, 0.7, mats.wood, 5.6, 0.375, -9.6, { bevel: 0.03 });
   refs.staticScreen = T.staticScreen();
   refs.monitor = [
-    box(0.5, 0.42, 0.45, mats.dark, 6.1, 0.96, -9.7, { collide: false }),
+    box(0.5, 0.42, 0.45, mats.dark, 6.1, 0.96, -9.7, { collide: false, bevel: 0.02 }),
     plane(0.4, 0.3, basic({ map: refs.staticScreen.texture }), 6.1, 0.97, -9.47, 0, 0, null),
   ];
   refs.phone = [
     box(0.22, 0.07, 0.26, mats.dark, 5.0, 0.785, -9.6, { collide: false }),
     box(0.06, 0.06, 0.24, mats.dark, 4.92, 0.85, -9.6, { collide: false }),
   ];
-  box(0.55, 0.8, 0.55, lam({ color: 0x2d5a8c, vertexColors: true }), 3.5, 0.4, -9.5);
+  box(0.55, 0.8, 0.55, lam({ color: 0x2d5a8c, vertexColors: true }), 3.5, 0.4, -9.5, { bevel: 0.03 });
   refs.trashBag = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), lam({ color: 0x15161a, flatShading: true }));
   refs.trashBag.position.set(3.5, 0.95, -9.5);
   scene.add(refs.trashBag);
-  box(0.5, 2.0, 1.6, mats.cardboard, 7.7, 1.0, -7.4, { tile: 0 });
+  box(0.5, 2.0, 1.6, mats.cardboard, 7.7, 1.0, -7.4, { tile: 0, bevel: 0.025 });
   box(0.12, 0.1, 0.16, mats.dark, 3.1, 3.0, -9.85, { collide: false });
 
   // --- Outside -----------------------------------------------------------
@@ -178,12 +178,12 @@ export function buildWorld(scene) {
   box(0.4, 0.04, 0.2, basic({ color: 0xffd9a0 }), -3.4, 4.93, 12, { collide: false, tile: 0 });
   light(-3.4, 4.8, 12, 0xffb36b, 30, 20, false);
 
-  box(0.9, 1.9, 0.75, lam({ color: 0xb81d24, vertexColors: true }), 9.3, 0.95, 8);
+  box(0.9, 1.9, 0.75, lam({ color: 0xb81d24, vertexColors: true }), 9.3, 0.95, 8, { bevel: 0.04 });
   plane(0.7, 1.2, basic({ map: T.vendingTex() }), 8.84, 1.15, 8, -Math.PI / 2, 0, null);
   light(8.3, 1.4, 8, 0xbfe0ff, 3, 5, false);
 
-  refs.dumpster = box(1.8, 1.2, 1.0, lam({ color: 0x2f5a3a, vertexColors: true }), -7.5, 0.6, 9.0);
-  box(1.9, 0.08, 1.1, lam({ color: 0x223f2a, vertexColors: true }), -7.5, 1.24, 9.0, { collide: false });
+  refs.dumpster = box(1.8, 1.2, 1.0, lam({ color: 0x2f5a3a, vertexColors: true }), -7.5, 0.6, 9.0, { bevel: 0.05 });
+  box(1.9, 0.08, 1.1, lam({ color: 0x223f2a, vertexColors: true }), -7.5, 1.24, 9.0, { collide: false, bevel: 0.015 });
 
   b.addBounds(-11, -10.5, 6, 16);
   b.addBounds(10.5, 11, 6, 16);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { createBuilder } from '../../src/world/builder.js';
+import { createBuilder, chamferedBox, bakeAO } from '../../src/world/builder.js';
 import { NPC, makePerson } from '../../src/world/person.js';
 import { GHOST } from '../../src/game/director.js';
 import { formatClock } from '../../src/game/hud.js';
@@ -25,6 +25,27 @@ describe('level builder', () => {
     const b = createBuilder(new THREE.Scene());
     b.addBounds(-2, 4, 1, 2);
     expect(b.colliders[0]).toEqual({ cx: 1, cz: 1.5, hx: 3, hz: 0.5, rot: 0 });
+  });
+
+  it('builds an indexed outward-facing chamfered box that merges with plain boxes', () => {
+    const geo = chamferedBox(1, 0.6, 2, 0.05);
+    expect(geo.index).not.toBeNull();
+    for (const name of ['position', 'normal', 'uv']) expect(geo.attributes[name]).toBeTruthy();
+    const p = geo.attributes.position, idx = geo.index;
+    for (let t = 0; t < idx.count; t += 3) {
+      const a = idx.getX(t), b = idx.getX(t + 1), c = idx.getX(t + 2);
+      const ux = p.getX(b) - p.getX(a), uy = p.getY(b) - p.getY(a), uz = p.getZ(b) - p.getZ(a);
+      const vx = p.getX(c) - p.getX(a), vy = p.getY(c) - p.getY(a), vz = p.getZ(c) - p.getZ(a);
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const cx = (p.getX(a) + p.getX(b) + p.getX(c)) / 3;
+      const cy = (p.getY(a) + p.getY(b) + p.getY(c)) / 3;
+      const cz = (p.getZ(a) + p.getZ(b) + p.getZ(c)) / 3;
+      expect(nx * cx + ny * cy + nz * cz).toBeGreaterThan(0);
+    }
+    // bakeAO gives it the same attribute set as a plain builder box, so batch merging holds.
+    const ao = bakeAO(chamferedBox(1, 1, 1, 0.04));
+    const plain = bakeAO(new THREE.BoxGeometry(1, 1, 1));
+    expect(Object.keys(ao.attributes).sort()).toEqual(Object.keys(plain.attributes).sort());
   });
 
   it('cuts grid lights and glow materials on blackout, leaving off-grid lights on', () => {

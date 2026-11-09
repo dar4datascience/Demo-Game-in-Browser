@@ -264,7 +264,7 @@ export function buildWorld(scene) {
 
   // --- Seller's bodega fixtures --------------------------------------------
   const sellerX = unitAt('B-4').x, bFront = ROWS.B, bFace = ROW_FACE.B;
-  refs.sellerCounter = box(1.6, 0.95, 0.6, M.wood, sellerX, 0.66, bFront + bFace * 1.6);
+  refs.sellerCounter = box(1.6, 0.95, 0.6, M.wood, sellerX, 0.66, bFront + bFace * 1.6, { bevel: 0.04 });
   refs.sellerLamp = light(sellerX, 2.4, bFront + bFace * 2.2, 0xffd7a0, 10, 7);
   refs.scale = [
     box(0.4, 0.12, 0.3, M.metal, sellerX + 0.6, 1.2, bFront + bFace * 1.6, { collide: false }),
@@ -300,8 +300,8 @@ export function buildWorld(scene) {
   // Rotulista stand: Pasillo 3, local 3, deep in the market so the pancarta run is a real one.
   const rotX = 2.2, rotZ = aisleZ(6);
   refs.rotulista = {};
-  refs.rotulista.stand = place(box(0.9, 0.9, 1.8, M.wood, rotX, 0.45, rotZ, { collide: false }), rotX, rotZ, 0, 0.45, 0.9);
-  box(0.95, 0.06, 1.85, M.wood, rotX, 0.93, rotZ, { collide: false });
+  refs.rotulista.stand = place(box(0.9, 0.9, 1.8, M.wood, rotX, 0.45, rotZ, { collide: false, bevel: 0.04 }), rotX, rotZ, 0, 0.45, 0.9);
+  box(0.95, 0.06, 1.85, M.wood, rotX, 0.93, rotZ, { collide: false, bevel: 0.02 });
   refs.rotulista.sign = sign('rotulista', 1.8, 0.55, rotX - 0.48, 2.1, rotZ, -Math.PI / 2);
   const pickup = new THREE.Group();
   pickup.position.set(rotX - 0.55, 0.6, rotZ);
@@ -315,7 +315,7 @@ export function buildWorld(scene) {
   // Vendor counters for the consumer's shopping list, sack piles for the diablero's pickups.
   for (const id of ['B-2', 'A-8', 'C-5']) {
     const { x, z, face } = unitAt(id);
-    refs.counters[id] = box(1.8, 0.9, 0.5, M.wood, x, 0.63, z + face * 1.3);
+    refs.counters[id] = box(1.8, 0.9, 0.5, M.wood, x, 0.63, z + face * 1.3, { bevel: 0.04 });
   }
   for (const id of ['A-3', 'C-9', 'B-11']) {
     const { x, z, face } = unitAt(id);
@@ -394,7 +394,7 @@ export function buildWorld(scene) {
   box(0.4, 3, 378, M.boundary, -72.2, 1.5, 167, { occlude: true });
   box(0.4, 3, 378, M.boundary, 72.2, 1.5, 167, { occlude: true });
   box(144.8, 3, 0.4, M.boundary, 0, 1.5, SOUTH_Z, { occlude: true });
-  for (const x of [-31.3, -20.7]) box(0.6, 4.6, 0.6, M.pillar, x, 2.3, NORTH_Z);
+  for (const x of [-31.3, -20.7]) box(0.6, 4.6, 0.6, M.pillar, x, 2.3, NORTH_Z, { bevel: 0.04 });
   plane(9.5, 0.9, glowMat({ map: T.signTex('CENTRAL DE ABASTO · EJE 5 SUR', '#1f4fa3', '#ffffff', 256, 32) }, 0x0e1626), -26, 4.75, NORTH_Z + 0.3, 0, 0, null);
   plane(9, 0.7, lam({ map: T.signTex('ABARROTES Y VÍVERES · LADO A', '#1f4fa3', '#ffffff', 256, 24) }), 0, 2.4, SOUTH_Z - 0.3, Math.PI, 0, null);
   plane(4, 0.6, lam({ map: T.signTex('EJE 4 OTE. →', '#ffffff', '#1f4fa3', 128, 24) }), -72.05, 2.2, 166, Math.PI / 2, 0, null);
