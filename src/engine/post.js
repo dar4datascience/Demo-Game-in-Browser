@@ -49,12 +49,12 @@ vec3 bloom(vec2 uv) {
   for (int i = 0; i < 4; i++) {
     float a = float(i) * 1.5707963;
     vec2 o = vec2(cos(a), sin(a)) * (3.5 / uRes.y);
-    g += max(texture2D(tDiffuse, uv + o).rgb - 0.55, 0.0);
+    g += max(texture2D(tDiffuse, uv + o).rgb - 0.68, 0.0);
   }
   for (int i = 0; i < 4; i++) {
     float a = float(i) * 1.5707963 + 0.785398;
     vec2 o = vec2(cos(a), sin(a)) * (11.0 / uRes.y);
-    g += max(texture2D(tDiffuse, uv + o).rgb - 0.62, 0.0) * 0.7;
+    g += max(texture2D(tDiffuse, uv + o).rgb - 0.78, 0.0) * 0.7;
   }
   return g * 0.125;
 }
