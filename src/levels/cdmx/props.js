@@ -181,10 +181,10 @@ export function road(b, M) {
   b.light(-8, 0.9, 30, 0xffd08a, 18, 12);
 
   // Silhouettes on the pavement.
-  const one = new NPC({ top: '#241f2e', bottom: '#181420', skin: '#8a6a58', hair: '#0e0b12' }, b.scene);
+  const one = new NPC({ top: '#241f2e', bottom: '#181420', skin: '#8a6a58', hair: '#0e0b12', outfit: 'jacket', figure: 'masc' }, b.scene);
   one.place(14, 33);
   one.face(-20, 30);
-  const two = new NPC({ top: '#2a2438', bottom: '#1a1622', skin: '#7a5c4c', hair: '#0c0a10', height: 0.94 }, b.scene);
+  const two = new NPC({ top: '#2a2438', bottom: '#1a1622', skin: '#7a5c4c', hair: '#0c0a10', height: 0.94, outfit: 'tee', figure: 'masc' }, b.scene);
   two.place(17, 31.5);
   two.face(20, 36);
 
@@ -308,7 +308,7 @@ export function bride(b, M) {
   // Window glass and the mannequin behind it.
   add(b, new THREE.PlaneGeometry(9, 4), basic({ color: 0xbfe0ff, transparent: true, opacity: 0.1, depthWrite: false }), X, 2.3, Z + 0.02);
   slab(b, 1.4, 0.5, 1.4, M.stone, X, Z - 1.6);
-  const doll = new NPC({ top: '#efe9dc', skin: '#e6ded0', hair: '#2a2420', dress: true, veil: true, height: 1.02 }, b.scene);
+  const doll = new NPC({ top: '#efe9dc', skin: '#e6ded0', hair: '#2a2420', dress: true, veil: true, outfit: 'dress', hairStyle: 'long', build: 'slim', figure: 'femme', height: 1.02 }, b.scene);
   doll.place(X, Z - 1.6);
   doll.face(X, Z + 4);
   doll.root.position.y = 0.5;

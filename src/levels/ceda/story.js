@@ -16,25 +16,25 @@ export const CHARACTERS = {
 export const FLOW_SECONDS = 70;
 
 const PEOPLE = {
-  diablero: { top: '#8a2a1e', bottom: '#2f3a4a', skin: '#a8754f', hair: '#141210' },
-  cargador: { top: '#c9b48a', bottom: '#33302a', skin: '#9c6a46', hair: '#101010' },
-  vendor: { top: '#f2f2ee', bottom: '#2a2a2a', skin: '#b98560', hair: '#1a1410' },
-  vendora: { top: '#7a3e6a', bottom: '#3a2a2a', skin: '#b07850', hair: '#2a2a2a', longHair: true, dress: true },
-  buyer: { top: '#2f5d8a', bottom: '#2a2c33', skin: '#c08a60', hair: '#1a1410' },
-  woman: { top: '#4a4f3e', bottom: '#2a2a2a', skin: '#d8c2ae', hair: '#0b0b0b', longHair: true, veil: true, dress: true },
+  diablero: { top: '#8a2a1e', bottom: '#2f3a4a', skin: '#a8754f', hair: '#141210', outfit: 'jacket', figure: 'masc' },
+  cargador: { top: '#c9b48a', bottom: '#33302a', skin: '#9c6a46', hair: '#101010', outfit: 'hoodie', build: 'heavy', hairStyle: 'short', figure: 'masc' },
+  vendor: { top: '#f2f2ee', bottom: '#2a2a2a', skin: '#b98560', hair: '#1a1410', outfit: 'apron', hairStyle: 'bun', figure: 'masc' },
+  vendora: { top: '#7a3e6a', bottom: '#3a2a2a', skin: '#b07850', hair: '#2a2a2a', longHair: true, dress: true, outfit: 'dress', build: 'slim', figure: 'femme' },
+  buyer: { top: '#2f5d8a', bottom: '#2a2c33', skin: '#c08a60', hair: '#1a1410', outfit: 'tee', hairStyle: 'bob', figure: 'masc' },
+  woman: { top: '#4a4f3e', bottom: '#2a2a2a', skin: '#d8c2ae', hair: '#0b0b0b', longHair: true, veil: true, dress: true, outfit: 'dress', build: 'slim', figure: 'femme' },
 };
 
 // The diablero can present as a man, a woman or nonbinary; the work clothes stay the same.
 export const DIABLERO_VARIANTS = {
   man: { ...PEOPLE.diablero },
-  woman: { ...PEOPLE.diablero, top: '#7a2a3e', longHair: true },
+  woman: { ...PEOPLE.diablero, top: '#7a2a3e', longHair: true, figure: 'femme' },
   nonbinary: { ...PEOPLE.diablero, top: '#6a2a5a', hair: '#2a2a2a' },
 };
 
 // Keys the player presses, in order, to stay awake by the fire.
 export const WAKE_SEQUENCE = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyW', 'KeyD', 'KeyA', 'KeyS'];
 
-const GHOST_DIABLERO = { ...GHOST, top: '#8a2a1e', bottom: '#2f3a4a', dress: false };
+const GHOST_DIABLERO = { ...GHOST, top: '#8a2a1e', bottom: '#2f3a4a', dress: false, outfit: 'jacket', figure: 'masc' };
 
 function sit(npc) {
   npc.legs.forEach((l) => (l.rotation.x = -1.1));

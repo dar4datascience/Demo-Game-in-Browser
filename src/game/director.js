@@ -44,4 +44,4 @@ export function createDirector({ game, world, hud, sfx, player, scene, pipe }) {
   return director;
 }
 
-export const GHOST = { top: '#e6e2d6', skin: '#d8d2c8', hair: '#060606', longHair: true, dress: true, emissive: 0.55, height: 1.04, hollow: true };
+export const GHOST = { top: '#e6e2d6', skin: '#d8d2c8', hair: '#060606', longHair: true, dress: true, outfit: 'dress', emissive: 0.55, height: 1.04, hollow: true, figure: 'femme' };

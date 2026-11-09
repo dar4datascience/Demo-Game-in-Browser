@@ -3,9 +3,9 @@ import { lam } from '../../engine/post.js';
 import { cardboardTex } from '../../engine/textures.js';
 import { createDirector, GHOST } from '../../game/director.js';
 
-const SALARYMAN = { top: '#2c3442', bottom: '#22252b', skin: '#d6a983', hair: '#1a1612' };
-const WOMAN = { top: '#6f655a', bottom: '#2a2a2a', skin: '#e0c7b0', hair: '#0b0b0b', longHair: true, veil: true, dress: true };
-const CLERK = { top: '#1d8a86', bottom: '#2a2c33', skin: '#d9b08c', hair: '#201810' };
+const SALARYMAN = { top: '#2c3442', bottom: '#22252b', skin: '#d6a983', hair: '#1a1612', outfit: 'suit', hairStyle: 'short', figure: 'masc' };
+const WOMAN = { top: '#6f655a', bottom: '#2a2a2a', skin: '#e0c7b0', hair: '#0b0b0b', longHair: true, veil: true, dress: true, outfit: 'dress', build: 'slim', figure: 'femme' };
+const CLERK = { top: '#1d8a86', bottom: '#2a2c33', skin: '#d9b08c', hair: '#201810', outfit: 'uniform', hairStyle: 'bun', figure: 'masc' };
 
 const ENTRANCE = [[4.5, 7], [4.5, 4.2], [-4.5, 3.9]];
 const EXIT = [[4.5, 4.2], [4.5, 7], [4.5, 16]];
