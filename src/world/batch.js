@@ -11,7 +11,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  * single subtree. Transparent materials (hitboxes, glass, flames) are never merged.
  */
 
-const ATTRS = new Set(['position', 'normal', 'uv']);
+const ATTRS = new Set(['position', 'normal', 'uv', 'color']);
 
 // Recursively collect every Object3D referenced from `refs` (plain objects and arrays included).
 // Values in `skip` (e.g. a registry array used only by tests) are not walked.
@@ -71,6 +71,18 @@ export function mergeMeshes(meshes, parent) {
   }
   const out = [];
   for (const { mat, geoms } of buckets.values()) {
+    // mergeGeometries needs identical attribute sets: colour only survives on
+    // vertexColors materials, everything else is stripped back to white/none.
+    const wantColor = !!mat.vertexColors;
+    for (const geo of geoms) {
+      const has = !!geo.attributes.color;
+      if (wantColor && !has) {
+        const n = geo.attributes.position.count;
+        geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+      } else if (!wantColor && has) {
+        geo.deleteAttribute('color');
+      }
+    }
     const merged = geoms.length === 1 ? geoms[0] : mergeGeometries(geoms, false);
     if (!merged) continue;
     merged.computeBoundingSphere();

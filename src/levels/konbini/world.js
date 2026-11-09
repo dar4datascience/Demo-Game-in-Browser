@@ -19,23 +19,23 @@ export function buildWorld(scene) {
   const refs = {};
 
   const mats = {
-    floor: lam({ map: T.floorTex() }),
-    wall: lam({ map: T.wallTex() }),
-    ceiling: lam({ map: T.ceilingTex() }),
-    metal: lam({ map: T.metalTex() }),
-    asphalt: lam({ map: T.asphaltTex() }),
-    concrete: lam({ map: T.concreteTex() }),
-    cardboard: lam({ map: T.cardboardTex() }),
-    wood: lam({ map: T.woodTex() }),
-    counter: lam({ map: T.counterTex() }),
-    dark: lam({ color: 0x1c1d21 }),
+    floor: lam({ map: T.floorTex(), vertexColors: true }),
+    wall: lam({ map: T.wallTex(), vertexColors: true }),
+    ceiling: lam({ map: T.ceilingTex(), vertexColors: true }),
+    metal: lam({ map: T.metalTex(), vertexColors: true }),
+    asphalt: lam({ map: T.asphaltTex(), vertexColors: true }),
+    concrete: lam({ map: T.concreteTex(), vertexColors: true }),
+    cardboard: lam({ map: T.cardboardTex(), vertexColors: true }),
+    wood: lam({ map: T.woodTex(), vertexColors: true }),
+    counter: lam({ map: T.counterTex(), vertexColors: true }),
+    dark: lam({ color: 0x1c1d21, vertexColors: true }),
     glass: basic({ color: 0x8fb4c8, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }),
   };
   const products = [
     ['#d33', '#fc3', '#fff', '#e70', '#a22'],
     ['#2a6', '#9d4', '#fff', '#36c', '#147'],
     ['#c39', '#f8a', '#fe8', '#639', '#eee'],
-  ].map((p) => lam({ map: T.productsTex(p) }));
+  ].map((p) => lam({ map: T.productsTex(p), vertexColors: true }));
 
   scene.add(new THREE.AmbientLight(0x3a4260, 0.9));
 
@@ -160,7 +160,7 @@ export function buildWorld(scene) {
     box(0.22, 0.07, 0.26, mats.dark, 5.0, 0.785, -9.6, { collide: false }),
     box(0.06, 0.06, 0.24, mats.dark, 4.92, 0.85, -9.6, { collide: false }),
   ];
-  box(0.55, 0.8, 0.55, lam({ color: 0x2d5a8c }), 3.5, 0.4, -9.5);
+  box(0.55, 0.8, 0.55, lam({ color: 0x2d5a8c, vertexColors: true }), 3.5, 0.4, -9.5);
   refs.trashBag = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), lam({ color: 0x15161a, flatShading: true }));
   refs.trashBag.position.set(3.5, 0.95, -9.5);
   scene.add(refs.trashBag);
@@ -178,12 +178,12 @@ export function buildWorld(scene) {
   box(0.4, 0.04, 0.2, basic({ color: 0xffd9a0 }), -3.4, 4.93, 12, { collide: false, tile: 0 });
   light(-3.4, 4.8, 12, 0xffb36b, 30, 20, false);
 
-  box(0.9, 1.9, 0.75, lam({ color: 0xb81d24 }), 9.3, 0.95, 8);
+  box(0.9, 1.9, 0.75, lam({ color: 0xb81d24, vertexColors: true }), 9.3, 0.95, 8);
   plane(0.7, 1.2, basic({ map: T.vendingTex() }), 8.84, 1.15, 8, -Math.PI / 2, 0, null);
   light(8.3, 1.4, 8, 0xbfe0ff, 3, 5, false);
 
-  refs.dumpster = box(1.8, 1.2, 1.0, lam({ color: 0x2f5a3a }), -7.5, 0.6, 9.0);
-  box(1.9, 0.08, 1.1, lam({ color: 0x223f2a }), -7.5, 1.24, 9.0, { collide: false });
+  refs.dumpster = box(1.8, 1.2, 1.0, lam({ color: 0x2f5a3a, vertexColors: true }), -7.5, 0.6, 9.0);
+  box(1.9, 0.08, 1.1, lam({ color: 0x223f2a, vertexColors: true }), -7.5, 1.24, 9.0, { collide: false });
 
   b.addBounds(-11, -10.5, 6, 16);
   b.addBounds(10.5, 11, 6, 16);

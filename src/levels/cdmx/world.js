@@ -24,28 +24,28 @@ export function buildWorld(scene) {
   const refs = {};
 
   const M = {
-    stone: lam({ map: T.plasterTex('#6a6070', '#2e2740') }),
-    plaster: lam({ map: T.plasterTex() }),
-    gold: lam({ color: 0xe0b232, emissive: 0x6a4a08 }),
-    metal: lam({ map: T.metalTex() }),
-    bark: lam({ color: 0x2a2228 }),
-    jacaranda: lam({ color: 0x8a5ac8, emissive: 0x1a0a30 }),
-    wood: lam({ map: T.woodTex() }),
-    car: lam({ color: 0x2a2a38, emissive: 0x0a0a14 }),
+    stone: lam({ map: T.plasterTex('#6a6070', '#2e2740'), vertexColors: true }),
+    plaster: lam({ map: T.plasterTex(), vertexColors: true }),
+    gold: lam({ color: 0xe0b232, emissive: 0x6a4a08, vertexColors: true }),
+    metal: lam({ map: T.metalTex(), vertexColors: true }),
+    bark: lam({ color: 0x2a2228, vertexColors: true }),
+    jacaranda: lam({ color: 0x8a5ac8, emissive: 0x1a0a30, vertexColors: true }),
+    wood: lam({ map: T.woodTex(), vertexColors: true }),
+    car: lam({ color: 0x2a2a38, emissive: 0x0a0a14, vertexColors: true }),
     carGlass: basic({ color: 0x2a3a55 }),
-    tyre: lam({ color: 0x0c0c10 }),
-    stationFloor: lam({ map: T.concreteTex() }),
-    asphalt: lam({ map: T.asphaltTex() }),
-    stationWall: lam({ map: T.stationTex() }),
-    metroBody: lam({ color: 0xd9822b }),
-    metroInner: lam({ map: T.plasterTex('#4a4450', '#201a28'), side: THREE.BackSide }),
-    metroSeat: lam({ map: T.metroSeatTex() }),
-    chrome: lam({ color: 0xb8c0c8, emissive: 0x1a1a1e }),
+    tyre: lam({ color: 0x0c0c10, vertexColors: true }),
+    stationFloor: lam({ map: T.concreteTex(), vertexColors: true }),
+    asphalt: lam({ map: T.asphaltTex(), vertexColors: true }),
+    stationWall: lam({ map: T.stationTex(), vertexColors: true }),
+    metroBody: lam({ color: 0xd9822b, vertexColors: true }),
+    metroInner: lam({ map: T.plasterTex('#4a4450', '#201a28'), side: THREE.BackSide, vertexColors: true }),
+    metroSeat: lam({ map: T.metroSeatTex(), vertexColors: true }),
+    chrome: lam({ color: 0xb8c0c8, emissive: 0x1a1a1e, vertexColors: true }),
   };
 
   scene.add(new THREE.AmbientLight(0x5a4f80, 1.9), new THREE.HemisphereLight(0x7a6aa8, 0x241c30, 2.2));
   // Set here as well as in main.js: the headless harness has no main.js and shots swap fog per cut.
-  scene.fog = new THREE.Fog(0x2a2140, 10, 140);
+  scene.fog = new THREE.Fog(0x221b3d, 10, 140);
 
   // Cobbled ground for the whole backlot; one plane, 1 m cobbles.
   b.plane(380, 380, lam({ map: T.cobbleTex() }), 0, 0, 0, 0, -Math.PI / 2, [1 / 8, 1 / 8]);
@@ -88,7 +88,7 @@ export function buildWorld(scene) {
     refs,
     shotCam,
     cameras: [shotCam],
-    fog: [0x2a2140, 10, 140],
+    fog: [0x221b3d, 10, 140],
     render: { height: 480, photo: true },
     update(dt) {
       t += dt;

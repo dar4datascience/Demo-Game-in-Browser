@@ -84,10 +84,11 @@ describe('procedural textures', () => {
     }
   });
 
-  it('builds pixel-art textures: nearest filtering, sRGB, repeat wrapping', () => {
+  it('builds smooth-filtered textures: linear mipmaps, sRGB, repeat wrapping', () => {
     const t = canvasTexture(8, 8, () => {});
-    expect(t.magFilter).toBe(THREE.NearestFilter);
-    expect(t.minFilter).toBe(THREE.NearestFilter);
+    expect(t.magFilter).toBe(THREE.LinearFilter);
+    expect(t.minFilter).toBe(THREE.LinearMipmapLinearFilter);
+    expect(t.generateMipmaps).toBe(true);
     expect(t.colorSpace).toBe(THREE.SRGBColorSpace);
     expect(t.wrapS).toBe(THREE.RepeatWrapping);
   });

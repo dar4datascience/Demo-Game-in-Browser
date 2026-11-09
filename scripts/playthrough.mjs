@@ -36,7 +36,7 @@ const use = async (label, x, z, yaw, pitch) => {
   await page.keyboard.press('e');
   await frames(3);
 };
-const until = async (pred, label, timeout = 60000) => {
+const until = async (pred, label, timeout = 150000) => {
   const t = Date.now();
   while (Date.now() - t < timeout) {
     if (await page.evaluate(pred)) return;
@@ -64,12 +64,12 @@ await at(-4.5, 2.0, Math.PI, -0.1);
 await until(() => game.flags.customerWaiting, 'customer 1');
 await shot('customer1');
 await use('register', -5.3, 2.0, Math.PI, -0.4);
-await until(() => game.flags.customerWaiting, 'customer 2', 90000);
+await until(() => game.flags.customerWaiting, 'customer 2', 240000);
 await at(-4.5, 2.0, Math.PI, 0);
 await page.waitForTimeout(200);
 await shot('customer2');
 await use('register', -5.3, 2.0, Math.PI, -0.4);
-await until(() => game.flags.stage === 'trash', 'trash', 90000);
+await until(() => game.flags.stage === 'trash', 'trash', 240000);
 await at(-1.5, 4.0, Math.PI, 0);
 await page.waitForTimeout(300);
 await shot('woman-outside');

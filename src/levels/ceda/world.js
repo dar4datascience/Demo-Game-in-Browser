@@ -91,16 +91,16 @@ export function buildWorld(scene) {
   const refs = { units: {}, trucks: {}, counters: {}, pickups: {}, lamps: [], solid: [] };
 
   const M = {
-    asphalt: lam({ map: T.asphaltTex() }),
-    concrete: lam({ map: T.concreteTex() }),
-    wall: lam({ map: T.paintedWallTex() }),
-    boundary: lam({ map: T.paintedWallTex('#cfc6b0', '#9a3324') }),
-    roof: lam({ color: 0x5d5a55 }),
-    pillar: lam({ color: 0x9c9585 }),
-    metal: lam({ map: T.metalTex() }),
+    asphalt: lam({ map: T.asphaltTex(), vertexColors: true }),
+    concrete: lam({ map: T.concreteTex(), vertexColors: true }),
+    wall: lam({ map: T.paintedWallTex(), vertexColors: true }),
+    boundary: lam({ map: T.paintedWallTex('#cfc6b0', '#9a3324'), vertexColors: true }),
+    roof: lam({ color: 0x5d5a55, vertexColors: true }),
+    pillar: lam({ color: 0x9c9585, vertexColors: true }),
+    metal: lam({ map: T.metalTex(), vertexColors: true }),
     line: basic({ color: 0xbdbdb5 }),
-    hazard: lam({ map: T.hazardTex() }),
-    wood: lam({ map: T.woodTex() }),
+    hazard: lam({ map: T.hazardTex(), vertexColors: true }),
+    wood: lam({ map: T.woodTex(), vertexColors: true }),
   };
   const interiors = Object.fromEntries(['sacks', 'boxes', 'chiles'].map((k) => [k, glowMat({ map: T.bodegaInteriorTex(k) }, 0x0d0b09)]));
   const cortinas = ['#8d9298', '#6f8a7c', '#9a8f7c', '#7b8496'].flatMap((c) => [lam({ map: T.cortinaTex(c) }), lam({ map: T.cortinaTex(c, true) })]);
@@ -420,7 +420,7 @@ export function buildWorld(scene) {
   return Object.assign(b, {
     refs,
     cameras: [],
-    fog: [0x07080d, 6, 44],
+    fog: [0x141126, 6, 44],
     update(dt, movers) {
       for (const u of Object.values(refs.units)) {
         if (u.roll === u.target) continue;

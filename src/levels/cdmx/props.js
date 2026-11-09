@@ -1,10 +1,18 @@
 import * as THREE from 'three';
 import { lam, basic } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
+import { bakeAO } from '../../world/builder.js';
 import { NPC } from '../../world/person.js';
 
 const PI = Math.PI;
 const add = (b, geo, mat, x, y, z, { parent = b.scene, ry = 0, rx = 0, rz = 0 } = {}) => {
+  // Solids get baked AO; flat planes stay white so signs and floors are unaffected.
+  if (geo.type === 'PlaneGeometry') {
+    const n = geo.attributes.position.count;
+    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+  } else {
+    bakeAO(geo);
+  }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(x, y, z);
   mesh.rotation.set(rx, ry, rz);
@@ -108,7 +116,7 @@ export function biblioteca(b, M) {
   const mosaic = basic({ map: T.mosaicTex() });
   add(b, new THREE.PlaneGeometry(44, 14), mosaic, -75, 8.4, -55 + 11.05);
   // Dark plinth and columns so the mural floats over a base.
-  slab(b, 46, 2.4, 22.6, lam({ color: 0x241e2c }), -75, -55).position.y = 1.2;
+  slab(b, 46, 2.4, 22.6, lam({ color: 0x241e2c, vertexColors: true }), -75, -55).position.y = 1.2;
   for (let i = 0; i < 7; i++) {
     cyl(b, 0.5, 0.6, 2.6, 6, M.stone, -95 + i * 6.6, 1.3, -55 + 11.6);
   }

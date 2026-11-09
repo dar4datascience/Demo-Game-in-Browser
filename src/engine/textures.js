@@ -7,8 +7,10 @@ export const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const pick = (arr) => arr[Math.floor(rand() * arr.length)];
 
 function finish(texture) {
-  texture.magFilter = texture.minFilter = THREE.NearestFilter;
-  texture.generateMipmaps = false;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = 4;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -25,162 +27,419 @@ export function canvasTexture(w, h, draw) {
 
 function grain(g, w, h, amount) {
   const img = g.getImageData(0, 0, w, h);
-  for (let i = 0; i < img.data.length; i += 4) {
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
     const n = (rand() - 0.5) * amount;
-    img.data[i] += n;
-    img.data[i + 1] += n;
-    img.data[i + 2] += n;
+    d[i] += n;
+    d[i + 1] += n;
+    d[i + 2] += n;
+  }
+  // Copy the noise across the tile edges so mipmaps don't draw a seam on every repeat.
+  for (let y = 0; y < h; y++) {
+    const a = (y * w + w - 1) * 4, b = y * w * 4;
+    for (let c = 0; c < 3; c++) d[b + c] = d[a + c];
+  }
+  for (let x = 0; x < w; x++) {
+    const a = ((h - 1) * w + x) * 4, b = x * 4;
+    for (let c = 0; c < 3; c++) d[b + c] = d[a + c];
   }
   g.putImageData(img, 0, 0);
 }
 
-const flat = (color, amount, size = 32) => canvasTexture(size, size, (g, w, h) => {
+// Multiply a #rrggbb colour by f — per-tile value shifts without touching the hue.
+const shade = (hex, f) => {
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+  return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`;
+};
+
+/*
+ * Low-frequency mottling: a few big soft blobs of `color` at `alpha` for dirt, damp and wear.
+ * Blobs stay off the tile edges so the texture still wraps seamlessly under mipmaps.
+ */
+export function blotch(g, w, h, color, alpha = 1, n = 8, size = null) {
+  const s = size ?? Math.min(w, h) * 0.2;
+  g.save();
+  g.globalAlpha = alpha;
   g.fillStyle = color;
-  g.fillRect(0, 0, w, h);
-  grain(g, w, h, amount);
-});
+  for (let i = 0; i < n; i++) {
+    const rx = s * (0.4 + rand() * 0.9), ry = s * (0.3 + rand() * 0.7);
+    const m = Math.max(rx, ry) + 2;
+    const cx = Math.min(w - m, m + rand() * Math.max(1, w - 2 * m));
+    const cy = Math.min(h - m, m + rand() * Math.max(1, h - 2 * m));
+    g.beginPath();
+    g.ellipse(cx, cy, rx, ry, rand() * Math.PI, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.restore();
+}
+
+/*
+ * Grime pass for masonry, plaster and asphalt: damp streaks, dirt collected at the edges,
+ * hairline cracks, rubbed scratches and fine speckle. Everything stays off the tile edges.
+ */
+export function grime(g, w, h, { stain = 0.5, scratch = 0.4, edge = 0.4, crack = 0.5 } = {}) {
+  const m = 3;
+  for (let i = 0, n = Math.round(stain * w / 22); i < n; i++) {
+    const wd = 3 + rand() * 12;
+    const x = m + wd / 2 + rand() * Math.max(1, w - wd - 2 * m);
+    const y0 = m + rand() * h * 0.3;
+    const len = Math.min(h * (0.2 + rand() * 0.6), h - y0 - m);
+    const gr = g.createLinearGradient(0, y0, 0, y0 + len);
+    gr.addColorStop(0, `rgba(26,22,17,${0.10 + rand() * 0.10})`);
+    gr.addColorStop(1, 'rgba(26,22,17,0)');
+    g.fillStyle = gr;
+    g.fillRect(x - wd / 2, y0, wd, len);
+  }
+  if (edge > 0) {
+    const a = 0.16 * edge, band = Math.min(w, h) * 0.14;
+    const grad = (x0, y0, x1, y1) => {
+      const gr = g.createLinearGradient(x0, y0, x1, y1);
+      gr.addColorStop(0, `rgba(12,10,8,${a})`);
+      gr.addColorStop(1, 'rgba(12,10,8,0)');
+      return gr;
+    };
+    g.fillStyle = grad(0, 0, 0, band); g.fillRect(0, 0, w, band);
+    g.fillStyle = grad(0, h, 0, h - band); g.fillRect(0, h - band, w, band);
+    g.fillStyle = grad(0, 0, band, 0); g.fillRect(0, 0, band, h);
+    g.fillStyle = grad(w, 0, w - band, 0); g.fillRect(w - band, 0, band, h);
+  }
+  g.lineWidth = 1;
+  for (let i = 0, n = Math.round(crack * 4); i < n; i++) {
+    let x = m + rand() * (w - 2 * m), y = m + rand() * (h - 2 * m);
+    g.strokeStyle = `rgba(15,12,9,${0.15 + rand() * 0.25})`;
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let s = 0; s < 5; s++) {
+      x = Math.min(w - m, Math.max(m, x + (rand() - 0.5) * w * 0.15));
+      y = Math.min(h - m, Math.max(m, y + rand() * h * 0.1));
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  for (let i = 0, n = Math.round(scratch * w * h / 4096); i < n; i++) {
+    g.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+    g.fillRect(m + rand() * (w - 2 * m - 8), m + rand() * (h - 2 * m), 2 + rand() * 8, 1);
+  }
+  for (let i = 0, n = Math.round(w * h / 350); i < n; i++) {
+    g.fillStyle = `rgba(18,14,10,${0.05 + rand() * 0.12})`;
+    g.fillRect(m + rand() * (w - 2 * m), m + rand() * (h - 2 * m), 1 + rand() * 2, 1 + rand() * 2);
+  }
+}
 
 // 1 texture repeat == 1 metre (geometry UVs are scaled to world units).
-export const floorTex = () => canvasTexture(32, 32, (g, w, h) => {
-  g.fillStyle = '#8a857a';
+export const floorTex = () => canvasTexture(128, 128, (g, w, h) => {
+  // 4x4 vinyl tiles per metre with dark grout showing between them.
+  g.fillStyle = '#4c463c';
   g.fillRect(0, 0, w, h);
-  [['#d2cdc0', 0, 0], ['#c8c3b5', 16, 0], ['#c8c3b5', 0, 16], ['#d2cdc0', 16, 16]].forEach(([c, x, y]) => {
-    g.fillStyle = c;
-    g.fillRect(x + 1, y + 1, 15, 15);
-  });
-  grain(g, w, h, 14);
-});
-
-export const wallTex = () => flat('#d6d3c8', 10);
-export const metalTex = () => flat('#8b9096', 12, 16);
-export const asphaltTex = () => flat('#2b2b2e', 26);
-export const concreteTex = () => canvasTexture(32, 32, (g, w, h) => {
-  g.fillStyle = '#6d6b66';
-  g.fillRect(0, 0, w, h);
-  g.fillStyle = '#55534f';
-  g.fillRect(0, 0, w, 1);
-  g.fillRect(0, 0, 1, h);
-  grain(g, w, h, 22);
-});
-
-export const ceilingTex = () => canvasTexture(32, 32, (g, w, h) => {
-  g.fillStyle = '#bab8af';
-  g.fillRect(0, 0, w, h);
-  g.fillStyle = '#8d8b84';
-  g.fillRect(0, 0, w, 1);
-  g.fillRect(0, 0, 1, h);
-  g.fillStyle = '#a19f97';
-  for (let i = 0; i < 40; i++) g.fillRect(Math.floor(rand() * w), Math.floor(rand() * h), 1, 1);
-  grain(g, w, h, 8);
-});
-
-export const woodTex = () => canvasTexture(32, 32, (g, w, h) => {
-  g.fillStyle = '#6b4f36';
-  g.fillRect(0, 0, w, h);
-  g.fillStyle = '#5a4230';
-  for (let y = 0; y < h; y += 4) g.fillRect(0, y + Math.floor(rand() * 2), w, 1);
-  grain(g, w, h, 14);
-});
-
-export const cardboardTex = () => canvasTexture(32, 32, (g, w, h) => {
-  g.fillStyle = '#a27b4b';
-  g.fillRect(0, 0, w, h);
-  g.fillStyle = '#c7a46c';
-  g.fillRect(0, 14, w, 4);
-  g.fillStyle = '#5b4026';
-  g.fillRect(4, 4, 10, 6);
-  grain(g, w, h, 18);
-});
-
-export const counterTex = () => canvasTexture(32, 32, (g, w, h) => {
-  g.fillStyle = '#e6e4dc';
-  g.fillRect(0, 0, w, h);
-  g.fillStyle = '#1d8a86';
-  g.fillRect(0, 8, w, 4);
-  g.fillStyle = '#e8792b';
-  g.fillRect(0, 12, w, 2);
+  const T = 32, palette = ['#d9d4c7', '#cfc9ba', '#d5cfc2', '#c8c2b4'];
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+    g.fillStyle = palette[Math.floor(rand() * palette.length)];
+    g.fillRect(x * T + 1, y * T + 1, T - 2, T - 2);
+    for (let i = 0; i < 7; i++) {
+      g.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(60,55,45,0.06)';
+      g.fillRect(x * T + 2 + rand() * (T - 13), y * T + 2 + rand() * (T - 13), 2 + rand() * 5, 1 + rand() * 3);
+    }
+    if (rand() < 0.3) {
+      g.fillStyle = 'rgba(50,46,40,0.5)';
+      g.fillRect(x * T + (rand() < 0.5 ? 0 : T - 3), y * T + (rand() < 0.5 ? 0 : T - 3), 3, 3);
+    }
+  }
+  // Dirt caught in the interior grout channels.
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = `rgba(30,26,20,${0.15 + rand() * 0.25})`;
+    const line = [31, 32, 63, 64, 95, 96][Math.floor(rand() * 6)];
+    if (rand() < 0.5) g.fillRect(4 + rand() * (w - 8), line + (rand() < 0.5 ? -1 : 0), 2, 1);
+    else g.fillRect(line + (rand() < 0.5 ? -1 : 0), 4 + rand() * (h - 8), 1, 2);
+  }
+  blotch(g, w, h, '#4a443a', 0.10, 4, 34);
+  grime(g, w, h, { stain: 0.35, edge: 0.2, crack: 0.15, scratch: 0.15 });
   grain(g, w, h, 10);
 });
 
-function shelfRows(g, w, palette, density) {
+export const wallTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#d6d3c8';
+  g.fillRect(0, 0, w, h);
+  blotch(g, w, h, '#b9b4a6', 0.45, 7, 30);
+  blotch(g, w, h, '#e4e0d4', 0.4, 5, 24);
+  // Faint roller streaks.
+  for (let x = 0; x < w; x += 3) {
+    g.fillStyle = `rgba(120,115,105,${0.02 + rand() * 0.03})`;
+    g.fillRect(x, 0, 1, h);
+  }
+  // Scuffs and a couple of taped-over patches.
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle = `rgba(90,84,74,${0.08 + rand() * 0.1})`;
+    g.fillRect(4 + rand() * (w - 16), h * (0.45 + rand() * 0.5), 4 + rand() * 10, 1 + rand() * 3);
+  }
+  for (let i = 0; i < 3; i++) {
+    g.fillStyle = 'rgba(190,186,172,0.5)';
+    const x = 6 + rand() * (w - 30), y = 6 + rand() * (h - 40);
+    g.fillRect(x, y, 10 + rand() * 14, 8 + rand() * 10);
+  }
+  grime(g, w, h, { stain: 0.5, edge: 0.3, crack: 0.4, scratch: 0.35 });
+  grain(g, w, h, 9);
+});
+
+export const metalTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#8b9096';
+  g.fillRect(0, 0, w, h);
+  // Brushed grain and panel seams.
+  for (let x = 0; x < w; x += 2) {
+    g.fillStyle = `rgba(255,255,255,${rand() * 0.04})`;
+    g.fillRect(x, 0, 1, h);
+    g.fillStyle = `rgba(0,0,0,${rand() * 0.05})`;
+    g.fillRect(x + 1, 0, 1, h);
+  }
+  g.fillStyle = 'rgba(40,42,46,0.5)';
+  g.fillRect(0, 0, w, 1);
+  g.fillRect(0, h - 1, w, 1);
+  g.fillRect(0, 0, 1, h);
+  g.fillRect(w - 1, 0, 1, h);
+  // Rust weeping down from the top and a few corroded patches.
+  for (let i = 0; i < 7; i++) {
+    const x = 4 + rand() * (w - 12);
+    const y0 = 2 + rand() * h * 0.4;
+    const len = Math.min(h - y0 - 4, h * (0.15 + rand() * 0.45));
+    const gr = g.createLinearGradient(0, y0, 0, y0 + len);
+    gr.addColorStop(0, `rgba(110,58,30,${0.25 + rand() * 0.2})`);
+    gr.addColorStop(1, 'rgba(110,58,30,0)');
+    g.fillStyle = gr;
+    g.fillRect(x, y0, 2 + rand() * 3, len);
+  }
+  blotch(g, w, h, '#6e3a1e', 0.3, 4, 14);
+  blotch(g, w, h, '#4e5158', 0.4, 5, 22);
+  grime(g, w, h, { stain: 0.6, edge: 0.25, crack: 0.3, scratch: 0.6 });
+  grain(g, w, h, 10);
+});
+
+export const asphaltTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#26262b';
+  g.fillRect(0, 0, w, h);
+  // Aggregate speckle.
+  for (let i = 0; i < 2400; i++) {
+    g.fillStyle = rand() < 0.5 ? 'rgba(200,200,210,0.10)' : 'rgba(0,0,0,0.16)';
+    g.fillRect(3 + rand() * (w - 6), 3 + rand() * (h - 6), 1, 1);
+  }
+  // Oil stains and tar patches.
+  blotch(g, w, h, '#101014', 0.5, 5, 26);
+  blotch(g, w, h, '#1a1a20', 0.4, 4, 18);
+  for (let i = 0; i < 3; i++) {
+    const pw = 24 + rand() * 30, ph = 14 + rand() * 24;
+    const x = 8 + rand() * (w - pw - 16), y = 8 + rand() * (h - ph - 16);
+    g.fillStyle = 'rgba(255,255,255,0.03)';
+    g.fillRect(x, y, pw, ph);
+    g.strokeStyle = 'rgba(0,0,0,0.3)';
+    g.strokeRect(x, y, pw, ph);
+  }
+  grime(g, w, h, { stain: 0.5, edge: 0.15, crack: 0.9, scratch: 0.2 });
+  grain(g, w, h, 18);
+});
+
+export const concreteTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#6d6b66';
+  g.fillRect(0, 0, w, h);
+  blotch(g, w, h, '#5c5a55', 0.5, 7, 30);
+  blotch(g, w, h, '#7d7b74', 0.4, 5, 24);
+  // Expansion joints every half metre, centred on the tile boundaries so it wraps.
+  g.fillStyle = 'rgba(38,36,33,0.8)';
+  for (const B of [0, 64, 128]) {
+    g.fillRect(B - 1, 0, 2, h);
+    g.fillRect(0, B - 1, w, 2);
+  }
+  // Weathering and cracks.
+  blotch(g, w, h, '#4e4c48', 0.4, 6, 26);
+  grime(g, w, h, { stain: 0.7, edge: 0.2, crack: 0.7, scratch: 0.3 });
+  grain(g, w, h, 16);
+});
+
+export const ceilingTex = () => canvasTexture(128, 128, (g, w, h) => {
+  // 2x2 suspended acoustic tiles per repeat with a T-bar grid.
+  g.fillStyle = '#8f8d85';
+  g.fillRect(0, 0, w, h);
+  for (let ty = 0; ty < 2; ty++) for (let tx = 0; tx < 2; tx++) {
+    const x0 = tx * 64, y0 = ty * 64;
+    g.fillStyle = shade('#b7b5ac', 0.9 + rand() * 0.14);
+    g.fillRect(x0 + 2, y0 + 2, 62, 62);
+    for (let i = 0; i < 170; i++) {
+      g.fillStyle = `rgba(88,86,78,${0.15 + rand() * 0.2})`;
+      g.fillRect(x0 + 3 + rand() * 60, y0 + 3 + rand() * 60, 1, 1);
+    }
+  }
+  // T-bar grid centred on the 64px tile boundaries so the texture wraps.
+  g.fillStyle = 'rgba(64,62,56,0.85)';
+  for (const B of [0, 64, 128]) {
+    g.fillRect(B - 3, 0, 6, h);
+    g.fillRect(0, B - 3, w, 6);
+  }
+  blotch(g, w, h, '#8f8b80', 0.35, 4, 36);
+  grime(g, w, h, { stain: 0.8, edge: 0.1, crack: 0.15, scratch: 0.1 });
+  grain(g, w, h, 8);
+});
+
+export const woodTex = () => canvasTexture(128, 128, (g, w, h) => {
+  // Four planks per repeat with grain, knots and butt joints.
+  const planks = 4, ph = h / planks;
+  for (let p = 0; p < planks; p++) {
+    const y0 = p * ph;
+    g.fillStyle = shade('#6b4f36', 0.85 + rand() * 0.3);
+    g.fillRect(0, y0, w, ph);
+    for (let i = 0; i < 14; i++) {
+      const gy = y0 + 2 + rand() * (ph - 4);
+      g.strokeStyle = `rgba(40,26,16,${0.08 + rand() * 0.12})`;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(0, gy);
+      for (let x = 16; x < w; x += 16) g.lineTo(x, gy + (rand() - 0.5) * 3);
+      g.lineTo(w, gy); // land back on the start height so the stroke wraps cleanly
+      g.stroke();
+    }
+    if (rand() < 0.6) {
+      const kx = 8 + rand() * (w - 16), ky = y0 + ph * (0.3 + rand() * 0.4);
+      g.fillStyle = 'rgba(35,22,12,0.5)';
+      g.beginPath();
+      g.ellipse(kx, ky, 2 + rand() * 3, 1 + rand() * 2, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  // Plank gaps centred on the 32px boundaries so the texture wraps.
+  g.fillStyle = 'rgba(20,14,10,0.7)';
+  for (const B of [0, 32, 64, 96, 128]) g.fillRect(0, B - 1, w, 2);
+  for (let p = 0; p < planks; p++) {
+    if (rand() < 0.7) g.fillRect(4 + rand() * (w - 12), p * ph + 2, 1, ph - 4);
+  }
+  grime(g, w, h, { stain: 0.35, edge: 0.2, crack: 0.2, scratch: 0.5 });
+  grain(g, w, h, 12);
+});
+
+export const cardboardTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#a27b4b';
+  g.fillRect(0, 0, w, h);
+  // Corrugation hint and packing tape.
+  for (let x = 0; x < w; x += 4) {
+    g.fillStyle = 'rgba(60,40,20,0.08)';
+    g.fillRect(x, 0, 1, h);
+  }
+  g.fillStyle = 'rgba(214,194,152,0.85)';
+  g.fillRect(0, 28, w, 16);
+  g.fillStyle = 'rgba(120,90,50,0.3)';
+  g.fillRect(0, 28, w, 1);
+  g.fillRect(0, 43, w, 1);
+  // Printed shipping label.
+  g.fillStyle = '#e8dcc0';
+  g.fillRect(44, 78, 104, 60);
+  g.fillStyle = '#5b4026';
+  g.font = 'bold 18px monospace';
+  g.textAlign = 'center';
+  g.fillText('FRAGIL', 96, 102);
+  g.font = '14px monospace';
+  g.fillText('THIS SIDE UP', 96, 122);
+  g.fillStyle = 'rgba(40,26,14,0.5)';
+  g.fillRect(44, 78, 104, 3);
+  blotch(g, w, h, '#7a5a34', 0.4, 5, 26);
+  grime(g, w, h, { stain: 0.5, edge: 0.45, crack: 0.3, scratch: 0.4 });
+  grain(g, w, h, 16);
+});
+
+export const counterTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#e6e4dc';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1d8a86';
+  g.fillRect(0, 32, w, 16);
+  g.fillStyle = '#e8792b';
+  g.fillRect(0, 48, w, 8);
+  // Laminate speckle and worn edges.
+  for (let i = 0; i < 500; i++) {
+    g.fillStyle = `rgba(120,110,95,${rand() * 0.08})`;
+    g.fillRect(rand() * w, rand() * h, 1, 1);
+  }
+  blotch(g, w, h, '#c9c4b6', 0.4, 5, 30);
+  grime(g, w, h, { stain: 0.5, edge: 0.4, crack: 0.15, scratch: 0.6 });
+  grain(g, w, h, 8);
+});
+
+function shelfRows(g, w, h, palette, density) {
+  const s = h / 96;
   g.fillStyle = '#26282c';
-  g.fillRect(0, 0, w, 96);
+  g.fillRect(0, 0, w, h);
   for (let row = 0; row < 4; row++) {
-    const base = (row + 1) * 24 - 3;
+    const base = ((row + 1) * 24 - 3) * s;
     g.fillStyle = '#a3a8ae';
-    g.fillRect(0, base, w, 3);
+    g.fillRect(0, base, w, 3 * s);
     g.fillStyle = '#f2e14a';
-    for (let x = 4; x < w; x += 16) g.fillRect(x, base + 1, 4, 2);
-    let x = 1;
-    while (x < w - 3) {
-      const iw = 3 + Math.floor(rand() * 6), ih = 9 + Math.floor(rand() * 10);
+    for (let x = 4 * s; x < w; x += 16 * s) g.fillRect(x, base + s, 4 * s, 2 * s);
+    let x = s;
+    while (x < w - 3 * s) {
+      const iw = (3 + Math.floor(rand() * 6)) * s, ih = (9 + Math.floor(rand() * 10)) * s;
       if (rand() < density) {
         g.fillStyle = pick(palette);
         g.fillRect(x, base - ih, iw, ih);
         g.fillStyle = 'rgba(255,255,255,0.35)';
-        g.fillRect(x, base - ih + 2, iw, 2);
+        g.fillRect(x, base - ih + 2 * s, iw, 2 * s);
         g.fillStyle = 'rgba(0,0,0,0.3)';
-        g.fillRect(x + iw - 1, base - ih, 1, ih);
+        g.fillRect(x + iw - s, base - ih, s, ih);
       }
-      x += iw + (rand() < 0.15 ? 2 : 0);
+      x += iw + (rand() < 0.15 ? 2 * s : 0);
     }
   }
 }
 
 // Covers 1m wide x 1.5m tall of shelving.
-export const productsTex = (palette) => canvasTexture(64, 96, (g, w, h) => {
-  shelfRows(g, w, palette, 1);
+export const productsTex = (palette) => canvasTexture(128, 192, (g, w, h) => {
+  shelfRows(g, w, h, palette, 1);
   grain(g, w, h, 10);
 });
 
-export const emptyShelfTex = () => canvasTexture(64, 96, (g, w, h) => {
-  shelfRows(g, w, ['#777', '#555'], 0.06);
+export const emptyShelfTex = () => canvasTexture(128, 192, (g, w, h) => {
+  shelfRows(g, w, h, ['#777', '#555'], 0.06);
   grain(g, w, h, 10);
 });
 
 // Covers 1m wide x 2m tall of drink cooler.
-export const fridgeTex = () => canvasTexture(64, 128, (g, w, h) => {
+export const fridgeTex = () => canvasTexture(128, 256, (g, w, h) => {
   g.fillStyle = '#16181b';
   g.fillRect(0, 0, w, h);
   g.fillStyle = '#d6ecff';
-  g.fillRect(2, 2, w - 4, 4);
+  g.fillRect(4, 4, w - 8, 8);
   g.fillStyle = '#0e1b22';
-  g.fillRect(3, 7, w - 6, h - 10);
+  g.fillRect(6, 14, w - 12, h - 20);
   const drinks = ['#e33', '#3a5', '#fd4', '#39f', '#f80', '#eee', '#7c3', '#c4f'];
   for (let r = 0; r < 5; r++) {
-    const base = 7 + (r + 1) * 23;
+    const base = 14 + (r + 1) * 46;
     g.fillStyle = '#5a6c75';
-    g.fillRect(3, base, w - 6, 2);
+    g.fillRect(6, base, w - 12, 4);
     const c = pick(drinks);
-    for (let x = 4; x < w - 6; x += 6) {
-      const bh = 12 + Math.floor(rand() * 5);
+    for (let x = 8; x < w - 12; x += 12) {
+      const bh = 24 + Math.floor(rand() * 10);
       g.fillStyle = rand() < 0.7 ? c : pick(drinks);
-      g.fillRect(x, base - bh, 5, bh);
+      g.fillRect(x, base - bh, 10, bh);
       g.fillStyle = 'rgba(0,0,0,0.45)';
-      g.fillRect(x, base - bh, 5, 2);
+      g.fillRect(x, base - bh, 10, 4);
     }
   }
   g.fillStyle = '#9aa3ad';
-  g.fillRect(w - 6, 50, 2, 30);
+  g.fillRect(w - 12, 100, 4, 60);
   g.fillStyle = '#2a2d31';
-  g.fillRect(0, 0, 2, h);
+  g.fillRect(0, 0, 4, h);
+  g.fillStyle = 'rgba(255,255,255,0.06)';
+  g.fillRect(0, 0, w, 2);
   grain(g, w, h, 8);
 });
 
-export const vendingTex = () => canvasTexture(32, 48, (g, w, h) => {
+export const vendingTex = () => canvasTexture(64, 96, (g, w, h) => {
   g.fillStyle = '#e8eef2';
   g.fillRect(0, 0, w, h);
   const cans = ['#d22', '#26c', '#2a4', '#fa0', '#333', '#f6c'];
   for (let r = 0; r < 4; r++) {
-    for (let x = 2; x < w - 2; x += 5) {
+    for (let x = 4; x < w - 4; x += 10) {
       g.fillStyle = pick(cans);
-      g.fillRect(x, 3 + r * 8, 4, 6);
+      g.fillRect(x, 6 + r * 16, 8, 12);
       g.fillStyle = '#4f4';
-      g.fillRect(x + 1, 10 + r * 8, 2, 1);
+      g.fillRect(x + 2, 20 + r * 16, 4, 2);
     }
   }
   g.fillStyle = '#222';
-  g.fillRect(4, 38, 24, 7);
+  g.fillRect(8, 76, 48, 14);
   grain(g, w, h, 8);
 });
 
@@ -212,54 +471,79 @@ export const storeSignTex = () => canvasTexture(256, 48, (g, w, h) => {
 
 // --- Central de Abasto -------------------------------------------------------
 
-export const paintedWallTex = (base = '#d9d2bf', band = '#3c7a4a') => canvasTexture(32, 32, (g, w, h) => {
+export const paintedWallTex = (base = '#d9d2bf', band = '#3c7a4a') => canvasTexture(128, 128, (g, w, h) => {
   g.fillStyle = base;
   g.fillRect(0, 0, w, h);
   g.fillStyle = band;
-  g.fillRect(0, 26, w, 6);
-  g.fillStyle = 'rgba(40,30,20,0.25)';
-  for (let i = 0; i < 6; i++) g.fillRect(Math.floor(rand() * w), 20 + Math.floor(rand() * 6), 1 + Math.floor(rand() * 3), 6);
-  grain(g, w, h, 16);
+  g.fillRect(0, 104, w, 24);
+  // Paint drips under the band and chips down to the undercoat.
+  g.fillStyle = 'rgba(40,30,20,0.28)';
+  for (let i = 0; i < 9; i++) g.fillRect(4 + rand() * (w - 8), 104, 1 + rand() * 3, 5 + rand() * 16);
+  for (let i = 0; i < 12; i++) {
+    g.fillStyle = `rgba(60,50,40,${0.3 + rand() * 0.3})`;
+    g.fillRect(4 + rand() * (w - 12), 4 + rand() * (h - 16), 2 + rand() * 5, 1 + rand() * 4);
+  }
+  blotch(g, w, h, 'rgba(96,80,58,0.22)', 0.6, 6, 30);
+  blotch(g, w, h, 'rgba(230,222,200,0.16)', 0.5, 4, 26);
+  grime(g, w, h, { stain: 0.6, edge: 0.3, crack: 0.5, scratch: 0.3 });
+  grain(g, w, h, 14);
 });
 
 // Roll-up metal shutter ("cortina"), 1 repeat per metre.
-export const cortinaTex = (tint = '#8d9298', tag = false) => canvasTexture(32, 32, (g, w, h) => {
+export const cortinaTex = (tint = '#8d9298', tag = false) => canvasTexture(128, 128, (g, w, h) => {
   g.fillStyle = tint;
   g.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y += 4) {
-    g.fillStyle = 'rgba(255,255,255,0.18)';
+  for (let y = 0; y < h; y += 8) {
+    g.fillStyle = `rgba(0,0,0,${rand() * 0.08})`;
+    g.fillRect(0, y + 1, w, 5);
+    g.fillStyle = 'rgba(255,255,255,0.14)';
     g.fillRect(0, y, w, 1);
-    g.fillStyle = 'rgba(0,0,0,0.3)';
-    g.fillRect(0, y + 3, w, 1);
+    g.fillStyle = 'rgba(0,0,0,0.32)';
+    g.fillRect(0, y + 6, w, 2);
   }
-  g.fillStyle = 'rgba(110,60,30,0.5)';
-  for (let i = 0; i < 5; i++) g.fillRect(Math.floor(rand() * w), Math.floor(rand() * h), 2, 1 + Math.floor(rand() * 3));
+  // Rust weeping down the slats.
+  for (let i = 0; i < 7; i++) {
+    const x = 4 + rand() * (w - 12);
+    const y0 = 2 + rand() * h * 0.5;
+    const len = Math.min(h - y0 - 4, h * (0.15 + rand() * 0.5));
+    const gr = g.createLinearGradient(0, y0, 0, y0 + len);
+    gr.addColorStop(0, `rgba(110,58,30,${0.2 + rand() * 0.2})`);
+    gr.addColorStop(1, 'rgba(110,58,30,0)');
+    g.fillStyle = gr;
+    g.fillRect(x, y0, 2 + rand() * 3, len);
+  }
+  // Dirt gathered along the bottom rail.
+  blotch(g, w, h, 'rgba(60,45,30,0.3)', 0.6, 4, 22);
   if (tag) {
     g.strokeStyle = pick(['#e4007c', '#111', '#1e6fd9', '#e33']);
-    g.lineWidth = 2;
+    g.lineWidth = 3;
     g.beginPath();
-    g.moveTo(3, 20);
-    for (let x = 6; x < 30; x += 4) g.lineTo(x, 12 + rand() * 10);
+    g.moveTo(6, 80);
+    for (let x = 12; x < 120; x += 8) g.lineTo(x, 48 + rand() * 40);
     g.stroke();
   }
+  grime(g, w, h, { stain: 0.7, edge: 0.15, crack: 0.2, scratch: 0.4 });
   grain(g, w, h, 12);
 });
 
 // Lit interior of an open bodega: stacked sacks, boxes and dried chiles.
-export const bodegaInteriorTex = (kind) => canvasTexture(96, 80, (g, w, h) => {
+export const bodegaInteriorTex = (kind) => canvasTexture(160, 128, (g, w, h) => {
   const grad = g.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, '#2a2018');
-  grad.addColorStop(0.5, '#4a3a28');
-  grad.addColorStop(1, '#2e241a');
+  grad.addColorStop(0, '#241b13');
+  grad.addColorStop(0.55, '#4a3a28');
+  grad.addColorStop(1, '#2a2018');
   g.fillStyle = grad;
   g.fillRect(0, 0, w, h);
-  g.fillStyle = '#6a5640';
-  g.fillRect(0, 64, w, 16);
-  // Hanging bulb.
+  // Hanging bulb and its warm pool of light.
   g.fillStyle = '#111';
-  g.fillRect(47, 0, 1, 6);
+  g.fillRect(w / 2 - 1, 0, 2, h * 0.05);
+  const bulb = g.createRadialGradient(w / 2, h * 0.06, 2, w / 2, h * 0.06, w * 0.35);
+  bulb.addColorStop(0, 'rgba(255,242,196,0.55)');
+  bulb.addColorStop(1, 'rgba(255,242,196,0)');
+  g.fillStyle = bulb;
+  g.fillRect(0, 0, w, h * 0.55);
   g.fillStyle = '#fff2c4';
-  g.fillRect(45, 6, 4, 3);
+  g.fillRect(w / 2 - 3, h * 0.05, 6, h * 0.025);
   const fills = {
     sacks: ['#d8c49a', '#cdb88a', '#e2d3ab', '#bfa878'],
     boxes: ['#b98a52', '#e4007c', '#f4d03f', '#2e86c1', '#a0522d', '#c8a06a'],
@@ -268,34 +552,38 @@ export const bodegaInteriorTex = (kind) => canvasTexture(96, 80, (g, w, h) => {
     vinos: ['#5a1f28', '#7a2a3a', '#d8c49a', '#3a1a2a', '#e0b060', '#2b3f6e'],
     tortilla: ['#f2f0d8', '#e9e2c0', '#d8c49a', '#c8b890', '#faf6e6', '#bfa878'],
   }[kind];
+  const floorY = h * 0.8;
+  g.fillStyle = '#5b4026';
+  g.fillRect(w * 0.03, floorY, w * 0.94, h * 0.02);
   // Back shelving with goods, then a front pile on the floor.
-  for (const shelfY of [24, 42]) {
+  for (const sy of [0.28, 0.48]) {
+    const shelfY = h * sy;
     g.fillStyle = '#5b4026';
-    g.fillRect(4, shelfY, w - 8, 2);
-    for (let x = 6; x < w - 10; x += 5) {
-      const ih = 6 + Math.floor(rand() * 6);
+    g.fillRect(w * 0.04, shelfY, w * 0.92, h * 0.018);
+    for (let x = w * 0.045; x < w * 0.9; x += w * 0.03) {
+      const ih = h * (0.05 + rand() * 0.05);
       g.fillStyle = pick(fills);
-      g.fillRect(x, shelfY - ih, 4, ih);
+      g.fillRect(x, shelfY - ih, w * 0.024, ih);
       g.fillStyle = 'rgba(255,255,255,0.2)';
-      g.fillRect(x, shelfY - ih, 4, 1);
+      g.fillRect(x, shelfY - ih, w * 0.024, h * 0.008);
     }
   }
-  for (let col = 0; col < 11; col++) {
-    const x = 4 + col * 8;
+  for (let col = 0; col < 18; col++) {
+    const x = w * 0.03 + col * w * 0.052;
     const stack = 1 + Math.floor(rand() * 3);
     for (let r = 0; r < stack; r++) {
-      const y = 68 - (r + 1) * 6;
+      const y = floorY - (r + 1) * h * 0.045;
       g.fillStyle = pick(fills);
-      g.fillRect(x, y, 7, 6);
+      g.fillRect(x, y, w * 0.045, h * 0.045);
       g.fillStyle = 'rgba(255,255,255,0.25)';
-      g.fillRect(x + 1, y, 5, 1);
+      g.fillRect(x + w * 0.006, y, w * 0.033, h * 0.008);
       g.fillStyle = 'rgba(0,0,0,0.3)';
-      g.fillRect(x, y + 5, 7, 1);
+      g.fillRect(x, y + h * 0.038, w * 0.045, h * 0.007);
     }
   }
   g.fillStyle = '#1e1710';
-  g.fillRect(0, 0, 3, h);
-  g.fillRect(w - 3, 0, 3, h);
+  g.fillRect(0, 0, w * 0.02, h);
+  g.fillRect(w * 0.98, 0, w * 0.02, h);
   grain(g, w, h, 12);
 });
 
@@ -339,6 +627,9 @@ export function signAtlas(cells, { cellW = 128, cellH = 28, cols = 6 } = {}) {
     g.restore();
   });
   const texture = finish(new THREE.CanvasTexture(canvas));
+  // Atlas cells must not bleed into each other: linear minification, no mipmaps.
+  texture.minFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
   texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
   const uv = (i) => {
     const c = i % cols, r = Math.floor(i / cols);
@@ -379,28 +670,35 @@ export const signCell = (text, bg, fg, size = 12) => (g, w, h) => {
 };
 
 // Hand-painted Central de Abasto price board ("pancarta de precios").
-export const pancartaTex = () => canvasTexture(128, 80, (g, w, h) => {
+export const pancartaTex = () => canvasTexture(256, 160, (g, w, h) => {
   g.fillStyle = '#f7f1dc';
   g.fillRect(0, 0, w, h);
   g.fillStyle = '#1e6fd9';
-  g.fillRect(0, 0, w, 5);
+  g.fillRect(0, 0, w, 10);
   g.fillStyle = '#e4007c';
-  g.fillRect(0, h - 5, w, 5);
+  g.fillRect(0, h - 10, w, 10);
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillStyle = '#c0392b';
-  g.font = 'bold 13px monospace';
-  g.fillText('ABARROTES LA ESPERANZA', w / 2, 15, w - 8);
+  g.font = 'bold 26px monospace';
+  g.fillText('ABARROTES LA ESPERANZA', w / 2, 30, w - 16);
   g.fillStyle = '#1b1b1b';
-  g.font = 'bold 10px monospace';
-  g.fillText('PRECIOS DEL DÍA', w / 2, 29);
+  g.font = 'bold 20px monospace';
+  g.fillText('PRECIOS DEL DÍA', w / 2, 58);
   g.fillStyle = '#e4007c';
-  g.font = 'bold 12px monospace';
-  g.fillText('FRIJOL $64', w / 2, 43);
+  g.font = 'bold 24px monospace';
+  g.fillText('FRIJOL $64', w / 2, 86);
   g.fillStyle = '#1e6fd9';
-  g.fillText('ARROZ $38', w / 2, 56);
+  g.fillText('ARROZ $38', w / 2, 112);
   g.fillStyle = '#2bb673';
-  g.fillText('CHILE $120', w / 2, 69);
+  g.fillText('CHILE $120', w / 2, 138);
+  // Paint wear and a coffee ring.
+  blotch(g, w, h, 'rgba(120,90,50,0.2)', 0.7, 5, 30);
+  g.strokeStyle = 'rgba(120,80,40,0.4)';
+  g.lineWidth = 4;
+  g.beginPath();
+  g.arc(w * 0.78, h * 0.62, 18, 0, Math.PI * 2);
+  g.stroke();
   grain(g, w, h, 10);
 });
 
@@ -420,39 +718,73 @@ export const letterTex = (letter) => canvasTexture(32, 32, (g) => {
   g.fillText(letter, 16, 17);
 });
 
-export const lonaTex = (color) => canvasTexture(16, 16, (g, w, h) => {
+export const lonaTex = (color) => canvasTexture(128, 128, (g, w, h) => {
   g.fillStyle = color;
   g.fillRect(0, 0, w, h);
-  g.fillStyle = 'rgba(255,255,255,0.15)';
-  for (let x = 0; x < w; x += 4) g.fillRect(x, 0, 1, h);
-  grain(g, w, h, 16);
-});
-
-export const produceTex = () => canvasTexture(32, 32, (g, w, h) => {
-  g.fillStyle = '#6b4a2b';
-  g.fillRect(0, 0, w, h);
-  for (let cx = 0; cx < 4; cx++) {
-    for (let cy = 0; cy < 2; cy++) {
-      const c = pick(['#d32f2f', '#f57c00', '#7cb342', '#fbc02d', '#8d6e63', '#c62828', '#eceff1']);
-      for (let i = 0; i < 14; i++) {
-        g.fillStyle = c;
-        g.fillRect(cx * 8 + 1 + Math.floor(rand() * 6), cy * 16 + 1 + Math.floor(rand() * 13), 2, 2);
-      }
-    }
+  // Woven tarp: fine crosshatch plus sun-bleach and dirt (periods divide 128).
+  for (let x = 0; x < w; x += 4) {
+    g.fillStyle = 'rgba(255,255,255,0.10)';
+    g.fillRect(x, 0, 1, h);
   }
+  for (let y = 0; y < h; y += 4) {
+    g.fillStyle = 'rgba(0,0,0,0.08)';
+    g.fillRect(0, y, w, 1);
+  }
+  blotch(g, w, h, 'rgba(240,235,215,0.18)', 0.6, 5, 34);
+  blotch(g, w, h, 'rgba(40,32,24,0.22)', 0.5, 5, 28);
+  grime(g, w, h, { stain: 0.6, edge: 0.3, crack: 0.15, scratch: 0.3 });
   grain(g, w, h, 14);
 });
 
-export const sackTex = () => canvasTexture(16, 16, (g, w, h) => {
+export const produceTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#6b4a2b';
+  g.fillRect(0, 0, w, h);
+  // Wooden crate slats centred on the cell boundaries so the texture wraps.
+  g.fillStyle = 'rgba(40,26,14,0.6)';
+  for (const B of [0, 32, 64, 96, 128]) g.fillRect(B - 1, 0, 2, h);
+  for (const B of [0, 64, 128]) g.fillRect(0, B - 1, w, 2);
+  for (let cx = 0; cx < 4; cx++) {
+    for (let cy = 0; cy < 2; cy++) {
+      const x0 = cx * 32 + 4, y0 = cy * 64 + 4;
+      g.fillStyle = shade('#8a6238', 0.8 + rand() * 0.4);
+      g.fillRect(x0, y0, 24, 56);
+      const c = pick(['#d32f2f', '#f57c00', '#7cb342', '#fbc02d', '#8d6e63', '#c62828', '#eceff1']);
+      for (let i = 0; i < 46; i++) {
+        g.fillStyle = c;
+        g.fillRect(x0 + 2 + rand() * 19, y0 + 2 + rand() * 51, 3, 3);
+      }
+      g.fillStyle = 'rgba(0,0,0,0.25)';
+      g.fillRect(x0, y0 + 53, 24, 3);
+    }
+  }
+  blotch(g, w, h, '#4e3419', 0.35, 4, 24);
+  grain(g, w, h, 14);
+});
+
+export const sackTex = () => canvasTexture(128, 128, (g, w, h) => {
   g.fillStyle = '#cdb88a';
   g.fillRect(0, 0, w, h);
-  g.fillStyle = 'rgba(90,70,40,0.35)';
-  for (let i = 0; i < w; i += 2) {
+  // Burlap weave (periods divide 128 so the tile wraps).
+  for (let i = 0; i < w; i += 4) {
+    g.fillStyle = 'rgba(90,70,40,0.28)';
     g.fillRect(i, 0, 1, h);
     g.fillRect(0, i, w, 1);
   }
+  for (let i = 0; i < w; i += 8) {
+    g.fillStyle = 'rgba(255,250,230,0.12)';
+    g.fillRect(i + 1, 0, 1, h);
+    g.fillRect(0, i + 1, w, 1);
+  }
+  // Stitched label and a dirt rub.
   g.fillStyle = '#7a1f1f';
-  g.fillRect(4, 6, 8, 3);
+  g.fillRect(24, 46, 80, 24);
+  g.fillStyle = 'rgba(240,230,200,0.6)';
+  g.font = 'bold 12px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('25 KG', 64, 58);
+  blotch(g, w, h, 'rgba(96,74,44,0.3)', 0.6, 5, 30);
+  grime(g, w, h, { stain: 0.5, edge: 0.35, crack: 0.1, scratch: 0.3 });
   grain(g, w, h, 14);
 });
 
@@ -472,50 +804,64 @@ export const hazardTex = () => canvasTexture(16, 4, (g, w, h) => {
 // 128–256 px painted textures: the showcase renders at 480p and frames them close, so the
 // 32 px store tiles would read as noise.
 
-const blotches = (g, w, h, n, color, size = 18) => {
-  g.fillStyle = color;
-  for (let i = 0; i < n; i++) {
-    g.beginPath();
-    g.ellipse(rand() * w, rand() * h, size * (0.4 + rand()), size * (0.3 + rand()), rand() * 3, 0, Math.PI * 2);
-    g.fill();
-  }
-};
-
-export const cobbleTex = (base = '#6a6280') => canvasTexture(128, 128, (g, w, h) => {
-  g.fillStyle = '#3a3448';
+export const cobbleTex = (base = '#6a6280') => canvasTexture(256, 256, (g, w, h) => {
+  g.fillStyle = '#35304a';
   g.fillRect(0, 0, w, h);
+  // 8x8 worn stones per repeat; each stone gets a lit crown and a dark foot.
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 8; x++) {
       const v = 0.75 + rand() * 0.45;
       g.fillStyle = base;
       g.globalAlpha = 0.55 + rand() * 0.45;
-      g.fillRect(x * 16 + 1, y * 16 + 1, 14, 14);
-      g.globalAlpha = v * 0.3;
+      g.fillRect(x * 32 + 2, y * 32 + 2, 28, 28);
+      g.globalAlpha = v * 0.35;
       g.fillStyle = '#b0a6c8';
-      g.fillRect(x * 16 + 2, y * 16 + 2, 12, 4);
+      g.fillRect(x * 32 + 3, y * 32 + 3, 26, 9);
+      g.globalAlpha = v * 0.3;
+      g.fillStyle = '#1c1830';
+      g.fillRect(x * 32 + 3, y * 32 + 24, 26, 6);
       g.globalAlpha = 1;
     }
   }
-  blotches(g, w, h, 10, 'rgba(20,16,28,0.2)', 22);
-  grain(g, w, h, 16);
+  // Dirt settled into the joints and a few cracked stones.
+  blotch(g, w, h, '#14101e', 0.35, 8, 40);
+  blotch(g, w, h, '#8f86b8', 0.12, 5, 30);
+  g.strokeStyle = 'rgba(10,8,16,0.5)';
+  for (let i = 0; i < 8; i++) {
+    g.beginPath();
+    let x = 10 + rand() * (w - 80), y = 10 + rand() * (h - 60);
+    g.moveTo(x, y);
+    for (let s = 0; s < 2; s++) {
+      x = Math.min(w - 10, Math.max(10, x + 10 + rand() * 24));
+      y = Math.min(h - 10, Math.max(10, y + (rand() - 0.5) * 30));
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  grime(g, w, h, { stain: 0.4, edge: 0.15, crack: 0.5, scratch: 0.2 });
+  grain(g, w, h, 14);
 });
 
-export const plasterTex = (base = '#5b4f66', shade = '#2e2740') => canvasTexture(128, 128, (g, w, h) => {
+export const plasterTex = (base = '#5b4f66', shade = '#2e2740') => canvasTexture(256, 256, (g, w, h) => {
   const grad = g.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, base);
   grad.addColorStop(0.7, base);
   grad.addColorStop(1, shade);
   g.fillStyle = grad;
   g.fillRect(0, 0, w, h);
-  blotches(g, w, h, 14, 'rgba(18,14,26,0.28)', 26);
-  blotches(g, w, h, 8, 'rgba(150,130,170,0.10)', 20);
-  g.fillStyle = 'rgba(10,8,14,0.35)';
-  for (let i = 0; i < 14; i++) g.fillRect(rand() * w, 0, 1 + rand() * 2, h * (0.2 + rand() * 0.7));
+  blotch(g, w, h, '#12101c', 0.3, 14, 52);
+  blotch(g, w, h, '#9682b8', 0.1, 8, 40);
+  // Hairline cracks and weather streaks running down the wall.
+  for (let i = 0; i < 14; i++) {
+    g.fillStyle = `rgba(10,8,14,${0.1 + rand() * 0.15})`;
+    g.fillRect(6 + rand() * (w - 20), 0, 2 + rand() * 5, h * (0.2 + rand() * 0.7));
+  }
+  grime(g, w, h, { stain: 0.7, edge: 0.25, crack: 0.7, scratch: 0.3 });
   grain(g, w, h, 12);
 });
 
 // Lit office windows on a near-black slab. Used with basic() so it glows on its own.
-export const facadeTex = (cols = 6, rows = 14, tint = '#9fd0ff') => canvasTexture(128, 256, (g, w, h) => {
+export const facadeTex = (cols = 6, rows = 14, tint = '#9fd0ff') => canvasTexture(256, 512, (g, w, h) => {
   g.fillStyle = '#0b0d18';
   g.fillRect(0, 0, w, h);
   const cw = w / cols, ch = h / rows;
@@ -568,19 +914,29 @@ export const stationTex = () => canvasTexture(128, 128, (g, w, h) => {
   g.fillRect(0, 0, w, h);
   g.fillStyle = '#a9a08d';
   for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) g.strokeRect(x * 32 + 0.5, y * 32 + 0.5, 32, 32);
-  blotches(g, w, h, 12, 'rgba(70,60,50,0.18)', 20);
+  // Grime in the grout, gum spots and a darker kick plate along the bottom.
+  blotch(g, w, h, '#463c32', 0.3, 8, 24);
+  blotch(g, w, h, '#e8e0cc', 0.15, 5, 20);
+  for (let i = 0; i < 14; i++) {
+    g.fillStyle = `rgba(60,50,40,${0.2 + rand() * 0.3})`;
+    g.fillRect(4 + rand() * (w - 14), 4 + rand() * (h - 14), 2 + rand() * 3, 2 + rand() * 3);
+  }
   g.fillStyle = 'rgba(30,24,20,0.5)';
-  g.fillRect(0, h - 6, w, 6);
+  g.fillRect(0, h - 8, w, 8);
+  grime(g, w, h, { stain: 0.5, edge: 0.2, crack: 0.4, scratch: 0.3 });
   grain(g, w, h, 10);
 });
 
-export const metroSeatTex = () => canvasTexture(64, 64, (g, w, h) => {
+export const metroSeatTex = () => canvasTexture(128, 128, (g, w, h) => {
   g.fillStyle = '#1f6f7a';
   g.fillRect(0, 0, w, h);
   g.fillStyle = 'rgba(150,220,220,0.18)';
-  for (let i = 0; i < 120; i++) g.fillRect(rand() * w, rand() * h, 1, 1);
+  for (let i = 0; i < 480; i++) g.fillRect(rand() * w, rand() * h, 1, 1);
+  // Worn fabric: seam lines and dirt ground into the weave.
   g.fillStyle = 'rgba(10,40,44,0.5)';
-  for (let y = 0; y < h; y += 8) g.fillRect(0, y, w, 1);
+  for (let y = 0; y < h; y += 16) g.fillRect(0, y, w, 1);
+  blotch(g, w, h, '#0e2a2e', 0.4, 6, 30);
+  grime(g, w, h, { stain: 0.4, edge: 0.2, crack: 0.1, scratch: 0.3 });
   grain(g, w, h, 10);
 });
 
@@ -597,42 +953,65 @@ export const cursiveSignTex = (text, bg = '#e9e0cc', fg = '#2b2320') => canvasTe
   grain(g, w, h, 8);
 });
 
-// Night sky: gradient, stars, painterly violet clouds and a moon.
+// Night sky: deep indigo gradient, a field of small static stars in warm and cool tints,
+// painterly violet clouds and a big glowing moon with a layered halo.
 export const skyTex = () => canvasTexture(1024, 512, (g, w, h) => {
   const grad = g.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, '#080a16');
-  grad.addColorStop(0.45, '#1d1630');
-  grad.addColorStop(0.72, '#3a2b4d');
-  grad.addColorStop(1, '#241a33');
+  grad.addColorStop(0, '#04050e');
+  grad.addColorStop(0.4, '#0d0b26');
+  grad.addColorStop(0.68, '#1c1440');
+  grad.addColorStop(0.82, '#2c1f4e');
+  grad.addColorStop(1, '#171130');
   g.fillStyle = grad;
   g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 420; i++) {
-    const y = rand() * h * 0.75;
-    g.fillStyle = `rgba(255,255,255,${0.15 + rand() * 0.7})`;
-    g.fillRect(rand() * w, y, rand() < 0.1 ? 2 : 1, 1);
+  // Stars: mostly faint pinpoints, a few brighter ones with a tiny sparkle cross.
+  for (let i = 0; i < 300; i++) {
+    const x = rand() * w, y = rand() * h * 0.7;
+    const roll = rand();
+    const warm = roll < 0.22, cool = roll > 0.5 && roll < 0.8;
+    const bright = roll > 0.93;
+    const a = bright ? 0.95 : 0.2 + rand() * 0.55;
+    g.fillStyle = warm ? `rgba(255,224,180,${a})` : cool ? `rgba(170,200,255,${a})` : `rgba(235,240,255,${a})`;
+    const s = bright ? 2 : 1;
+    g.fillRect(x, y, s, s);
+    if (bright) {
+      g.fillStyle = `rgba(255,255,255,${a * 0.45})`;
+      g.fillRect(x - 2, y, 5, 1);
+      g.fillRect(x, y - 2, 1, 5);
+    }
   }
-  for (let i = 0; i < 40; i++) {
-    g.fillStyle = `rgba(${120 + rand() * 40},${100 + rand() * 40},${160 + rand() * 50},${0.05 + rand() * 0.09})`;
+  // Thin violet cloud veils low on the horizon.
+  for (let i = 0; i < 26; i++) {
+    g.fillStyle = `rgba(${110 + rand() * 40},${90 + rand() * 30},${150 + rand() * 50},${0.04 + rand() * 0.07})`;
     g.beginPath();
-    g.ellipse(rand() * w, h * (0.35 + rand() * 0.5), 60 + rand() * 180, 10 + rand() * 26, 0, 0, Math.PI * 2);
+    g.ellipse(rand() * w, h * (0.4 + rand() * 0.45), 70 + rand() * 190, 8 + rand() * 22, 0, 0, Math.PI * 2);
     g.fill();
   }
-  const mx = w * 0.63, my = h * 0.3;
-  const halo = g.createRadialGradient(mx, my, 4, mx, my, 46);
-  halo.addColorStop(0, 'rgba(255,244,206,0.95)');
-  halo.addColorStop(0.45, 'rgba(255,232,170,0.35)');
-  halo.addColorStop(1, 'rgba(255,232,170,0)');
+  const mx = w * 0.64, my = h * 0.26;
+  // Wide moonlight halo, then a tight one around the disc.
+  let halo = g.createRadialGradient(mx, my, 12, mx, my, 130);
+  halo.addColorStop(0, 'rgba(255,240,205,0.5)');
+  halo.addColorStop(0.4, 'rgba(255,232,180,0.16)');
+  halo.addColorStop(1, 'rgba(255,232,180,0)');
   g.fillStyle = halo;
-  g.fillRect(mx - 50, my - 50, 100, 100);
-  g.fillStyle = '#f6ecc9';
+  g.fillRect(mx - 140, my - 140, 280, 280);
+  halo = g.createRadialGradient(mx, my, 8, mx, my, 52);
+  halo.addColorStop(0, 'rgba(255,248,225,0.95)');
+  halo.addColorStop(0.45, 'rgba(255,240,205,0.45)');
+  halo.addColorStop(1, 'rgba(255,240,205,0)');
+  g.fillStyle = halo;
+  g.fillRect(mx - 56, my - 56, 112, 112);
+  // Disc with soft maria.
+  g.fillStyle = '#f7efd8';
   g.beginPath();
-  g.arc(mx, my, 14, 0, Math.PI * 2);
+  g.arc(mx, my, 24, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = 'rgba(200,190,160,0.5)';
-  g.beginPath();
-  g.arc(mx - 5, my - 3, 3, 0, Math.PI * 2);
-  g.arc(mx + 6, my + 4, 2, 0, Math.PI * 2);
-  g.fill();
+  g.fillStyle = 'rgba(196,182,150,0.4)';
+  for (const [dx, dy, r] of [[-7, -5, 6], [6, 3, 4], [-2, 8, 5], [9, -7, 3]]) {
+    g.beginPath();
+    g.arc(mx + dx, my + dy, r, 0, Math.PI * 2);
+    g.fill();
+  }
 });
 
 export const moonTex = () => canvasTexture(64, 64, (g, w, h) => {

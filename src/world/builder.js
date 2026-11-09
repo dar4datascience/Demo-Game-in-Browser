@@ -13,6 +13,37 @@ function worldUV(geo, w, h, d, s) {
   }
 }
 
+function whiteColors(geo) {
+  const n = geo.attributes.position.count;
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+  return geo;
+}
+
+/*
+ * Baked ambient occlusion as a vertex colour: the underside goes darkest, the lower quarter
+ * of the sides fade up to full brightness and the top edge picks up a little ceiling-junction
+ * shading. Materials opt in with `vertexColors: true`; unlit/basic materials ignore it.
+ */
+export function bakeAO(geo, { bottom = 0.6, top = 1, joint = 0.75 } = {}) {
+  const pos = geo.attributes.position, nor = geo.attributes.normal;
+  geo.computeBoundingBox();
+  const minY = geo.boundingBox.min.y, span = Math.max(1e-4, geo.boundingBox.max.y - minY);
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const ny = nor.getY(i);
+    const t = (pos.getY(i) - minY) / span;
+    let v;
+    if (ny < -0.5) v = bottom;
+    else if (ny > 0.5) v = top;
+    else if (t < 0.25) v = bottom + (t / 0.25) * (1 - bottom);
+    else if (t > 0.88) v = joint;
+    else v = 1;
+    colors[i * 3] = colors[i * 3 + 1] = colors[i * 3 + 2] = v;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geo;
+}
+
 /*
  * Shared level-construction helpers. Colliders are oriented boxes on the XZ plane:
  * { cx, cz, hx, hz, rot } where rot matches the mesh's rotation.y.
@@ -37,7 +68,7 @@ export function createBuilder(scene, { poolSize = 8 } = {}) {
   const addBounds = (minX, maxX, minZ, maxZ) => addCollider((minX + maxX) / 2, (minZ + maxZ) / 2, (maxX - minX) / 2, (maxZ - minZ) / 2);
 
   function box(w, h, d, mat, x, y, z, { collide = true, occlude = false, tile = 1, parent = scene, ry = 0 } = {}) {
-    const geo = new THREE.BoxGeometry(w, h, d);
+    const geo = bakeAO(new THREE.BoxGeometry(w, h, d));
     if (tile) worldUV(geo, w, h, d, tile);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z);
@@ -50,6 +81,7 @@ export function createBuilder(scene, { poolSize = 8 } = {}) {
 
   function plane(w, h, mat, x, y, z, ry = 0, rx = 0, tile = [1, 1], parent = scene) {
     const geo = new THREE.PlaneGeometry(w, h);
+    whiteColors(geo);
     if (tile) {
       const uv = geo.attributes.uv;
       for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w * tile[0], uv.getY(i) * h * tile[1]);
