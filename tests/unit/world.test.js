@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { createBuilder } from '../../src/world/builder.js';
-import { NPC } from '../../src/world/person.js';
+import { NPC, makePerson } from '../../src/world/person.js';
+import { GHOST } from '../../src/game/director.js';
 import { formatClock } from '../../src/game/hud.js';
 import { rand, canvasTexture } from '../../src/engine/textures.js';
 import { ROWS, ROW_FACE, UNIT_X, UNIT_W, PASILLOS, SEGMENTS, LETTERS, NAVES, PITCH, unitAt } from '../../src/levels/ceda/world.js';
@@ -63,6 +64,66 @@ describe('NPC', () => {
     npc.place(0, 0);
     npc.face(1, 0);
     expect(npc.root.rotation.y).toBeCloseTo(Math.PI / 2);
+  });
+
+  it('rotates the leg pivots while walking', () => {
+    const npc = new NPC({}, new THREE.Scene());
+    npc.place(0, 0);
+    npc.walk([[0, 3]], 1);
+    npc.update(0.1);
+    expect(npc.legs[0].rotation.x).not.toBe(0);
+    expect(npc.legs[1].rotation.x).not.toBe(0);
+  });
+});
+
+describe('makePerson', () => {
+  const stats = (root) => {
+    let meshes = 0, tris = 0;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      meshes++;
+      const g = o.geometry;
+      tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
+    });
+    return { meshes, tris };
+  };
+
+  it('keeps the pivot contract and stays within the mesh/triangle budget', () => {
+    const { root, legs, arms, head } = makePerson({});
+    expect(legs).toHaveLength(2);
+    expect(arms).toHaveLength(2);
+    expect(head).toBeInstanceOf(THREE.Group);
+    expect(legs[0]).toBeInstanceOf(THREE.Group);
+    const { meshes, tris } = stats(root);
+    expect(meshes).toBeLessThanOrEqual(12);
+    expect(tris).toBeGreaterThanOrEqual(300);
+    expect(tris).toBeLessThanOrEqual(2500);
+  });
+
+  it('stands about 1.75 units tall at height 1 with feet at y=0', () => {
+    const { root } = makePerson({});
+    const box = new THREE.Box3().setFromObject(root);
+    expect(box.min.y).toBeCloseTo(0, 1);
+    expect(box.max.y - box.min.y).toBeGreaterThan(1.6);
+    expect(box.max.y - box.min.y).toBeLessThan(1.9);
+  });
+
+  it('scales overall height with the height option', () => {
+    const { root } = makePerson({ height: 1.7 });
+    const box = new THREE.Box3().setFromObject(root);
+    expect(box.max.y - box.min.y).toBeGreaterThan(2.9);
+    expect(box.max.y - box.min.y).toBeLessThan(3.2);
+  });
+
+  it('builds the ghost variant', () => {
+    const { root, legs, arms, head } = makePerson(GHOST);
+    const { meshes, tris } = stats(root);
+    expect(meshes).toBeLessThanOrEqual(12);
+    expect(tris).toBeGreaterThanOrEqual(300);
+    expect(tris).toBeLessThanOrEqual(2500);
+    expect(legs).toHaveLength(2);
+    expect(arms).toHaveLength(2);
+    expect(head).toBeInstanceOf(THREE.Group);
   });
 });
 

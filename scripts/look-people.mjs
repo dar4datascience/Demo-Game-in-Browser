@@ -1,0 +1,107 @@
+// Close-range lineup of every NPC variant for visual review of the organic humanoids.
+// Shot 1-2: clean studio setup inside the NightMart scene (geometry/face check).
+// Shot 3: the same lineup in the moonlit Central de Abasto (in-context check).
+//   docker run --rm --network host -v "$PWD/scripts:/out" --entrypoint node mcp/playwright /out/look-people.mjs
+import { chromium } from '/app/node_modules/playwright/index.mjs';
+
+const browser = await chromium.launch({ channel: 'chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const page = await browser.newPage({ viewport: { width: 1024, height: 640 } });
+page.on('pageerror', (e) => console.log(`pageerror: ${e.message}`));
+const frames = (n = 4) => page.evaluate((n) => new Promise((resolve) => {
+  const step = () => (--n <= 0 ? resolve() : requestAnimationFrame(step));
+  requestAnimationFrame(step);
+}, n), n);
+
+// Injected into the page: variant lineup + a free camera; returns head screen positions.
+const LINEUP = async ([xs, z, camPos, look]) => {
+  const { NPC } = await import('/src/world/person.js');
+  const { GHOST } = await import('/src/game/director.js');
+  const variants = [
+    ['man', { skin: '#c99a72', top: '#37455c', bottom: '#23262e', hair: '#241a12' }],
+    ['woman', { skin: '#d9b08c', top: '#5c2e35', bottom: '#3a3f4a', hair: '#120e0c', longHair: true }],
+    ['bride', { skin: '#e3ddd2', top: '#e6e2d6', bottom: '#d8d2c8', hair: '#060606', longHair: true, veil: true, dress: true, emissive: 0.1 }],
+    ['ghost', GHOST],
+    ['child', { skin: '#d9b08c', top: '#7a4a2e', bottom: '#2c2a33', hair: '#3a2a18', height: 0.62 }],
+  ];
+  const npcs = variants.map(([name, opts], i) => {
+    const npc = new NPC(opts, scene);
+    npc.place(xs[i], z);
+    npc.face(camPos[0], camPos[2]);
+    return { name, npc };
+  });
+  const cam = new player.camera.constructor(55, innerWidth / innerHeight, 0.1, 300);
+  cam.position.set(...camPos);
+  cam.lookAt(...look);
+  cam.updateMatrixWorld(true);
+  game.cam = cam;
+  const V = cam.position.constructor;
+  const v = new V();
+  return npcs.map(({ name, npc }) => {
+    npc.head.getWorldPosition(v);
+    const p = v.clone().project(cam);
+    return { name, x: Math.round(((p.x + 1) / 2) * innerWidth), y: Math.round(((1 - p.y) / 2) * innerHeight) };
+  });
+};
+
+// Replace the level with a dark studio: ground disc, key + fill lamps, ambient.
+const STUDIO = async () => {
+  const { lam } = await import('/src/engine/post.js');
+  let Mesh, PlaneG, PL, AL, Color;
+  scene.traverse((o) => {
+    if (o.isMesh) {
+      if (!Mesh) Mesh = o.constructor;
+      if (!PlaneG && o.geometry.type === 'PlaneGeometry') PlaneG = o.geometry.constructor;
+      if (!Color && o.material?.color) Color = o.material.color.constructor;
+    }
+    if (!PL && o.isPointLight) PL = o.constructor;
+    if (!AL && o.isAmbientLight) AL = o.constructor;
+  });
+  scene.clear();
+  scene.background = new Color(0x0a0c16);
+  const ground = new Mesh(new PlaneG(30, 30), lam({ color: 0x222838 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  scene.add(ground);
+  const key = new PL(0xffd9a8, 240, 20, 2);
+  key.position.set(0, 3.4, 2.2);
+  scene.add(key);
+  const fill = new PL(0x7a86c8, 120, 18, 2);
+  fill.position.set(-3.5, 2.4, 4.2);
+  scene.add(fill);
+  scene.add(new AL(0x2c3450, 1.2));
+};
+
+// --- Studio lineup inside the (emptied) NightMart scene ---
+await page.goto('http://localhost:5173/?debug&speed=1');
+await page.waitForTimeout(800);
+await page.click('[data-map=konbini]');
+await page.waitForTimeout(2000);
+await page.evaluate(STUDIO);
+const studioHeads = await page.evaluate(LINEUP, [[-3.2, -1.6, 0, 1.6, 3.2], 0, [0, 1.55, 4.8], [0, 1.15, 0]]);
+console.log('studio:', JSON.stringify(studioHeads));
+await frames(8);
+await page.screenshot({ path: '/out/shots/people-studio.png' });
+
+// Close-up on the middle three (woman, bride, ghost) for face detail.
+await page.evaluate(() => {
+  const cam = game.cam;
+  cam.position.set(-0.8, 1.5, 3.0);
+  cam.lookAt(-0.8, 1.45, 0);
+  cam.updateMatrixWorld(true);
+});
+await frames(6);
+await page.screenshot({ path: '/out/shots/people-faces.png' });
+
+// --- Central de Abasto: the same lineup in real moonlight ---
+await page.goto('http://localhost:5173/?debug&speed=1');
+await page.waitForTimeout(800);
+await page.click('[data-map=ceda]');
+await page.click('[data-char=diablero]');
+await page.click('[data-variant=nonbinary]');
+await page.waitForTimeout(3000);
+const cedaHeads = await page.evaluate(LINEUP, [[-30.5, -28.8, -27.1, -25.4, -23.7], -15, [-26, 1.6, -9.0], [-26, 1.1, -15]]);
+console.log('ceda:', JSON.stringify(cedaHeads));
+await frames(8);
+await page.screenshot({ path: '/out/shots/people-ceda.png' });
+
+await browser.close();
