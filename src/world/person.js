@@ -19,6 +19,9 @@ const hashStr = (s) => {
 };
 const lcg = (seed) => () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 
+// '#rrggbb' -> '#rrggbb' darkened, so authored skin tones never clip to white under hot lamps.
+const dim = (color, f) => `#${new THREE.Color(color).multiplyScalar(f).getHexString()}`;
+
 // Fabric weave + fold shading for garments, cached per colour.
 const clothTex = (() => {
   const cache = new Map();
@@ -57,7 +60,8 @@ const clothTex = (() => {
   };
 })();
 
-// Painted face on a 64x64 patch: sockets, eyes with highlights, brows, nose shadow, mouth.
+// Painted face on a 64x64 patch. Features are deliberately oversized: the patch lands ~20-30px
+// wide on the 360p target, so eyes/brows/mouth must stay readable as dark/light pairs at ~5px.
 // `hollow` swaps in black empty sockets and an open mouth for the ghosts.
 const faceTex = (() => {
   const cache = new Map();
@@ -77,59 +81,68 @@ const faceTex = (() => {
         g.fillStyle = gr;
         g.fillRect(x - r, y - r, r * 2, r * 2);
       };
-      soft(32, 18, 26, 'rgba(255,255,255,0.06)');
-      soft(20, 44, 14, 'rgba(120,60,40,0.10)');
-      soft(44, 44, 14, 'rgba(120,60,40,0.10)');
-      // Eyes: heavy socket shadow, big iris, single catchlight — oversized on purpose so the
-      // features still read at PS2 distances. Hollow swaps in black voids and an open mouth.
-      for (const ex of [17, 47]) {
-        g.fillStyle = 'rgba(60,32,24,0.6)';
+      soft(32, 16, 26, 'rgba(255,255,255,0.07)');
+      soft(18, 46, 15, 'rgba(120,60,40,0.12)');
+      soft(46, 46, 15, 'rgba(120,60,40,0.12)');
+      // Eyes: heavy dark socket, pale eyeball, dark pupil, one catchlight. Hollow swaps in
+      // black voids and an open mouth.
+      for (const ex of [16, 48]) {
+        // Socket: big soft dark almond.
+        g.fillStyle = 'rgba(44,24,17,0.88)';
         g.beginPath();
-        g.ellipse(ex, 29, hollow ? 9 : 8, hollow ? 8 : 6.5, 0, 0, Math.PI * 2);
+        g.ellipse(ex, 30, hollow ? 10 : 9, hollow ? 8.5 : 7, 0, 0, Math.PI * 2);
         g.fill();
         if (hollow) {
-          g.fillStyle = '#040304';
+          g.fillStyle = '#030203';
           g.beginPath();
-          g.ellipse(ex, 29.5, 6.5, 6, 0, 0, Math.PI * 2);
+          g.ellipse(ex, 30.5, 7, 6.5, 0, 0, Math.PI * 2);
           g.fill();
         } else {
-          g.fillStyle = '#efe9dd';
+          // Eyeball: pale oval with a dark pupil and a single catchlight, slightly lower lid
+          // shadow so the eye reads as a ball, not a painted dot.
+          g.fillStyle = '#ece5d6';
           g.beginPath();
-          g.ellipse(ex, 29, 5.4, 4.6, 0, 0, Math.PI * 2);
+          g.ellipse(ex, 30, 6.4, 5.4, 0, 0, Math.PI * 2);
           g.fill();
-          g.fillStyle = '#1d1712';
+          g.fillStyle = '#191310';
           g.beginPath();
-          g.arc(ex, 29.8, 2.6, 0, Math.PI * 2);
+          g.arc(ex, 31, 3.1, 0, Math.PI * 2);
           g.fill();
           g.fillStyle = 'rgba(255,255,255,0.95)';
-          g.fillRect(ex - 1.6, 27.6, 1.8, 1.8);
+          g.fillRect(ex - 1.9, 28.2, 2.1, 2.1);
+          // Lower lid line.
+          g.strokeStyle = 'rgba(52,28,20,0.55)';
+          g.lineWidth = 1.4;
+          g.beginPath();
+          g.ellipse(ex, 31.5, 5.6, 3.6, 0, 0.15 * Math.PI, 0.85 * Math.PI);
+          g.stroke();
         }
-        // Brow: short heavy stroke above each eye.
-        g.strokeStyle = 'rgba(28,20,16,0.8)';
-        g.lineWidth = 2.2;
+        // Brow: short heavy stroke above each eye, slightly angled down toward the nose.
+        g.strokeStyle = 'rgba(20,14,10,0.95)';
+        g.lineWidth = 3.2;
         g.beginPath();
-        g.moveTo(ex - 6, 20.5 + (rnd() - 0.5));
-        g.quadraticCurveTo(ex, 18.5 + (rnd() - 0.5), ex + 6, 20 + (rnd() - 0.5));
+        g.moveTo(ex - (ex < 32 ? 7 : -7), 19.5 + (rnd() - 0.5));
+        g.quadraticCurveTo(ex, 17.5 + (rnd() - 0.5), ex + (ex < 32 ? 7 : -7), 20 + (rnd() - 0.5));
         g.stroke();
       }
       // Nose shadow and tip.
       const ng = g.createLinearGradient(29, 32, 35, 50);
-      ng.addColorStop(0, 'rgba(90,50,35,0.30)');
+      ng.addColorStop(0, 'rgba(90,50,35,0.34)');
       ng.addColorStop(1, 'rgba(90,50,35,0)');
       g.fillStyle = ng;
       g.fillRect(28, 32, 8, 18);
-      soft(32, 47, 5, 'rgba(255,255,255,0.10)');
-      // Mouth: slightly open, darker for hollow.
-      g.strokeStyle = hollow ? '#140303' : 'rgba(85,32,28,0.85)';
-      g.lineWidth = hollow ? 3.4 : 2;
+      soft(32, 46, 5.5, 'rgba(255,255,255,0.12)');
+      // Mouth: slightly open, darker and wider for hollow.
+      g.strokeStyle = hollow ? '#120202' : 'rgba(72,26,22,0.95)';
+      g.lineWidth = hollow ? 4.5 : 2.8;
       g.beginPath();
       if (hollow) {
-        g.fillStyle = '#080404';
-        g.ellipse(32, 51, 5.5, 6, 0, 0, Math.PI * 2);
+        g.fillStyle = '#070303';
+        g.ellipse(32, 51.5, 6, 6.5, 0, 0, Math.PI * 2);
         g.fill();
       } else {
-        g.moveTo(25, 50.5);
-        g.quadraticCurveTo(32, 54.5, 39, 50.5);
+        g.moveTo(24, 50);
+        g.quadraticCurveTo(32, 55, 40, 50);
         g.stroke();
       }
     });
@@ -138,30 +151,58 @@ const faceTex = (() => {
   };
 })();
 
-// Shared materials, keyed so a crowd reuses one material per colour/role.
+/*
+ * Cheap cool rim: a fresnel term injected into the Lambert shader so silhouettes pick up a
+ * faint moonlit edge. Applied to the person materials only; faces and the veil stay clean.
+ */
+const rim = (mat) => {
+  const prev = mat.onBeforeCompile; // ps1() vertex snap — must be preserved, not replaced
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev(shader, renderer);
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <opaque_fragment>',
+      `outgoingLight += vec3(0.055, 0.075, 0.13) * pow(1.0 - saturate(dot(normalize(normal), normalize(vViewPosition))), 3.0);
+       #include <opaque_fragment>`,
+    );
+  };
+  return mat;
+};
+
+// Shared materials, keyed so a crowd reuses one material per colour/role. The emissive floor
+// keeps people readable in the dark; ghosts pass a higher emissive and keep it. The floor is
+// applied to emitted luminance, not raw intensity: dark garments would otherwise glow at a
+// fraction of the intended level and read as cut-outs under moonlight. Hair is exempt so
+// heads stay dark where they should.
 const MATS = new Map();
+const floor = (emissive) => Math.max(emissive, 0.18);
+const emisI = (color, emissive) => {
+  const c = new THREE.Color(color);
+  const l = Math.max(0.012, 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b);
+  return Math.min(6, Math.max(emissive, 0.24 / l));
+};
 const flatMat = (role, color, emissive, extra = {}) => {
   const key = `${role}|${color}|${emissive}`;
   if (!MATS.has(key)) {
-    MATS.set(key, lam({ color, emissive: color, emissiveIntensity: emissive, vertexColors: true, ...extra }));
+    const ei = role === 'hair' ? floor(emissive) : emisI(color, emissive);
+    MATS.set(key, rim(lam({ color, emissive: color, emissiveIntensity: ei, vertexColors: true, ...extra })));
   }
   return MATS.get(key);
 };
 const clothMat = (color, emissive) => {
   const key = `cloth|${color}|${emissive}`;
   if (!MATS.has(key)) {
-    MATS.set(key, lam({
-      map: clothTex(color), color: 0xffffff, emissive: color, emissiveIntensity: emissive,
+    MATS.set(key, rim(lam({
+      map: clothTex(color), color: 0xffffff, emissive: color, emissiveIntensity: emisI(color, emissive),
       vertexColors: true,
-    }));
+    })));
   }
   return MATS.get(key);
 };
 const faceMat = (skin, hollow) => {
   const key = `face|${skin}|${hollow ? 1 : 0}`;
   if (!MATS.has(key)) {
-    // Unlit-ish painted face: emissive stays 0 so hollow sockets and features keep their contrast.
-    MATS.set(key, lam({ map: faceTex(skin, hollow), vertexColors: false }));
+    // Painted face: self-illumination keeps sockets/brows/mouth readable in moonlight.
+    MATS.set(key, lam({ map: faceTex(skin, hollow), emissive: 0xffffff, emissiveMap: faceTex(skin, hollow), emissiveIntensity: 0.14 }));
   }
   return MATS.get(key);
 };
@@ -169,7 +210,7 @@ const veilMat = (emissive) => {
   const key = `veil|${emissive}`;
   if (!MATS.has(key)) {
     MATS.set(key, lam({
-      color: 0xe9e4d6, emissive: 0xe9e4d6, emissiveIntensity: emissive,
+      color: 0xe9e4d6, emissive: 0xe9e4d6, emissiveIntensity: floor(emissive),
       vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.5,
       depthWrite: false,
     }));
@@ -177,12 +218,12 @@ const veilMat = (emissive) => {
   return MATS.get(key);
 };
 
-// Per-vertex brightness for fake AO: fn(x, y, z, nx, ny, nz) -> multiplier ~0.5-1.1.
+// Per-vertex brightness for fake AO: fn(x, y, z, nx, ny, nz) -> multiplier ~0.5-1.
 function vshade(geo, fn) {
   const pos = geo.attributes.position, nor = geo.attributes.normal;
   const n = pos.count, col = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
-    const v = THREE.MathUtils.clamp(fn(pos.getX(i), pos.getY(i), pos.getZ(i), nor.getX(i), nor.getY(i), nor.getZ(i)), 0.3, 1.15);
+    const v = THREE.MathUtils.clamp(fn(pos.getX(i), pos.getY(i), pos.getZ(i), nor.getX(i), nor.getY(i), nor.getZ(i)), 0.3, 1.0);
     col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = v;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -208,13 +249,19 @@ const blob = (sx, sy, sz, ws = 8, hs = 6) => {
   return g;
 };
 
+/*
+ * One shading function per limb over pivot-local y, so the gradient runs continuously through
+ * the joints instead of stepping between separately-shaded segments (that step is what read as
+ * "ball joints"). Segment radii match at the joints and overlap slightly.
+ */
+const legShade = (y) => 1.0 - 0.20 * THREE.MathUtils.smoothstep(-y, 0.02, 0.86);
+const armShade = (y) => 1.02 - 0.18 * THREE.MathUtils.smoothstep(-y, 0.02, 0.56);
+
 function makeLeg(side, mat, pivot) {
   // pivot-local: y 0 at the hip, negative going down; foot lands at y=-0.87.
-  const thigh = vshade(limbSeg(0.086, 0.060, 0.38, 9), (x, y) => 1.0 - 0.10 * (-y / 0.87));
-  const shin = vshade(limbSeg(0.058, 0.040, 0.40, 9).translate(0, -0.38, 0), (x, y) => {
-    if (y < -0.80) return 0.34; // shoe zone reads as dark footwear on any outfit
-    return 0.92 - 0.12 * ((-y - 0.38) / 0.42);
-  });
+  const thigh = vshade(limbSeg(0.086, 0.060, 0.40, 9), (x, y) => legShade(y));
+  // Shin starts a touch inside the thigh so the knee reads as one limb, radii matched.
+  const shin = vshade(limbSeg(0.062, 0.042, 0.41, 9).translate(0, -0.395, 0), (x, y) => legShade(y));
   const shoe = vshade(blob(0.050, 0.036, 0.095).translate(0, -0.834, 0.018), () => 0.34);
   mesh(thigh, mat, pivot);
   mesh(shin, mat, pivot);
@@ -223,19 +270,22 @@ function makeLeg(side, mat, pivot) {
 }
 
 function makeArm(side, topMat, skinMat, pivot) {
-  // pivot-local: y 0 at the shoulder, negative going down; elbow at -0.27, wrist ~-0.52.
-  const upper = vshade(limbSeg(0.058, 0.046, 0.27, 8), (x, y) => 1.02 - 0.14 * (-y / 0.27));
-  const fore = limbSeg(0.044, 0.033, 0.25, 8);
-  fore.translate(0, -0.125, 0);
+  // pivot-local: y 0 at the shoulder, negative going down; elbow ~-0.28, wrist ~-0.53.
+  const upper = vshade(limbSeg(0.058, 0.047, 0.30, 8), (x, y) => armShade(y));
+  // The forearm's top edge is the elbow: rotate about it first, then seat it inside the
+  // upper arm's end so the joint is one continuous limb, not two balls with a gap.
+  const fore = limbSeg(0.047, 0.033, 0.27, 8);
   fore.rotateX(-0.17); // slight forward bend at the elbow
-  fore.translate(0, -0.27, 0);
-  vshade(fore, (x, y, z) => 0.9 - 0.16 * Math.min(1, (-y - 0.27) / 0.28));
-  const deltoid = vshade(blob(0.066, 0.062, 0.066, 8, 6).translate(0, -0.02, 0), () => 1.04);
+  fore.translate(0, -0.26, 0);
+  vshade(fore, (x, y) => armShade(y));
+  // Deltoid cap: a sphere that engulfs the shoulder joint so the upper arm flows out of
+  // the torso instead of meeting it at a ball joint.
+  const deltoid = vshade(blob(0.070, 0.066, 0.070, 8, 6).translate(0, -0.035, 0), (x, y) => armShade(y) * 1.02);
   mesh(upper, topMat, pivot);
   mesh(fore, topMat, pivot);
   mesh(deltoid, topMat, pivot);
-  // Hand blob at the end of the bent forearm.
-  const hand = vshade(blob(0.042, 0.056, 0.048, 7, 5).translate(0, -0.535, 0.052), (x, y) => 0.95 - 0.1 * (-y / 0.6));
+  // Hand blob tucked into the end of the forearm, same shading run.
+  const hand = vshade(blob(0.044, 0.058, 0.050, 7, 5).translate(0, -0.535, 0.052), (x, y) => armShade(y) * 0.97);
   mesh(hand, skinMat, pivot);
   pivot.position.set(side * 0.25, 1.44, 0);
 }
@@ -251,9 +301,9 @@ function makeTorso(topMat, dress, body) {
   torso.scale(1, 1, 0.72);
   torso.computeVertexNormals();
   vshade(torso, (x, y, z, nx) => {
-    let v = 0.82 + 0.20 * THREE.MathUtils.smoothstep(y, 0.95, 1.45); // lighter toward shoulders
-    if (y > 1.36 && Math.abs(x) > 0.10) v *= 0.82; // underarm/armpit shadow
-    if (y < 1.0) v *= 0.9;
+    let v = 0.84 + 0.16 * THREE.MathUtils.smoothstep(y, 0.95, 1.45); // lighter toward shoulders
+    if (y > 1.38 && Math.abs(x) > 0.115) v *= 0.88; // soft underarm shadow, not a band
+    if (y < 1.0) v *= 0.92;
     return v;
   });
   mesh(torso, topMat, body);
@@ -266,7 +316,7 @@ function makeTorso(topMat, dress, body) {
     const skirt = new THREE.LatheGeometry(skirtPts, 10);
     skirt.scale(1, 1, 0.82);
     skirt.computeVertexNormals();
-    vshade(skirt, (x, y) => 0.85 + 0.15 * THREE.MathUtils.smoothstep(y, 0.4, 1.0));
+    vshade(skirt, (x, y) => 0.86 + 0.14 * THREE.MathUtils.smoothstep(y, 0.4, 1.0));
     mesh(skirt, topMat, body);
   }
 }
@@ -294,7 +344,7 @@ function makeHead(skinMat, faceM, hairM, veilM, longHair, veil, head) {
     skull.computeVertexNormals();
   }
   skull.translate(0, 0.005, -0.005);
-  vshade(skull, (x, y) => 1.02 - 0.1 * Math.max(0, -y / 0.10)); // slightly shaded jaw
+  vshade(skull, (x, y) => 1.0 - 0.1 * Math.max(0, -y / 0.10)); // slightly shaded jaw
   mesh(skull, skinMat, head);
 
   // Nose wedge.
@@ -329,17 +379,20 @@ function makeHead(skinMat, faceM, hairM, veilM, longHair, veil, head) {
   vshade(back, () => 0.95);
   mesh(back, hairM, head);
   if (longHair) {
-    // Curtain of hair down the back: open cylinder arc centred on -z.
+    // Curtain of hair down the back: open cylinder arc centred on -z, tucked against the
+    // shoulders so its hem doesn't float in front of the chest.
     const curtain = new THREE.CylinderGeometry(0.090, 0.118, 0.58, 10, 3, true, Math.PI - 1.95, 3.9);
-    curtain.translate(0, -0.28, -0.017);
+    curtain.translate(0, -0.28, -0.022);
     vshade(curtain, (x, y) => 0.9 - 0.18 * Math.min(1, (-y - 0.05) / 0.5));
     mesh(curtain, hairM, head);
     for (const s of [-1, 1]) {
-      const lock = limbSeg(0.022, 0.014, 0.42, 6);
-      lock.translate(0, -0.21, 0);
-      lock.rotateX(0.06);
-      lock.translate(s * 0.086, -0.31, 0.014);
-      vshade(lock, (x, y) => 0.85 - 0.15 * (-y / 0.7));
+      // Side locks: strands from the temples angling down along the neck onto the
+      // shoulders. They must stay outside the torso silhouette (|x| > ~0.18 at chest
+      // height) or they hide inside it — which is what made them read as stray stripes.
+      const lock = limbSeg(0.026, 0.013, 0.36, 6);
+      lock.rotateZ(s * 0.36);
+      lock.translate(s * 0.072, -0.055, 0.012);
+      vshade(lock, (x, y) => 0.9 - 0.15 * (-y / 0.4));
       mesh(lock, hairM, head);
     }
   }
@@ -362,12 +415,15 @@ export function makePerson({
   body.scale.setScalar(height);
   root.add(body);
 
-  const skinMat = flatMat('skin', skin, emissive);
+  // Skin albedo is pulled down a touch everywhere (body + painted face) so pale complexions
+  // keep their shading under the store's hot lamps instead of clipping to a white blob.
+  const skinTone = dim(skin, 0.88);
+  const skinMat = flatMat('skin', skinTone, emissive);
   const topMat = clothMat(top, emissive);
   const bottomMat = clothMat(bottom, emissive);
   const hairMat = flatMat('hair', hair, emissive);
   const legMat = dress ? skinMat : bottomMat;
-  const faceM = faceMat(skin, hollow);
+  const faceM = faceMat(skinTone, hollow);
   const veilM = veil ? veilMat(emissive) : null;
 
   const legs = [null, null];

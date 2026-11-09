@@ -68,7 +68,11 @@ const STUDIO = async () => {
   const fill = new PL(0x7a86c8, 120, 18, 2);
   fill.position.set(-3.5, 2.4, 4.2);
   scene.add(fill);
-  scene.add(new AL(0x2c3450, 1.2));
+  // Frontal softbox so faces are actually readable in the close-ups.
+  const front = new PL(0xcfd8ff, 90, 12, 2);
+  front.position.set(0, 1.7, 3.4);
+  scene.add(front);
+  scene.add(new AL(0x3a4470, 1.6));
 };
 
 // --- Studio lineup inside the (emptied) NightMart scene ---
@@ -85,12 +89,38 @@ await page.screenshot({ path: '/out/shots/people-studio.png' });
 // Close-up on the middle three (woman, bride, ghost) for face detail.
 await page.evaluate(() => {
   const cam = game.cam;
-  cam.position.set(-0.8, 1.5, 3.0);
+  cam.position.set(-0.8, 1.5, 1.9);
   cam.lookAt(-0.8, 1.45, 0);
   cam.updateMatrixWorld(true);
 });
 await frames(6);
 await page.screenshot({ path: '/out/shots/people-faces.png' });
+
+// Tight head shots: bride then ghost, ~1.4 m out so facial features fill the frame.
+await page.evaluate(() => {
+  const cam = game.cam;
+  cam.position.set(0, 1.62, 1.45);
+  cam.lookAt(0, 1.6, 0);
+  cam.updateMatrixWorld(true);
+});
+await frames(6);
+await page.screenshot({ path: '/out/shots/people-head-bride.png' });
+await page.evaluate(() => {
+  const cam = game.cam;
+  cam.position.set(1.6, 1.62, 1.45);
+  cam.lookAt(1.6, 1.6, 0);
+  cam.updateMatrixWorld(true);
+});
+await frames(6);
+await page.screenshot({ path: '/out/shots/people-head-ghost.png' });
+await page.evaluate(() => {
+  const cam = game.cam;
+  cam.position.set(-1.6, 1.62, 1.45);
+  cam.lookAt(-1.6, 1.6, 0);
+  cam.updateMatrixWorld(true);
+});
+await frames(6);
+await page.screenshot({ path: '/out/shots/people-head-woman.png' });
 
 // --- Central de Abasto: the same lineup in real moonlight ---
 await page.goto('http://localhost:5173/?debug&speed=1');
