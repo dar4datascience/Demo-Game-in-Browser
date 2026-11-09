@@ -17,11 +17,15 @@ const LINEUP = async ([xs, z, camPos, look]) => {
   const { NPC } = await import('/src/world/person.js');
   const { GHOST } = await import('/src/game/director.js');
   const variants = [
-    ['man', { skin: '#c99a72', top: '#37455c', bottom: '#23262e', hair: '#241a12' }],
-    ['woman', { skin: '#d9b08c', top: '#5c2e35', bottom: '#3a3f4a', hair: '#120e0c', longHair: true }],
-    ['bride', { skin: '#e3ddd2', top: '#e6e2d6', bottom: '#d8d2c8', hair: '#060606', longHair: true, veil: true, dress: true, emissive: 0.1 }],
+    ['man-tee', { skin: '#c99a72', top: '#37455c', bottom: '#23262e', hair: '#241a12', outfit: 'tee' }],
+    ['suit', { skin: '#c99a72', top: '#2c2f38', bottom: '#1e2126', hair: '#1c1410', outfit: 'suit', hairStyle: 'short' }],
+    ['hoodie', { skin: '#8a6a50', top: '#4a3b2c', bottom: '#26221e', hair: '#0e0c0a', outfit: 'hoodie', build: 'heavy', hairStyle: 'short' }],
+    ['apron', { skin: '#caa27e', top: '#7a4a2e', bottom: '#3a3630', hair: '#241a12', outfit: 'apron', hairStyle: 'bun' }],
+    ['woman', { skin: '#d9b08c', top: '#5c2e35', bottom: '#3a3f4a', hair: '#120e0c', longHair: true, outfit: 'dress', build: 'slim' }],
+    ['bride', { skin: '#e3ddd2', top: '#e6e2d6', bottom: '#d8d2c8', hair: '#060606', longHair: true, veil: true, dress: true, outfit: 'dress', emissive: 0.1 }],
     ['ghost', GHOST],
-    ['child', { skin: '#d9b08c', top: '#7a4a2e', bottom: '#2c2a33', hair: '#3a2a18', height: 0.62 }],
+    ['uniform', { skin: '#d9b08c', top: '#3d4a3a', bottom: '#2c2a33', hair: '#3a2a18', outfit: 'uniform', build: 'slim', glasses: true, hairStyle: 'bob' }],
+    ['child', { skin: '#d9b08c', top: '#7a4a2e', bottom: '#2c2a33', hair: '#3a2a18', height: 0.62, outfit: 'tee' }],
   ];
   const npcs = variants.map(([name, opts], i) => {
     const npc = new NPC(opts, scene);
@@ -81,16 +85,16 @@ await page.waitForTimeout(800);
 await page.click('[data-map=konbini]');
 await page.waitForTimeout(2000);
 await page.evaluate(STUDIO);
-const studioHeads = await page.evaluate(LINEUP, [[-3.2, -1.6, 0, 1.6, 3.2], 0, [0, 1.55, 4.8], [0, 1.15, 0]]);
+const studioHeads = await page.evaluate(LINEUP, [[-3.6, -2.7, -1.8, -0.9, 0, 0.9, 1.8, 2.7, 3.6], 0, [0, 1.55, 5.4], [0, 1.05, 0]]);
 console.log('studio:', JSON.stringify(studioHeads));
 await frames(8);
 await page.screenshot({ path: '/out/shots/people-studio.png' });
 
-// Close-up on the middle three (woman, bride, ghost) for face detail.
+// Close-up on woman/bride/ghost (indices 4-6, x 0..1.8) for face detail.
 await page.evaluate(() => {
   const cam = game.cam;
-  cam.position.set(-0.8, 1.5, 1.9);
-  cam.lookAt(-0.8, 1.45, 0);
+  cam.position.set(0.9, 1.5, 2.1);
+  cam.lookAt(0.9, 1.42, 0);
   cam.updateMatrixWorld(true);
 });
 await frames(6);
@@ -99,24 +103,24 @@ await page.screenshot({ path: '/out/shots/people-faces.png' });
 // Tight head shots: bride then ghost, ~1.4 m out so facial features fill the frame.
 await page.evaluate(() => {
   const cam = game.cam;
-  cam.position.set(0, 1.62, 1.45);
-  cam.lookAt(0, 1.6, 0);
+  cam.position.set(0.9, 1.62, 1.5);
+  cam.lookAt(0.9, 1.6, 0);
   cam.updateMatrixWorld(true);
 });
 await frames(6);
 await page.screenshot({ path: '/out/shots/people-head-bride.png' });
 await page.evaluate(() => {
   const cam = game.cam;
-  cam.position.set(1.6, 1.62, 1.45);
-  cam.lookAt(1.6, 1.6, 0);
+  cam.position.set(1.8, 1.62, 1.5);
+  cam.lookAt(1.8, 1.6, 0);
   cam.updateMatrixWorld(true);
 });
 await frames(6);
 await page.screenshot({ path: '/out/shots/people-head-ghost.png' });
 await page.evaluate(() => {
   const cam = game.cam;
-  cam.position.set(-1.6, 1.62, 1.45);
-  cam.lookAt(-1.6, 1.6, 0);
+  cam.position.set(0, 1.62, 1.5);
+  cam.lookAt(0, 1.6, 0);
   cam.updateMatrixWorld(true);
 });
 await frames(6);
@@ -129,7 +133,7 @@ await page.click('[data-map=ceda]');
 await page.click('[data-char=diablero]');
 await page.click('[data-variant=nonbinary]');
 await page.waitForTimeout(3000);
-const cedaHeads = await page.evaluate(LINEUP, [[-30.5, -28.8, -27.1, -25.4, -23.7], -15, [-26, 1.6, -9.0], [-26, 1.1, -15]]);
+const cedaHeads = await page.evaluate(LINEUP, [[-31.2, -30.2, -29.2, -28.2, -27.2, -26.2, -25.2, -24.2, -23.2], -15, [-27.2, 1.6, -9.0], [-27.2, 1.1, -15]]);
 console.log('ceda:', JSON.stringify(cedaHeads));
 await frames(8);
 await page.screenshot({ path: '/out/shots/people-ceda.png' });

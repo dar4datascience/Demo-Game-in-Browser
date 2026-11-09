@@ -113,12 +113,12 @@ describe('makePerson', () => {
     const { root, legs, arms, head } = makePerson({});
     expect(legs).toHaveLength(2);
     expect(arms).toHaveLength(2);
-    expect(head).toBeInstanceOf(THREE.Group);
-    expect(legs[0]).toBeInstanceOf(THREE.Group);
+    expect(head.isBone).toBe(true);
+    expect(legs[0].isBone).toBe(true);
     const { meshes, tris } = stats(root);
-    expect(meshes).toBeLessThanOrEqual(12);
-    expect(tris).toBeGreaterThanOrEqual(300);
-    expect(tris).toBeLessThanOrEqual(2500);
+    expect(meshes).toBeLessThanOrEqual(10);
+    expect(tris).toBeGreaterThanOrEqual(1200);
+    expect(tris).toBeLessThanOrEqual(4000);
   });
 
   it('stands about 1.75 units tall at height 1 with feet at y=0', () => {
@@ -139,12 +139,12 @@ describe('makePerson', () => {
   it('builds the ghost variant', () => {
     const { root, legs, arms, head } = makePerson(GHOST);
     const { meshes, tris } = stats(root);
-    expect(meshes).toBeLessThanOrEqual(12);
-    expect(tris).toBeGreaterThanOrEqual(300);
-    expect(tris).toBeLessThanOrEqual(2500);
+    expect(meshes).toBeLessThanOrEqual(10);
+    expect(tris).toBeGreaterThanOrEqual(1200);
+    expect(tris).toBeLessThanOrEqual(4000);
     expect(legs).toHaveLength(2);
     expect(arms).toHaveLength(2);
-    expect(head).toBeInstanceOf(THREE.Group);
+    expect(head.isBone).toBe(true);
   });
 });
 
