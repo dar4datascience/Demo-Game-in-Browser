@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { lam, basic } from '../../engine/post.js';
+import { lam, basic, phong } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { createBuilder } from '../../world/builder.js';
 import { batchWorld } from '../../world/batch.js';
@@ -35,7 +35,7 @@ export function buildWorld(scene) {
     carGlass: basic({ color: 0x2a3a55 }),
     tyre: lam({ color: 0x0c0c10, vertexColors: true }),
     stationFloor: lam({ map: T.concreteTex(), vertexColors: true }),
-    asphalt: lam({ map: T.asphaltTex(), vertexColors: true }),
+    asphalt: phong({ map: T.asphaltTex(), shininess: 12, specular: 0x27324e, vertexColors: true }),
     stationWall: lam({ map: T.stationTex(), vertexColors: true }),
     metroBody: lam({ color: 0xd9822b, vertexColors: true }),
     metroInner: lam({ map: T.plasterTex('#4a4450', '#201a28'), side: THREE.BackSide, vertexColors: true }),
@@ -43,12 +43,13 @@ export function buildWorld(scene) {
     chrome: lam({ color: 0xb8c0c8, emissive: 0x1a1a1e, vertexColors: true }),
   };
 
-  scene.add(new THREE.AmbientLight(0x5a4f80, 1.9), new THREE.HemisphereLight(0x7a6aa8, 0x241c30, 2.2));
+  scene.add(new THREE.AmbientLight(0x5a4f80, 1.9), new THREE.HemisphereLight(0x7a6aa8, 0x241c30, 2.2),
+    new THREE.HemisphereLight(0x3a4570, 0x2a2018, 0.35));
   // Set here as well as in main.js: the headless harness has no main.js and shots swap fog per cut.
   scene.fog = new THREE.Fog(0x221b3d, 10, 140);
 
-  // Cobbled ground for the whole backlot; one plane, 1 m cobbles.
-  b.plane(380, 380, lam({ map: T.cobbleTex() }), 0, 0, 0, 0, -Math.PI / 2, [1 / 8, 1 / 8]);
+  // Cobbled ground for the whole backlot; one plane, 1 m cobbles, faint wet sheen.
+  b.plane(380, 380, phong({ map: T.cobbleTex(), shininess: 12, specular: 0x27324e, vertexColors: true }), 0, 0, 0, 0, -Math.PI / 2, [1 / 8, 1 / 8]);
 
   refs.sky = createSky(scene);
   refs.plaza = plaza(b, M);

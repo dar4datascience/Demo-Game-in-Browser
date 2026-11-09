@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { lam, basic } from '../../engine/post.js';
+import { lam, basic, phong } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { createBuilder } from '../../world/builder.js';
 import { batchWorld, localSize } from '../../world/batch.js';
@@ -91,8 +91,8 @@ export function buildWorld(scene) {
   const refs = { units: {}, trucks: {}, counters: {}, pickups: {}, lamps: [], solid: [] };
 
   const M = {
-    asphalt: lam({ map: T.asphaltTex(), vertexColors: true }),
-    concrete: lam({ map: T.concreteTex(), vertexColors: true }),
+    asphalt: phong({ map: T.asphaltTex(), shininess: 12, specular: 0x27324e, vertexColors: true }),
+    concrete: phong({ map: T.concreteTex(), shininess: 12, specular: 0x27324e, vertexColors: true }),
     wall: lam({ map: T.paintedWallTex(), vertexColors: true }),
     boundary: lam({ map: T.paintedWallTex('#cfc6b0', '#9a3324'), vertexColors: true }),
     roof: lam({ color: 0x5d5a55, vertexColors: true }),
@@ -106,7 +106,8 @@ export function buildWorld(scene) {
   const cortinas = ['#8d9298', '#6f8a7c', '#9a8f7c', '#7b8496'].flatMap((c) => [lam({ map: T.cortinaTex(c) }), lam({ map: T.cortinaTex(c, true) })]);
   const lampMat = glowMat({ color: 0xffd7a0 }, 0x1d1a16);
 
-  scene.add(new THREE.AmbientLight(0x3a4568, 1.3), new THREE.HemisphereLight(0x5a6490, 0x2a2420, 1.7));
+  scene.add(new THREE.AmbientLight(0x3a4568, 1.3), new THREE.HemisphereLight(0x5a6490, 0x2a2420, 1.7),
+    new THREE.HemisphereLight(0x3a4570, 0x2a2018, 0.35));
 
   // --- Storefront catalogue and one shared sign atlas ------------------------
   const defs = [];

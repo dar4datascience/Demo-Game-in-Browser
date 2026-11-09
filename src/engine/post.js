@@ -21,6 +21,8 @@ export function ps1(material) {
 
 export const lam = (opts) => ps1(new THREE.MeshLambertMaterial(opts));
 export const basic = (opts) => ps1(new THREE.MeshBasicMaterial(opts));
+// Wet-look variant for ground planes: same vertex snap, gentle specular from the lamp pool.
+export const phong = (opts) => ps1(new THREE.MeshPhongMaterial(opts));
 
 export const RENDER_HEIGHT = 360;
 

@@ -988,26 +988,26 @@ export const skyTex = () => canvasTexture(1024, 512, (g, w, h) => {
     g.fill();
   }
   const mx = w * 0.64, my = h * 0.26;
-  // Wide moonlight halo, then a tight one around the disc.
-  let halo = g.createRadialGradient(mx, my, 12, mx, my, 130);
-  halo.addColorStop(0, 'rgba(255,240,205,0.5)');
-  halo.addColorStop(0.4, 'rgba(255,232,180,0.16)');
-  halo.addColorStop(1, 'rgba(255,232,180,0)');
+  // Wide cool halo, then a tight one around a modest disc.
+  let halo = g.createRadialGradient(mx, my, 8, mx, my, 78);
+  halo.addColorStop(0, 'rgba(208,220,255,0.32)');
+  halo.addColorStop(0.45, 'rgba(198,210,255,0.10)');
+  halo.addColorStop(1, 'rgba(198,210,255,0)');
   g.fillStyle = halo;
-  g.fillRect(mx - 140, my - 140, 280, 280);
-  halo = g.createRadialGradient(mx, my, 8, mx, my, 52);
-  halo.addColorStop(0, 'rgba(255,248,225,0.95)');
-  halo.addColorStop(0.45, 'rgba(255,240,205,0.45)');
-  halo.addColorStop(1, 'rgba(255,240,205,0)');
+  g.fillRect(mx - 84, my - 84, 168, 168);
+  halo = g.createRadialGradient(mx, my, 5, mx, my, 30);
+  halo.addColorStop(0, 'rgba(234,239,255,0.9)');
+  halo.addColorStop(0.5, 'rgba(222,230,255,0.32)');
+  halo.addColorStop(1, 'rgba(222,230,255,0)');
   g.fillStyle = halo;
-  g.fillRect(mx - 56, my - 56, 112, 112);
-  // Disc with soft maria.
-  g.fillStyle = '#f7efd8';
+  g.fillRect(mx - 34, my - 34, 68, 68);
+  // Small pale disc with faint bluish maria — reads as a moon, not a blotch.
+  g.fillStyle = '#e8ebf6';
   g.beginPath();
-  g.arc(mx, my, 24, 0, Math.PI * 2);
+  g.arc(mx, my, 14, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = 'rgba(196,182,150,0.4)';
-  for (const [dx, dy, r] of [[-7, -5, 6], [6, 3, 4], [-2, 8, 5], [9, -7, 3]]) {
+  g.fillStyle = 'rgba(176,196,240,0.28)';
+  for (const [dx, dy, r] of [[-4, -3, 3.4], [3.5, 2, 2.4], [-1, 4.5, 2.8]]) {
     g.beginPath();
     g.arc(mx + dx, my + dy, r, 0, Math.PI * 2);
     g.fill();
@@ -1015,20 +1015,36 @@ export const skyTex = () => canvasTexture(1024, 512, (g, w, h) => {
 });
 
 export const moonTex = () => canvasTexture(64, 64, (g, w, h) => {
-  const halo = g.createRadialGradient(w / 2, h / 2, 6, w / 2, h / 2, 32);
-  halo.addColorStop(0, 'rgba(255,246,214,1)');
-  halo.addColorStop(0.42, 'rgba(255,238,190,0.9)');
-  halo.addColorStop(0.62, 'rgba(255,232,170,0.28)');
-  halo.addColorStop(1, 'rgba(255,232,170,0)');
+  const halo = g.createRadialGradient(w / 2, h / 2, 5, w / 2, h / 2, 26);
+  halo.addColorStop(0, 'rgba(238,242,255,1)');
+  halo.addColorStop(0.4, 'rgba(226,234,255,0.55)');
+  halo.addColorStop(0.62, 'rgba(214,226,255,0.16)');
+  halo.addColorStop(1, 'rgba(214,226,255,0)');
   g.fillStyle = halo;
   g.fillRect(0, 0, w, h);
-  g.fillStyle = 'rgba(210,198,160,0.45)';
-  for (let i = 0; i < 8; i++) {
+  g.fillStyle = 'rgba(186,202,240,0.35)';
+  for (let i = 0; i < 6; i++) {
     g.beginPath();
-    g.arc(w / 2 + (rand() - 0.5) * 26, h / 2 + (rand() - 0.5) * 26, 1 + rand() * 3, 0, Math.PI * 2);
+    g.arc(w / 2 + (rand() - 0.5) * 20, h / 2 + (rand() - 0.5) * 20, 1 + rand() * 2.2, 0, Math.PI * 2);
     g.fill();
   }
 });
+
+// Soft radial glow used by the light-halo quads in the level builder. One shared texture.
+let _haloTex = null;
+export const haloTex = () => {
+  if (_haloTex) return _haloTex;
+  _haloTex = canvasTexture(64, 64, (g) => {
+    const gr = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+    gr.addColorStop(0, 'rgba(255,255,255,1)');
+    gr.addColorStop(0.3, 'rgba(255,255,255,0.5)');
+    gr.addColorStop(0.65, 'rgba(255,255,255,0.12)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 64, 64);
+  });
+  return _haloTex;
+};
 
 export function staticScreen() {
   const canvas = document.createElement('canvas');

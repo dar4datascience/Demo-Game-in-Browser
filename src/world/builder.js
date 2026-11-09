@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { basic } from '../engine/post.js';
+import { haloTex } from '../engine/textures.js';
 
 // Scale box UVs to world metres so tiling textures keep a consistent density.
 function worldUV(geo, w, h, d, s) {
@@ -54,6 +55,75 @@ export function createBuilder(scene, { poolSize = 8 } = {}) {
   const pool = [];
   const poolAt = new THREE.Vector3();
 
+  /*
+   * Light halos: every registered lamp also gets a camera-facing additive quad sampling one
+   * shared radial texture. All quads live in a single mesh (one draw call no matter how many
+   * lamps a level registers) and `aLevel` tracks each light's live intensity, so flicker and
+   * blackouts dim the glow along with the lamp itself. No extra scene lights are added.
+   */
+  const halos = [];
+  let haloMesh = null, haloLevelAttr = null;
+  const HALO_CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, -1], [1, 1], [-1, 1]];
+  const haloMaterial = () => new THREE.ShaderMaterial({
+    uniforms: { uMap: { value: haloTex() }, uStrength: { value: 0.55 } },
+    vertexShader: `
+      attribute vec2 aCorner;
+      attribute vec3 aColor;
+      attribute float aSize;
+      attribute float aLevel;
+      varying vec3 vColor;
+      varying vec2 vUv;
+      void main() {
+        vColor = aColor * aLevel;
+        vUv = aCorner * 0.5 + 0.5;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        mv.xy += aCorner * aSize;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform sampler2D uMap;
+      uniform float uStrength;
+      varying vec3 vColor;
+      varying vec2 vUv;
+      void main() {
+        vec4 t = texture2D(uMap, vUv);
+        gl_FragColor = vec4(vColor * t.rgb * uStrength, t.a);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  function syncHalos() {
+    const n = halos.length;
+    const pos = new Float32Array(n * 18), corner = new Float32Array(n * 12);
+    const col = new Float32Array(n * 18), size = new Float32Array(n * 6), lvl = new Float32Array(n * 6);
+    halos.forEach((h, i) => {
+      for (let k = 0; k < 6; k++) {
+        const v = i * 6 + k;
+        pos[v * 3] = h.x; pos[v * 3 + 1] = h.y; pos[v * 3 + 2] = h.z;
+        corner[v * 2] = HALO_CORNERS[k][0]; corner[v * 2 + 1] = HALO_CORNERS[k][1];
+        col[v * 3] = h.r; col[v * 3 + 1] = h.g; col[v * 3 + 2] = h.b;
+        size[v] = h.size;
+        lvl[v] = 0;
+      }
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aCorner', new THREE.BufferAttribute(corner, 2));
+    geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+    haloLevelAttr = new THREE.BufferAttribute(lvl, 1);
+    geo.setAttribute('aLevel', haloLevelAttr);
+    if (!haloMesh) {
+      haloMesh = new THREE.Mesh(geo, haloMaterial());
+      haloMesh.frustumCulled = false;
+      scene.add(haloMesh);
+    } else {
+      haloMesh.geometry.dispose();
+      haloMesh.geometry = geo;
+    }
+  }
+
   for (let i = 0; i < poolSize; i++) {
     const l = new THREE.PointLight(0xffffff, 0, 10, 2);
     scene.add(l);
@@ -104,6 +174,12 @@ export function createBuilder(scene, { poolSize = 8 } = {}) {
     l.userData.base = intensity;
     lights.push(l);
     if (onGrid) powered.push(l);
+    const c = new THREE.Color(color);
+    halos.push({
+      light: l, x, y, z, r: c.r, g: c.g, b: c.b,
+      size: Math.min(2.0, Math.max(0.6, distance * 0.08)),
+    });
+    syncHalos();
     return l;
   }
 
@@ -132,6 +208,15 @@ export function createBuilder(scene, { poolSize = 8 } = {}) {
       p.distance = l.distance;
       p.intensity = l.intensity;
     });
+    if (haloLevelAttr) {
+      const arr = haloLevelAttr.array;
+      for (let i = 0; i < halos.length; i++) {
+        const l = halos[i].light;
+        const v = l.intensity > 0 ? Math.min(1, l.intensity / (l.userData.base || 1)) : 0;
+        for (let k = 0; k < 6; k++) arr[i * 6 + k] = v;
+      }
+      haloLevelAttr.needsUpdate = true;
+    }
   }
 
   // Unlit "emissive" material that dims to `off` during blackouts.
