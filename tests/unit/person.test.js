@@ -163,6 +163,66 @@ describe('skinned person', () => {
     expect(npc.rig.chest.rotation.x).not.toBe(c0);
   });
 
+  it('idle weight shift leans the spine and hips without breaking the leg contract', () => {
+    const npc = new NPC({}, new THREE.Scene());
+    npc.place(0, 0);
+    let maxLean = 0, maxHip = 0;
+    for (let i = 0; i < 40; i++) {
+      npc.update(0.1);
+      maxLean = Math.max(maxLean, Math.abs(npc.rig.spine.rotation.x - npc.rig.base.spineX));
+      maxHip = Math.max(maxHip, Math.abs(npc.rig.hips.position.x - npc.rig.base.hipsX));
+    }
+    expect(maxLean).toBeGreaterThan(0.003);
+    expect(maxHip).toBeGreaterThan(0.002);
+    expect(maxHip).toBeLessThan(0.05);
+    expect(npc.legs[0].isBone).toBe(true);
+  });
+
+  it('lookAt turns the head toward a target, clamped to ±40° yaw and ±20° pitch', () => {
+    const npc = new NPC({}, new THREE.Scene());
+    npc.place(0, 0);
+    npc.face(0, 5); // face +z
+    // Target far to the left -> yaw clamps at -0.7 rad.
+    npc.lookAt(new THREE.Vector3(-5, 0, 0), 1.5);
+    for (let i = 0; i < 40; i++) npc.update(0.1);
+    expect(npc.rig.head.rotation.y).toBeLessThan(-0.6);
+    expect(npc.rig.head.rotation.y).toBeGreaterThan(-0.75);
+    // Target behind -> same clamp, opposite sign after re-aiming right.
+    npc.lookAt(new THREE.Vector3(5, 0, 0), 1.5);
+    for (let i = 0; i < 40; i++) npc.update(0.1);
+    expect(npc.rig.head.rotation.y).toBeGreaterThan(0.6);
+    expect(npc.rig.head.rotation.y).toBeLessThan(0.75);
+    // Pitch clamps at ±0.35 even for a target far above (negative x = looking up).
+    npc.lookAt(new THREE.Vector3(0.4, 4, 0.2), 0);
+    for (let i = 0; i < 40; i++) npc.update(0.1);
+    expect(npc.rig.head.rotation.x).toBeGreaterThanOrEqual(-0.36);
+    expect(npc.rig.head.rotation.x).toBeLessThan(-0.3);
+    // Out of range (>6 m) eases back to the rest pose.
+    npc.lookAt(new THREE.Vector3(0, 0, 20), 1.5);
+    for (let i = 0; i < 60; i++) npc.update(0.1);
+    expect(Math.abs(npc.rig.head.rotation.y)).toBeLessThan(0.05);
+    expect(Math.abs(npc.rig.head.rotation.x)).toBeLessThan(0.05);
+    // lookAtPlayer accepts an object with .pos and keeps tracking it.
+    const player = { pos: new THREE.Vector3(2, 0, 1) };
+    npc.lookAtPlayer(player);
+    for (let i = 0; i < 40; i++) npc.update(0.1);
+    expect(npc.rig.head.rotation.y).toBeGreaterThan(0.2);
+    player.pos.set(-2, 0, 1);
+    for (let i = 0; i < 60; i++) npc.update(0.1);
+    expect(npc.rig.head.rotation.y).toBeLessThan(-0.2);
+  });
+
+  it('lookAt leaves story head tilts on rotation.z untouched', () => {
+    const npc = new NPC({}, new THREE.Scene());
+    npc.place(0, 0);
+    npc.face(0, 5);
+    npc.head.rotation.z = 0.35;
+    npc.lookAtPlayer({ pos: new THREE.Vector3(1, 0, 1) });
+    for (let i = 0; i < 30; i++) npc.update(0.1);
+    expect(npc.head.rotation.z).toBeCloseTo(0.35, 5);
+    expect(Math.abs(npc.rig.head.rotation.y)).toBeGreaterThan(0.05);
+  });
+
   it('builds ghost, bride and beast variants', () => {
     for (const opts of [GHOST, BRIDE, BEAST]) {
       const { root, legs, arms, head } = makePerson(opts);

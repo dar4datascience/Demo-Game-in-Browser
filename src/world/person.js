@@ -77,65 +77,93 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
   g.save();
   g.translate(x, y);
   g.scale(w / 64, h / 64);
-  // Diffuse matches the dimmed skin cell; the emissive face stays low so features read via
-  // shading contrast instead of self-illuminating into a blown highlight.
-  const base = emis ? lumColor(skin, 0.22) : dim(skin, 0.85);
+  // Diffuse matches the skin cell exactly so the patch edge feathers into the skull instead
+  // of reading as a mask; the emissive face stays low so features read via shading contrast.
+  const base = emis ? lumColor(skin, 0.24) : dim(skin, 0.9);
   g.fillStyle = base;
   g.fillRect(0, 0, 64, 64);
-  soft(g, 32, 16, 26, emis ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)');
-  soft(g, 18, 46, 15, 'rgba(120,60,40,0.12)');
-  soft(g, 46, 46, 15, 'rgba(120,60,40,0.12)');
+  soft(g, 32, 15, 24, emis ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)');
+  soft(g, 17, 47, 14, 'rgba(120,60,40,0.13)');
+  soft(g, 47, 47, 14, 'rgba(120,60,40,0.13)');
   const rnd = lcg(hashStr(`face|${skin}|${hollow}|${emis}`));
   for (const ex of [16, 48]) {
-    g.fillStyle = 'rgba(32,17,12,0.95)';
+    // Socket: a wide soft shadow with a darker core — the pair that reads as eyes at ~6 px.
+    soft(g, ex, 30, 13, 'rgba(30,15,10,0.38)');
+    g.fillStyle = 'rgba(24,12,9,0.97)';
     g.beginPath();
-    g.ellipse(ex, 30, hollow ? 11.5 : 10.5, hollow ? 9.5 : 8, 0, 0, Math.PI * 2);
+    g.ellipse(ex, 30, hollow ? 12 : 11, hollow ? 9.5 : 8.5, 0, 0, Math.PI * 2);
     g.fill();
     if (hollow) {
       g.fillStyle = '#030203';
       g.beginPath();
-      g.ellipse(ex, 30.5, 8, 7, 0, 0, Math.PI * 2);
+      g.ellipse(ex, 30.5, 8.5, 7.5, 0, 0, Math.PI * 2);
       g.fill();
     } else {
-      g.fillStyle = emis ? '#8d8578' : '#ece5d6';
+      // White, dark iris and catchlight — the trio that survives downscaling.
+      g.fillStyle = emis ? '#7d766b' : '#efe8da';
       g.beginPath();
-      g.ellipse(ex, 30, 7.2, 6, 0, 0, Math.PI * 2);
+      g.ellipse(ex, 30, 8.0, 6.6, 0, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = '#191310';
+      g.fillStyle = '#17120f';
       g.beginPath();
-      g.arc(ex, 31, 3.4, 0, Math.PI * 2);
+      g.arc(ex, 31, 4.0, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = emis ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.95)';
-      g.fillRect(ex - 2.1, 28.4, 2.3, 2.3);
+      g.fillStyle = emis ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.95)';
+      g.fillRect(ex - 2.4, 28.2, 2.6, 2.6);
       g.strokeStyle = 'rgba(52,28,20,0.55)';
       g.lineWidth = 1.5;
       g.beginPath();
-      g.ellipse(ex, 31.5, 6.2, 4, 0, 0.15 * Math.PI, 0.85 * Math.PI);
+      g.ellipse(ex, 31.5, 7.0, 4.6, 0, 0.15 * Math.PI, 0.85 * Math.PI);
       g.stroke();
     }
-    g.strokeStyle = 'rgba(18,12,9,0.97)';
-    g.lineWidth = 4.0;
+    // Brow: thicker and higher so it separates from the socket shadow.
+    g.strokeStyle = 'rgba(16,11,8,0.97)';
+    g.lineWidth = 5.0;
     g.beginPath();
-    g.moveTo(ex - (ex < 32 ? 7 : -7), 19.5 + (rnd() - 0.5));
-    g.quadraticCurveTo(ex, 17.5 + (rnd() - 0.5), ex + (ex < 32 ? 7 : -7), 20 + (rnd() - 0.5));
+    g.moveTo(ex - (ex < 32 ? 8 : -8), 18.5 + (rnd() - 0.5));
+    g.quadraticCurveTo(ex, 16.5 + (rnd() - 0.5), ex + (ex < 32 ? 8 : -8), 19 + (rnd() - 0.5));
     g.stroke();
   }
-  const ng = g.createLinearGradient(29, 32, 35, 50);
-  ng.addColorStop(0, 'rgba(90,50,35,0.34)');
-  ng.addColorStop(1, 'rgba(90,50,35,0)');
+  // Nose: shadow gradient plus faint bridge lines so the nose reads front-on.
+  const ng = g.createLinearGradient(29, 30, 35, 50);
+  ng.addColorStop(0, 'rgba(88,48,34,0.42)');
+  ng.addColorStop(1, 'rgba(88,48,34,0)');
   g.fillStyle = ng;
-  g.fillRect(28, 32, 8, 18);
-  soft(g, 32, 46, 5.5, emis ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)');
-  g.strokeStyle = hollow ? '#120202' : 'rgba(72,26,22,0.95)';
-  g.lineWidth = hollow ? 4.5 : 3.3;
+  g.fillRect(28, 30, 8, 20);
+  g.strokeStyle = 'rgba(88,48,34,0.35)';
+  g.lineWidth = 1.6;
   g.beginPath();
+  g.moveTo(30.5, 33);
+  g.lineTo(30.5, 41);
+  g.moveTo(33.5, 33);
+  g.lineTo(33.5, 41);
+  g.stroke();
+  soft(g, 32, 46, 5.5, emis ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.10)');
   if (hollow) {
-    g.fillStyle = '#070303';
-    g.ellipse(32, 51.5, 6, 6.5, 0, 0, Math.PI * 2);
+    g.fillStyle = '#0a0505';
+    g.beginPath();
+    g.ellipse(32, 51.5, 6.5, 6.5, 0, 0, Math.PI * 2);
     g.fill();
+    g.strokeStyle = '#1c0a0a';
+    g.lineWidth = 4.5;
+    g.beginPath();
+    g.ellipse(32, 51.5, 6.5, 6.5, 0, 0, Math.PI * 2);
+    g.stroke();
   } else {
+    // Lips: a filled rose-brown shape clearly darker than the skin around it.
+    g.fillStyle = 'rgba(122,44,36,0.85)';
+    g.beginPath();
+    g.moveTo(23, 49.5);
+    g.quadraticCurveTo(32, 46.5, 41, 49.5);
+    g.quadraticCurveTo(38, 55.5, 32, 55.5);
+    g.quadraticCurveTo(26, 55.5, 23, 49.5);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(74,24,20,0.95)';
+    g.lineWidth = 3.4;
+    g.beginPath();
     g.moveTo(24, 50);
-    g.quadraticCurveTo(32, 55, 40, 50);
+    g.quadraticCurveTo(32, 54.5, 40, 50);
     g.stroke();
   }
   g.restore();
@@ -239,6 +267,19 @@ function paintShirt(g, x, y, w, h, o) {
     default:
       break; // tee: crew collar only
   }
+  // Cloth folds every outfit shares: side seams at u~0.24/0.76 and waist gather shadows low
+  // in the cell (lv~0.2 maps to the waistband).
+  g.fillStyle = 'rgba(0,0,0,0.15)';
+  g.fillRect(cx + cw * 0.235, cy + 10, 2, ch - 20);
+  g.fillRect(cx + cw * 0.745, cy + 10, 2, ch - 20);
+  for (const fy of [0.80, 0.71]) {
+    const gr = g.createLinearGradient(0, cy + ch * (fy - 0.045), 0, cy + ch * (fy + 0.045));
+    gr.addColorStop(0, 'rgba(0,0,0,0)');
+    gr.addColorStop(0.5, 'rgba(0,0,0,0.10)');
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.fillRect(cx + 4, cy + ch * (fy - 0.045), cw - 8, ch * 0.09);
+  }
 }
 
 function paintSleeve(g, x, y, w, h, o) {
@@ -249,6 +290,15 @@ function paintSleeve(g, x, y, w, h, o) {
   g.fillRect(cx, cy, cw, 10);
   g.fillStyle = 'rgba(255,255,255,0.12)';
   g.fillRect(cx, cy + 10, cw, 2);
+  // Elbow compression wrinkles just below mid-cell for long sleeves.
+  for (const fy of [0.52, 0.60]) {
+    const gr = g.createLinearGradient(0, cy + ch * (fy - 0.04), 0, cy + ch * (fy + 0.04));
+    gr.addColorStop(0, 'rgba(0,0,0,0)');
+    gr.addColorStop(0.5, 'rgba(0,0,0,0.12)');
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.fillRect(cx + 3, cy + ch * (fy - 0.04), cw - 6, ch * 0.08);
+  }
   if (o.outfit === 'dress') {
     // Lace trim: a pale scalloped band at the cuff plus fine vertical lace lines.
     g.fillStyle = 'rgba(250,246,236,0.85)';
@@ -723,16 +773,30 @@ function shoeGeos(side, bw) {
   ];
 }
 
-// Vertex-colour AO helpers per body region.
+// Vertex-colour AO helpers per body region. A soft key from above/front is baked in: tops
+// and chests catch light, undersides, armpits, inner thighs and the under-chin fall off.
 const AO = {
   torso: (x, y, z) => {
-    let v = 0.80 + 0.20 * smooth(y, 0.9, 1.5);
-    if (y > 1.12 && y < 1.48 && Math.abs(x) > 0.14 && z < 0.05) v *= 0.82;
-    if (y < 1.0) v *= 0.94;
-    return v;
+    let v = 0.76 + 0.16 * smooth(y, 0.9, 1.5) + 0.10 * smooth(z, -0.10, 0.12);
+    if (y > 1.10 && y < 1.48 && Math.abs(x) > 0.13 && z < 0.03) v *= 0.78; // armpit shadow
+    if (y > 1.40 && z > 0.01) v *= 0.90; // under-chin / jaw shadow
+    if (y < 1.0) v *= 0.95;
+    return Math.min(1, v);
   },
-  arm: (x, y, z) => 0.86 + 0.14 * smooth(y, 0.75, 1.45) - (z < -0.02 && y > 1.15 && y < 1.45 ? 0.06 : 0),
-  leg: (x, y, z) => 0.80 + 0.20 * smooth(y, 0.08, 0.9),
+  arm: (x, y, z, side = 0, bw = 1) => {
+    // Inner = the side facing the torso midline; armpit and inner forearm stay shaded.
+    const inner = 0.220 * bw - side * x;
+    let v = 0.82 + 0.14 * smooth(y, 0.75, 1.45) + 0.08 * smooth(z, -0.08, 0.10);
+    if (inner > 0.02 && y > 1.12) v *= 0.82;
+    else if (inner > 0.02) v *= 0.94;
+    return Math.min(1, v);
+  },
+  leg: (x, y, z, side = 0, bw = 1) => {
+    const inner = 0.095 * bw - side * x;
+    let v = 0.78 + 0.18 * smooth(y, 0.08, 0.9) + 0.08 * smooth(z, -0.08, 0.12);
+    if (inner > 0.015 && y > 0.55) v *= 0.84; // inner-thigh / crotch shadow
+    return Math.min(1, v);
+  },
   skin: () => 0.9,
   shoe: () => 0.7,
 };
@@ -747,12 +811,13 @@ function buildBodyGeo(o, dress) {
     const armBone = s < 0 ? uarmL : uarmR;
     const farmBone = s < 0 ? farmL : farmR;
     const shinBone = s < 0 ? shinL : shinR;
-    emitTube(acc, armRings(s, bw, longSleeve), { segs: 8, colorFor: AO.arm });
-    emitTube(acc, legRings(s, bw, dress), { segs: 9, colorFor: AO.leg });
+    emitTube(acc, armRings(s, bw, longSleeve), { segs: 8, colorFor: (x, y, z) => AO.arm(x, y, z, s, bw) });
+    emitTube(acc, legRings(s, bw, dress), { segs: 9, colorFor: (x, y, z) => AO.leg(x, y, z, s, bw) });
     // Deltoid cap bridging torso side and upper arm so the shoulder reads as one mass. Always
     // sleeve cloth — a skin-coloured cap reads as a bright ball sitting on the shoulder line.
     emitPrim(acc, blob(0.072, 0.068, 0.066, 8, 6), setM(s * 0.205 * bw, 1.415, 0), {
-      cell: 'sleeve', weight: W([chest, 0.45], [armBone, 0.55]), colorFor: AO.arm,
+      cell: 'sleeve', weight: W([chest, 0.45], [armBone, 0.55]),
+      colorFor: (x, y, z) => AO.torso(x, y, z) * 0.96,
     });
     for (const [geo, mat, cell, cf] of handGeos(s, bw)) {
       emitPrim(acc, geo, mat, { cell, weight: W([farmBone, 1]), colorFor: cf });
@@ -766,7 +831,7 @@ function buildBodyGeo(o, dress) {
     // Vertical falloff plus radial pleat stripes so the gown reads as folded cloth, not a tube.
     colorFor: (x, y, z) => {
       const fold = 0.5 + 0.5 * Math.cos(Math.atan2(z, x) * 7);
-      return (0.80 + 0.20 * smooth(y, 0.30, 1.0)) * (0.84 + 0.16 * fold);
+      return (0.78 + 0.18 * smooth(y, 0.30, 1.0)) * (0.84 + 0.16 * fold) * (0.90 + 0.10 * smooth(z, -0.12, 0.15));
     },
   });
   const geo = new THREE.BufferGeometry();
@@ -797,7 +862,7 @@ function headGeoFor(o, hairStyle) {
   };
   // Skull: ellipsoid with jaw taper.
   const skull = new THREE.SphereGeometry(1, 10, 8);
-  skull.scale(0.078 * bw, 0.095 * bw, 0.082 * bw);
+  skull.scale(0.078 * bw, 0.095 * bw, 0.080 * bw);
   {
     const p = skull.attributes.position;
     for (let i = 0; i < p.count; i++) {
@@ -828,12 +893,13 @@ function headGeoFor(o, hairStyle) {
   const neckStub = new THREE.CylinderGeometry(0.042, 0.048, 0.10, 8);
   neckStub.translate(0, -0.10, 0.004);
   emitPrim(acc, neckStub, IDENT, { cell: 'skin', weight: W([BONE.neck, 0.7], [BONE.head, 0.3]), colorFor: () => 0.84 });
-  // Painted face patch hugging the skull front.
-  const face = new THREE.SphereGeometry(1, 10, 8, Math.PI / 2 - 0.63, 1.26, Math.PI / 2 - 1.02, 1.9);
-  face.scale(0.0785 * bw, 0.0935 * bw, 0.0815 * bw);
+  // Painted face patch hugging the skull front — slightly larger and a touch prouder than
+  // the (now flatter) skull so features keep their size at game distance.
+  const face = new THREE.SphereGeometry(1, 10, 8, Math.PI / 2 - 0.72, 1.44, Math.PI / 2 - 1.10, 2.05);
+  face.scale(0.0805 * bw, 0.0955 * bw, 0.0835 * bw);
   face.computeVertexNormals();
   face.translate(0, 0.005, -0.005);
-  emitPrim(acc, face, IDENT, { cell: 'face', weight: W([BONE.head, 1]), colorFor: () => 0.92 });
+  emitPrim(acc, face, IDENT, { cell: 'face', weight: W([BONE.head, 1]), colorFor: () => 0.86 });
   // Hair volumes.
   const hairW = W([BONE.head, 1]);
   const hairCol = (x, y) => 0.82 + 0.18 * smooth(y, -0.5, 0.1);
@@ -1014,8 +1080,9 @@ export function makePerson(opts = {}) {
       arm0: byName.uarmL.rotation.x, arm1: byName.uarmR.rotation.x,
       farm0: byName.farmL.rotation.x, farm1: byName.farmR.rotation.x,
       chest: byName.chest.rotation.x, neck: byName.neck.rotation.x,
-      spineZ: byName.spine.rotation.z,
-      hipsY: byName.hips.position.y,
+      spineX: byName.spine.rotation.x, spineZ: byName.spine.rotation.z,
+      headX: byName.head.rotation.x, headY: byName.head.rotation.y,
+      hipsX: byName.hips.position.x, hipsY: byName.hips.position.y,
     },
   };
   return { root, legs: rig.legs, arms: rig.arms, head: headBone, rig };
@@ -1040,6 +1107,11 @@ export class NPC {
     this.phase = 0;
     this.swing = 0;
     this.animT = 0;
+    this.bodyH = opts.height || 1;
+    this.lookTarget = null;
+    this.lookLift = 1.5;
+    this.lookYaw = 0;
+    this.lookPitch = 0;
   }
 
   get pos() {
@@ -1058,6 +1130,17 @@ export class NPC {
     this.path = points.slice();
     this.speed = speed;
     return new Promise((resolve) => (this.onArrive = resolve));
+  }
+
+  // Head look-at: track a Vector3, a {x,z} point, or an object with .pos (e.g. the player)
+  // within ~6 m. `lift` is added to the target's y so feet-position targets aim at head height.
+  lookAt(target, lift = 1.5) {
+    this.lookTarget = target;
+    this.lookLift = lift;
+  }
+
+  lookAtPlayer(player) {
+    this.lookAt(player, 1.55);
   }
 
   update(dt) {
@@ -1109,6 +1192,30 @@ export class NPC {
     rig.chest.rotation.x = B.chest + br;
     rig.neck.rotation.x = B.neck + br * 0.5 + Math.sin(t * 0.7) * 0.015;
     rig.spine.rotation.z = B.spineZ + Math.sin(t * 0.55) * 0.02;
+    // Idle weight shift: a slow lateral lean and hip drift so standing NPCs don't statue.
+    rig.spine.rotation.x = B.spineX + Math.sin(t * 0.42) * 0.012;
+    rig.hips.position.x = B.hipsX + Math.sin(t * 0.42 + 1.3) * 0.008;
     rig.hips.position.y = B.hipsY - Math.abs(Math.sin(this.phase)) * 0.03 * this.swing;
+    // Head look-at: yaw clamps to ±40°, pitch to ±20°, eased at ~4/s. Only rotation.x/y are
+    // driven here — story tilts on rotation.z keep working.
+    let wantYaw = 0, wantPitch = 0;
+    const lt = this.lookTarget;
+    if (lt) {
+      const tp = lt.pos || lt;
+      const dx = tp.x - p.x, dz = tp.z - p.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 0.05 && dist < 6) {
+        const wy = Math.atan2(dx, dz) - this.root.rotation.y;
+        wantYaw = THREE.MathUtils.clamp(Math.atan2(Math.sin(wy), Math.cos(wy)), -0.7, 0.7);
+        const headY = p.y + 1.55 * this.bodyH;
+        const aimY = (tp.y ?? p.y) + this.lookLift;
+        wantPitch = THREE.MathUtils.clamp(Math.atan2(aimY - headY, dist), -0.35, 0.35);
+      }
+    }
+    const lk = Math.min(1, dt * 4);
+    this.lookYaw += (wantYaw - this.lookYaw) * lk;
+    this.lookPitch += (wantPitch - this.lookPitch) * lk;
+    rig.head.rotation.y = B.headY + this.lookYaw;
+    rig.head.rotation.x = B.headX - this.lookPitch; // +x pitch tips the face down, so negate
   }
 }
