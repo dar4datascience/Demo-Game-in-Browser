@@ -109,6 +109,7 @@ export async function runStory(ctx) {
   const salaryman = spawn(SALARYMAN, 4.5, 14);
   await salaryman.walk(ENTRANCE, 1.2);
   salaryman.face(-4.5, 2);
+  salaryman.lookAtPlayer(player);
   await serve();
   await say('Customer: Thanks. Cold out tonight, huh?', 3);
   salaryman.walk(EXIT, 1.2).then(() => despawn(salaryman));
@@ -120,6 +121,7 @@ export async function runStory(ctx) {
   sfx.setTension(0.5);
   await woman.walk(ENTRANCE, 0.6);
   woman.face(-4.5, 2);
+  woman.lookAtPlayer(player);
   await serve();
   await say('...', 2.5);
   await say("Customer: You can see me too... can't you?", 3.5);

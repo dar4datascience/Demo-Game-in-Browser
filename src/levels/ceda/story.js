@@ -511,6 +511,7 @@ export async function runStory(ctx) {
     const buyer = spawn(PEOPLE.buyer, x + 7, lane);
     await buyer.walk(path, 1.1);
     buyer.face(x, z);
+    buyer.lookAtPlayer(player);
     await say('Cliente: Buenos días. Medio kilo de frijol y un kilo de arroz.', 3);
     await serve();
     await say('Cliente: Gracias, joven. Que le vaya bonito.', 2.5);
@@ -522,6 +523,7 @@ export async function runStory(ctx) {
     sfx.setTension(0.45);
     await woman.walk(path, 0.55);
     woman.face(x, z);
+    woman.lookAtPlayer(player);
     await say('...', 2);
     await serve();
     await say('Clienta: Llevo años buscando a mi hijo aquí. Era diablero.', 3.5);
@@ -543,7 +545,9 @@ export async function runStory(ctx) {
     for (const [id, item, price, line] of list) {
       const { x, z, face } = unitAt(id);
       // The vendor stands beside the counter, in the andador, leaving the customer a clear line.
-      spawn(id === 'C-5' ? PEOPLE.vendora : PEOPLE.vendor, x + 1.2, z + face * 2.2).face(x, z);
+      const vend = spawn(id === 'C-5' ? PEOPLE.vendora : PEOPLE.vendor, x + 1.2, z + face * 2.2);
+      vend.face(x, z);
+      vend.lookAtPlayer(player);
       interact(R.counters[id], () => (bought.has(id) ? null : `Comprar ${item} (${price})`), async () => {
         bought.add(id);
         sfx.coins();
