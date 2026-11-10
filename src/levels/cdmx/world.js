@@ -5,7 +5,7 @@ import { createBuilder } from '../../world/builder.js';
 import { batchWorld } from '../../world/batch.js';
 import { createSky } from '../../world/sky.js';
 import {
-  plaza, skyline, skylineRing, torre, biblioteca, park, road, metroStation, metroCar, abarrotes, bride, field, fence,
+  plaza, skyline, skylineRing, torre, biblioteca, park, road, metroStation, metroCar, abarrotes, bride, field, fence, clutter,
 } from './props.js';
 
 /*
@@ -65,6 +65,7 @@ export function buildWorld(scene) {
   refs.bride = bride(b, M);
   refs.field = field(b, M);
   fence(b, M);
+  clutter(b);
 
   // Footprints so the camera-clearance test has something to check against, and so the level
   // contract matches the other maps. The showcase never moves the player.

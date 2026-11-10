@@ -3,6 +3,7 @@ import { lam, basic } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { bakeAO } from '../../world/builder.js';
 import { NPC } from '../../world/person.js';
+import * as PK from '../../world/propkit.js';
 
 const PI = Math.PI;
 const add = (b, geo, mat, x, y, z, { parent = b.scene, ry = 0, rx = 0, rz = 0 } = {}) => {
@@ -356,10 +357,85 @@ export function skylineRing(b, M) {
   }
 }
 
-// Fence posts and low walls that frame the field shot.
+// Fence posts and low walls that frame the field shot — now chain-link panels.
 export function fence(b, M) {
-  for (let i = 0; i < 9; i++) {
-    add(b, new THREE.BoxGeometry(0.1, 1.2, 0.1), M.metal, -176 + i * 4, 0.6, -52);
+  for (let i = 0; i < 8; i++) {
+    const f = PK.fence(4, 1.6);
+    f.position.set(-174 + i * 4, 0, -52);
+    b.scene.add(f);
   }
-  add(b, new THREE.BoxGeometry(32, 0.08, 0.08), M.metal, -160, 1.1, -52);
+}
+
+/*
+ * Market clutter from the shared prop kit. The showcase has no walking player, so nothing
+ * here gets a collider — props hug walls, curbs and stall edges and never sit in a shot's
+ * centre line.
+ */
+export function clutter(b) {
+  const put = (prop, x, z, ry = 0, y = 0) => {
+    prop.position.set(x, y, z);
+    prop.rotation.y = ry;
+    b.scene.add(prop);
+    return prop;
+  };
+  // Abarrotes row: goods spilling onto the pavement in front of each shop.
+  for (const [x, z, ry] of [
+    [-14.5, 87.5, 0.4], [-12.8, 88.6, -0.2], [-4.5, 87.2, 0.1], [-2.6, 88.4, 0.5],
+    [4.8, 87.4, -0.3], [6.4, 88.5, 0.2], [13.8, 87.6, 0.7], [15.6, 88.3, -0.4],
+  ]) {
+    const pick = T.rand();
+    const prop = pick < 0.3 ? PK.crateSlats(0.55 + T.rand() * 0.2, 0.42, 0.32)
+      : pick < 0.5 ? PK.box(0.5, 0.34, 0.42, { open: T.rand() < 0.5 })
+      : pick < 0.68 ? PK.sack(0.5 + T.rand() * 0.15)
+      : pick < 0.82 ? PK.bucket([0x2e6fd9, 0xd94f3d, 0x3b7d3a][Math.floor(T.rand() * 3)])
+      : pick < 0.93 ? PK.plasticCrate(0.5, 0.36, 0.3, [0x2e6fd9, 0xd94f3d][Math.floor(T.rand() * 2)])
+      : PK.pot();
+    put(prop, x, z, ry);
+  }
+  // Folding table with bottles outside the wine shop, crates by the tortillería.
+  put(PK.table(1.6, 0.7, 0.72), 11.8, 88.8, -0.15);
+  for (const [bx, bz, kind] of [[-0.5, -0.1, 0], [0.1, 0.15, 1], [0.55, -0.05, 0]]) {
+    const bt = PK.bottle(kind);
+    bt.position.set(11.8 + bx, 0.72, 88.8 + bz);
+    b.scene.add(bt);
+  }
+  put(PK.tarpPile(1.4, 0.9, 0.6, 0x3f6b4f), -6.2, 90.2, 0.5);
+  put(PK.stool(), -7.6, 89.6, 0.9);
+  // Bride shop: a pair of pots and a crate frame the window without touching the doll's sightline.
+  put(PK.pot(), -46.2, 84.4, 0.3);
+  put(PK.pot(0x8a4a2e), -34.4, 84.8, -0.5);
+  put(PK.crateSlats(0.6, 0.45, 0.34), -33.6, 86.2, 0.9);
+  put(PK.sack(0.55), -46.8, 85.6, 0.2);
+  // Road: cones and tyres along the curbs, a crate stack by the parked car.
+  for (const [x, z, ry] of [[-36, 27.6, 0.2], [-30, 32.6, -0.4], [18, 27.4, 0.6], [26, 32.4, 0.1], [36, 27.8, -0.2]]) {
+    put(T.rand() < 0.55 ? PK.cone() : PK.tire(), x, z, ry);
+  }
+  const tire2 = PK.tire();
+  tire2.position.set(-33.4, 0.17, 27.4);
+  tire2.rotation.y = 0.5;
+  b.scene.add(tire2);
+  put(PK.crateSlats(0.6, 0.45, 0.34), -12.5, 33.2, 0.25);
+  const crateUp = PK.crateSlats(0.55, 0.42, 0.3, 0xc8a878);
+  crateUp.position.set(-12.5, 0.34, 33.2);
+  crateUp.rotation.y = 0.5;
+  b.scene.add(crateUp);
+  // Park: bucket and sack tucked by the bench, a crate under the jacaranda.
+  put(PK.bucket(0x3b7d3a), 39.6, 9.4, 0.7);
+  put(PK.sack(0.55), 50.8, 6.2, 0.4);
+  put(PK.crateSlats(0.6, 0.45, 0.34, 0xb08a5a), 47.5, 13.4, 0.2);
+  // Metro platform: boxes and a crate near the bench, clear of the train and the step.
+  put(PK.box(0.55, 0.38, 0.45, { open: true }), -122.5, 18.5, 0.3);
+  const pbox = PK.box(0.5, 0.34, 0.42);
+  pbox.position.set(-121.9, 0.38, 18.8);
+  pbox.rotation.y = -0.2;
+  b.scene.add(pbox);
+  put(PK.plasticCrate(0.5, 0.36, 0.3, 0xd94f3d), -108.5, 17.5, 0.8);
+  // Field road: a cone and a tyre dropped at the verge.
+  put(PK.cone(), -146.5, -58, 0.4);
+  put(PK.tire(), -153.5, -44, 0.9);
+  // Plaza base: crates flanking the statue steps, out of the upward shot's centre.
+  put(PK.crateSlats(0.6, 0.45, 0.34), -5.2, 5.4, 0.4);
+  put(PK.box(0.5, 0.36, 0.42), 5.6, -4.8, -0.3);
+  // Biblioteca forecourt: one crate at the mural's edge so the artwork stays clean.
+  put(PK.crateSlats(0.6, 0.45, 0.34, 0x9a8a6a), -99.5, -44.5, 0.15);
 }

@@ -3,6 +3,7 @@ import { lam, basic } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { createBuilder } from '../../world/builder.js';
 import { batchWorld } from '../../world/batch.js';
+import * as PK from '../../world/propkit.js';
 
 const H = 3.2; // ceiling height
 const DOOR_X = 4.5, DOOR_Z = 6;
@@ -25,7 +26,7 @@ export function buildWorld(scene) {
     metal: lam({ map: T.metalTex(), vertexColors: true }),
     asphalt: lam({ map: T.asphaltTex(), vertexColors: true }),
     concrete: lam({ map: T.concreteTex(), vertexColors: true }),
-    cardboard: lam({ map: T.cardboardTex(), vertexColors: true }),
+    cardboard: PK.kitMats.cardboard(),
     wood: lam({ map: T.woodTex(), vertexColors: true }),
     counter: lam({ map: T.counterTex(), vertexColors: true }),
     dark: lam({ color: 0x1c1d21, vertexColors: true }),
@@ -166,6 +167,23 @@ export function buildWorld(scene) {
   scene.add(refs.trashBag);
   box(0.5, 2.0, 1.6, mats.cardboard, 7.7, 1.0, -7.4, { tile: 0, bevel: 0.025 });
   box(0.12, 0.1, 0.16, mats.dark, 3.1, 3.0, -9.85, { collide: false });
+  // Mop bucket by the staff-room door and a taped box stack in the back corner.
+  const mopBucket = PK.bucket(0x2e6fd9, 0.36);
+  mopBucket.position.set(7.55, 0, -6.7);
+  mopBucket.rotation.y = 0.5;
+  scene.add(mopBucket);
+  b.addCollider(7.55, -6.7, 0.22, 0.22, 0.5);
+  const boxStack = new THREE.Group();
+  const bk1 = PK.box(0.55, 0.38, 0.45, { open: true });
+  bk1.position.y = 0.19;
+  const bk2 = PK.box(0.5, 0.34, 0.42);
+  bk2.position.set(0.04, 0.55, -0.03);
+  bk2.rotation.y = 0.35;
+  boxStack.add(bk1, bk2);
+  boxStack.position.set(6.9, 0, -9.75);
+  boxStack.rotation.y = -0.2;
+  scene.add(boxStack);
+  b.addCollider(6.9, -9.75, 0.32, 0.3, -0.2);
 
   // --- Outside -----------------------------------------------------------
   plane(40, 2.2, mats.concrete, 0, 0.001, 7.1, 0, -Math.PI / 2);

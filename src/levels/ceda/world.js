@@ -4,6 +4,7 @@ import * as T from '../../engine/textures.js';
 import { createBuilder } from '../../world/builder.js';
 import { batchWorld, localSize } from '../../world/batch.js';
 import { makeDiablito, makeTruck, makeStall, sackStack, crate, trashPile, hitbox, makePancarta } from './props.js';
+import * as PK from '../../world/propkit.js';
 
 /*
  * Central de Abasto (Iztapalapa) — "Abarrotes y Víveres, Lado A", compressed for walking.
@@ -100,7 +101,7 @@ export function buildWorld(scene) {
     metal: lam({ map: T.metalTex(), vertexColors: true }),
     line: basic({ color: 0xbdbdb5 }),
     hazard: lam({ map: T.hazardTex(), vertexColors: true }),
-    wood: lam({ map: T.woodTex(), vertexColors: true }),
+    wood: PK.kitMats.wood(), // shared with the prop kit so clutter and set merge into one batch
   };
   const interiors = Object.fromEntries(['sacks', 'boxes', 'chiles'].map((k) => [k, glowMat({ map: T.bodegaInteriorTex(k) }, 0x0d0b09)]));
   const cortinas = ['#8d9298', '#6f8a7c', '#9a8f7c', '#7b8496'].flatMap((c) => [lam({ map: T.cortinaTex(c) }), lam({ map: T.cortinaTex(c, true) })]);
@@ -332,12 +333,24 @@ export function buildWorld(scene) {
 
   // --- Plaza: market stalls along the main pasillo --------------------------
   const lonas = ['#e4007c', '#1e6fd9', '#ff7a00', '#2bb673'];
-  [[-3, 62, 0.1], [3, 68, -0.2], [-3, 74, 0.05], [3, 80, 0.3], [-3, 86, -0.1], [3, 92, 0.2], [-3, 100, 0], [3, 106, -0.25]]
-    .forEach(([x, z, ry], i) => {
-      const stall = makeStall(lonas[i % lonas.length]);
-      place(stall, x, z, ry, 1.5, 1.3);
-    });
+  const stallSpots = [[-3, 62, 0.1], [3, 68, -0.2], [-3, 74, 0.05], [3, 80, 0.3], [-3, 86, -0.1], [3, 92, 0.2], [-3, 100, 0], [3, 106, -0.25]];
+  stallSpots.forEach(([x, z, ry], i) => {
+    const stall = makeStall(lonas[i % lonas.length]);
+    // Bottles of agua and refresco on the produce tray.
+    for (const [bx, bz, kind] of [[-0.72, -0.18, 0], [-0.18, 0.22, 1], [0.42, -0.12, 0]]) {
+      const bt = PK.bottle(kind);
+      bt.position.set(bx, 0.82, bz);
+      bt.rotation.y = bx * 4 + bz * 2;
+      stall.add(bt);
+    }
+    place(stall, x, z, ry, 1.5, 1.3);
+  });
   const taco = makeStall('#f2c230');
+  for (const [bx, bz, kind] of [[-0.6, -0.15, 1], [0.1, 0.2, 0], [0.6, -0.1, 0]]) {
+    const bt = PK.bottle(kind);
+    bt.position.set(bx, 0.82, bz);
+    taco.add(bt);
+  }
   place(taco, 8, 56, 0, 1.5, 1.3);
   plane(2.2, 0.5, glowMat({ map: T.signTex('TACOS DE CANASTA', '#f2c230', '#7a1f1f', 128, 24) }, 0x2a2410), 8, 2.15, 54.9, Math.PI, 0, null);
 
@@ -373,6 +386,76 @@ export function buildWorld(scene) {
   scene.add(refs.diablito);
   refs.diablito.userData.collider = addCollider(SPAWN[0] + 4, SPAWN[1] + 4, 0.35, 0.4, -0.4);
   refs.solid.push(refs.diablito);
+
+  // --- Prop-kit clutter -------------------------------------------------------
+  // Spots the clutter must never sit on: the beer fire, the rotulista pickup, every
+  // possible shrine, the spawn and the seller's counter lane.
+  const keepClear = [FIRE_SPOT, [2.2, aisleZ(6)], SPAWN, [unitAt('B-4').x, ROWS.B + ROW_FACE.B * 2.2]];
+  const nearKeep = (x, z, r) => keepClear.some(([kx, kz]) => Math.hypot(x - kx, z - kz) < r)
+    || SHRINE_SPOTS.some(([sx, sz]) => Math.hypot(x - sx, z - sz) < r + 1);
+  const clutterProp = (make, x, z, ry = 0) => {
+    const prop = make();
+    prop.position.set(x, 0, z);
+    prop.rotation.y = ry;
+    const size = localSize(prop);
+    scene.add(prop);
+    prop.userData.footprint = { x: size.x, z: size.z };
+    prop.userData.collider = addCollider(x, z, size.x / 2, size.z / 2, ry);
+    refs.solid.push(prop);
+    return prop;
+  };
+  const goods = [
+    () => PK.bucket([0x2e6fd9, 0xd94f3d, 0x3b7d3a][Math.floor(T.rand() * 3)]),
+    () => PK.box(0.45 + T.rand() * 0.2, 0.28 + T.rand() * 0.15, 0.38 + T.rand() * 0.08),
+    () => PK.crateSlats(0.5 + T.rand() * 0.15, 0.38 + T.rand() * 0.08, 0.28 + T.rand() * 0.1),
+    () => PK.plasticCrate(0.48 + T.rand() * 0.1, 0.34, 0.3, [0x2e6fd9, 0xd94f3d, 0x3b7d3a][Math.floor(T.rand() * 3)]),
+    () => PK.sack(0.42 + T.rand() * 0.15),
+  ];
+  // Goods piled against the closed shutters (open units already carry a sack stack or crate).
+  for (const d of defs) {
+    if (d.key || d.open || T.rand() > 0.16) continue;
+    const x = d.x + (T.rand() - 0.5) * d.w * 0.45;
+    const z = d.front + d.face * 0.5;
+    if (nearKeep(x, z, 3.2)) continue;
+    clutterProp(goods[Math.floor(T.rand() * goods.length)], x, z, (T.rand() - 0.5) * 0.7);
+  }
+  // Dock aprons behind the bodegas: stacked crates, tyres, sacks and tarp piles.
+  const apronProps = [
+    () => { const g = new THREE.Group(); for (const y of [0, 0.325, 0.65]) { const c = PK.crateSlats(0.55, 0.42, 0.32); c.position.y = y; g.add(c); } return g; },
+    () => { const g = new THREE.Group(); for (const [i, y] of [[0, 0], [1, 0.35], [2, 0.68]]) { const c = PK.plasticCrate(0.5, 0.36, 0.32, [0x2e6fd9, 0xd94f3d, 0x3b7d3a][i]); c.position.y = y; g.add(c); } return g; },
+    () => { const g = new THREE.Group(); const t = PK.tire(); g.add(t); const t2 = PK.tire(); t2.position.y = 0.16; t2.rotation.y = 0.4; g.add(t2); return g; },
+    () => PK.tarpPile(1.2 + T.rand() * 0.4, 0.85, 0.55 + T.rand() * 0.2, [0x4a5f8a, 0x3f6b4f, 0x6b4a3a][Math.floor(T.rand() * 3)]),
+    () => { const g = new THREE.Group(); const s = PK.sack(0.55); g.add(s); const s2 = PK.sack(0.5); s2.position.set(0.3, 0, 0.15); s2.rotation.y = 0.5; g.add(s2); return g; },
+    () => { const g = new THREE.Group(); const b = PK.box(0.55, 0.36, 0.45, { open: T.rand() < 0.5 }); g.add(b); const b2 = PK.box(0.5, 0.32, 0.42); b2.position.y = 0.36; b2.rotation.y = 0.3; g.add(b2); return g; },
+    () => PK.bucket([0x2e6fd9, 0xd94f3d, 0x3b7d3a][Math.floor(T.rand() * 3)]),
+  ];
+  for (const row of LETTERS) {
+    const front = ROWS[row], face = ROW_FACE[row];
+    const back = front - face * DEPTH;
+    for (const [x0, x1] of SEGMENTS) {
+      if (T.rand() > 0.16) continue;
+      const x = (x0 + x1) / 2 + (T.rand() - 0.5) * (x1 - x0) * 0.55;
+      const z = back - face * (DOCK * 0.55);
+      if (nearKeep(x, z, 3.5)) continue;
+      clutterProp(apronProps[Math.floor(T.rand() * apronProps.length)], x, z, T.rand() * Math.PI);
+    }
+  }
+  // Chain-link infill on the bridge rails and broken runs along the perimeter walls.
+  for (const s of [-1, 1]) {
+    const f = PK.fence(BRIDGE.hz * 2 - 0.3, 1.25);
+    f.position.set(BRIDGE.x + s * (BRIDGE.hx - 0.06), 0.32, BRIDGE.z);
+    f.rotation.y = Math.PI / 2;
+    scene.add(f);
+  }
+  for (let z = -4; z < 352; z += 16) {
+    for (const x of [-70.9, 70.9]) {
+      if (T.rand() < 0.22) continue;
+      const f = PK.fence(4, 2);
+      f.position.set(x, 0, z + (T.rand() - 0.5) * 4);
+      f.rotation.y = Math.PI / 2;
+      scene.add(f);
+    }
+  }
 
   // --- Bridge over pasillo 2: the diableros' catapult ----------------------
   const bridge = BRIDGE;

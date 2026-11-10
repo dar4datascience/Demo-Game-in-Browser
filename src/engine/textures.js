@@ -800,6 +800,51 @@ export const hazardTex = () => canvasTexture(16, 4, (g, w, h) => {
   }
 });
 
+// Diamond wire lattice for chain-link fencing, alpha-tested (transparent background).
+export const chainlinkTex = () => canvasTexture(64, 64, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(196,204,216,0.95)';
+  g.lineWidth = 1.4;
+  for (let k = -64; k < 128; k += 8) {
+    g.beginPath();
+    g.moveTo(k, 0);
+    g.lineTo(k + 32, h);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(k + 32, 0);
+    g.lineTo(k, h);
+    g.stroke();
+  }
+});
+
+// PET bottle wrap for the prop kit: pale plastic body, a coloured label band with a
+// fictional mark, darker cap zone. `name` is printed on the label — keep it generic.
+export const bottleTex = (label = '#2e6fd9', ink = '#f4f1de', name = 'AGUA') => canvasTexture(64, 64, (g, w, h) => {
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#d8e2ea');
+  grad.addColorStop(0.5, '#bcccd8');
+  grad.addColorStop(1, '#9fb4c2');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+  // Cap band at the top of the wrap (canvas top = bottle neck).
+  g.fillStyle = '#7e8890';
+  g.fillRect(0, 0, w, 9);
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  for (let x = 0; x < w; x += 4) g.fillRect(x, 0, 1, 9);
+  // Label band around the middle of the body.
+  g.fillStyle = label;
+  g.fillRect(0, 24, w, 20);
+  g.fillStyle = 'rgba(255,255,255,0.25)';
+  g.fillRect(0, 24, w, 3);
+  g.fillStyle = ink;
+  g.font = 'bold 9px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(name, w / 2, 35, w - 6);
+  g.fillStyle = 'rgba(0,0,0,0.18)';
+  g.fillRect(0, 42, w, 2);
+});
+
 // --- CDMX showcase ---------------------------------------------------------
 // 128–256 px painted textures: the showcase renders at 480p and frames them close, so the
 // 32 px store tiles would read as noise.
