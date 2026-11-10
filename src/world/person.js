@@ -85,34 +85,34 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
   soft(g, 46, 46, 15, 'rgba(120,60,40,0.12)');
   const rnd = lcg(hashStr(`face|${skin}|${hollow}|${emis}`));
   for (const ex of [16, 48]) {
-    g.fillStyle = 'rgba(44,24,17,0.88)';
+    g.fillStyle = 'rgba(32,17,12,0.95)';
     g.beginPath();
-    g.ellipse(ex, 30, hollow ? 10 : 9, hollow ? 8.5 : 7, 0, 0, Math.PI * 2);
+    g.ellipse(ex, 30, hollow ? 11.5 : 10.5, hollow ? 9.5 : 8, 0, 0, Math.PI * 2);
     g.fill();
     if (hollow) {
       g.fillStyle = '#030203';
       g.beginPath();
-      g.ellipse(ex, 30.5, 7, 6.5, 0, 0, Math.PI * 2);
+      g.ellipse(ex, 30.5, 8, 7, 0, 0, Math.PI * 2);
       g.fill();
     } else {
       g.fillStyle = '#ece5d6';
       g.beginPath();
-      g.ellipse(ex, 30, 6.4, 5.4, 0, 0, Math.PI * 2);
+      g.ellipse(ex, 30, 7.2, 6, 0, 0, Math.PI * 2);
       g.fill();
       g.fillStyle = '#191310';
       g.beginPath();
-      g.arc(ex, 31, 3.1, 0, Math.PI * 2);
+      g.arc(ex, 31, 3.4, 0, Math.PI * 2);
       g.fill();
       g.fillStyle = 'rgba(255,255,255,0.95)';
-      g.fillRect(ex - 1.9, 28.2, 2.1, 2.1);
+      g.fillRect(ex - 2.1, 28.4, 2.3, 2.3);
       g.strokeStyle = 'rgba(52,28,20,0.55)';
-      g.lineWidth = 1.4;
+      g.lineWidth = 1.5;
       g.beginPath();
-      g.ellipse(ex, 31.5, 5.6, 3.6, 0, 0.15 * Math.PI, 0.85 * Math.PI);
+      g.ellipse(ex, 31.5, 6.2, 4, 0, 0.15 * Math.PI, 0.85 * Math.PI);
       g.stroke();
     }
-    g.strokeStyle = 'rgba(20,14,10,0.95)';
-    g.lineWidth = 3.2;
+    g.strokeStyle = 'rgba(18,12,9,0.97)';
+    g.lineWidth = 4.0;
     g.beginPath();
     g.moveTo(ex - (ex < 32 ? 7 : -7), 19.5 + (rnd() - 0.5));
     g.quadraticCurveTo(ex, 17.5 + (rnd() - 0.5), ex + (ex < 32 ? 7 : -7), 20 + (rnd() - 0.5));
@@ -125,7 +125,7 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
   g.fillRect(28, 32, 8, 18);
   soft(g, 32, 46, 5.5, 'rgba(255,255,255,0.12)');
   g.strokeStyle = hollow ? '#120202' : 'rgba(72,26,22,0.95)';
-  g.lineWidth = hollow ? 4.5 : 2.8;
+  g.lineWidth = hollow ? 4.5 : 3.3;
   g.beginPath();
   if (hollow) {
     g.fillStyle = '#070303';
@@ -247,6 +247,19 @@ function paintSleeve(g, x, y, w, h, o) {
   g.fillRect(cx, cy, cw, 10);
   g.fillStyle = 'rgba(255,255,255,0.12)';
   g.fillRect(cx, cy + 10, cw, 2);
+  if (o.outfit === 'dress') {
+    // Lace trim: a pale scalloped band at the cuff plus fine vertical lace lines.
+    g.fillStyle = 'rgba(250,246,236,0.85)';
+    g.fillRect(cx, cy, cw, 6);
+    g.fillStyle = 'rgba(0,0,0,0.12)';
+    for (let i = 0; i < cw; i += 6) {
+      g.beginPath();
+      g.arc(cx + i + 3, cy + 6, 2.6, 0, Math.PI);
+      g.fill();
+    }
+    g.fillStyle = 'rgba(255,255,255,0.28)';
+    for (let i = 4; i < cw; i += 8) g.fillRect(cx + i, cy + 14, 1.4, ch * 0.4);
+  }
 }
 
 function paintJeans(g, x, y, w, h, o) {
@@ -273,7 +286,7 @@ function paintSkirt(g, x, y, w, h, o) {
   weave(g, cx, cy, cw, ch, o.bottom, `skirt|${o.bottom}`, 0.9);
   const rnd = lcg(hashStr(`skirtd|${o.bottom}`));
   // Vertical fold shadows.
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 7; i++) {
     const fx = cx + rnd() * cw;
     const gr = g.createLinearGradient(fx - 7, 0, fx + 7, 0);
     gr.addColorStop(0, 'rgba(0,0,0,0)');
@@ -282,11 +295,18 @@ function paintSkirt(g, x, y, w, h, o) {
     g.fillStyle = gr;
     g.fillRect(fx - 7, cy, 14, ch);
   }
-  // Lace hem at the cell top (skirt bottom, lv~1): scallops + dots.
-  g.fillStyle = 'rgba(240,235,220,0.85)';
-  g.fillRect(cx, cy, cw, 7);
-  g.fillStyle = 'rgba(0,0,0,0.15)';
-  for (let i = 0; i < cw; i += 8) g.fillRect(cx + i, cy + 7, 4, 3);
+  // Waistband shadow at the cell bottom (lv~0 -> skirt top sits at the waist).
+  g.fillStyle = 'rgba(0,0,0,0.20)';
+  g.fillRect(cx, cy + ch - 7, cw, 7);
+  // Lace hem at the cell top (skirt bottom, lv~1): a pale band with scallops + dots.
+  g.fillStyle = 'rgba(244,240,228,0.9)';
+  g.fillRect(cx, cy, cw, 9);
+  g.fillStyle = 'rgba(0,0,0,0.16)';
+  for (let i = 0; i < cw; i += 7) {
+    g.beginPath();
+    g.arc(cx + i + 3, cy + 9, 3, 0, Math.PI);
+    g.fill();
+  }
 }
 
 function paintShoe(g, x, y, w, h, o) {
@@ -437,7 +457,7 @@ const veilMat = (() => {
     if (!cache.has(key)) {
       cache.set(key, lam({
         color: 0xe9e4d6, emissive: 0xe9e4d6, emissiveIntensity: Math.max(emissive, 0.1),
-        vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.5,
+        vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.32,
         depthWrite: false,
       }));
     }
@@ -452,16 +472,16 @@ const BONES = [
   ['hips', null, 0, 0.93, 0],
   ['spine', 'hips', 0, 0.16, 0],
   ['chest', 'spine', 0, 0.20, 0],
-  ['neck', 'chest', 0, 0.19, 0],
-  ['head', 'neck', 0, 0.11, 0],
-  ['uarmL', 'chest', -0.215, 0.14, 0],
-  ['uarmR', 'chest', 0.215, 0.14, 0],
-  ['farmL', 'uarmL', 0, -0.335, 0],
-  ['farmR', 'uarmR', 0, -0.335, 0],
+  ['neck', 'chest', 0, 0.16, 0],
+  ['head', 'neck', 0, 0.10, 0],
+  ['uarmL', 'chest', -0.220, 0.14, 0],
+  ['uarmR', 'chest', 0.220, 0.14, 0],
+  ['farmL', 'uarmL', 0, -0.30, 0],
+  ['farmR', 'uarmR', 0, -0.30, 0],
   ['thighL', 'hips', -0.095, -0.01, 0],
   ['thighR', 'hips', 0.095, -0.01, 0],
-  ['shinL', 'thighL', 0, -0.42, 0],
-  ['shinR', 'thighR', 0, -0.42, 0],
+  ['shinL', 'thighL', 0, -0.40, 0],
+  ['shinR', 'thighR', 0, -0.40, 0],
 ];
 const BONE = Object.fromEntries(BONES.map((b, i) => [b[0], i]));
 
@@ -603,35 +623,36 @@ function torsoRings(bw, fig = {}) {
     T(1.030, 0.148, 0.100, W([spine, 0.62], [hips, 0.38]), hipF),
     T(1.110, 0.136, 0.094, W([spine, 0.72], [chest, 0.28]), chestF),
     T(1.190, 0.156, 0.106, W([chest, 0.55], [spine, 0.45]), chestF),
-    T(1.270, 0.176, 0.116, W([chest, 0.78], [spine, 0.22]), chestF),
-    T(1.350, 0.188, 0.120, W([chest, 0.90], [spine, 0.10]), chestF),
-    T(1.420, 0.200, 0.116, W([chest, 0.95], [spine, 0.05]), chestF),
-    T(1.470, 0.124, 0.096, W([chest, 0.50], [neck, 0.50]), chestF),
-    T(1.520, 0.068, 0.058, W([neck, 0.78], [chest, 0.22]), 1),
-    T(1.560, 0.052, 0.046, W([neck, 1]), 1),
+    T(1.270, 0.186, 0.116, W([chest, 0.78], [spine, 0.22]), chestF),
+    T(1.350, 0.200, 0.120, W([chest, 0.90], [spine, 0.10]), chestF),
+    T(1.420, 0.214, 0.118, W([chest, 0.95], [spine, 0.05]), chestF),
+    T(1.450, 0.118, 0.090, W([chest, 0.50], [neck, 0.50]), chestF),
+    T(1.485, 0.062, 0.052, W([neck, 0.78], [chest, 0.22]), 1),
+    T(1.520, 0.048, 0.040, W([neck, 1]), 1),
   ];
 }
 
 // One arm: shoulder cap -> elbow -> wrist, one welded tube. cellFor picks sleeve vs bare skin
-// per ring (short vs long sleeves); shoulder rings blend into the chest.
+// per ring (short vs long sleeves); shoulder rings blend into the chest. Upper arm ~0.08 thick
+// tapering to a ~0.045 wrist; the tube ends at the wrist and the hand blobs take over below.
 function armRings(side, bw, longSleeve) {
-  const cx = side * 0.215 * bw;
+  const cx = side * 0.220 * bw;
   const R = (y, rx, rz, w, cell) => ({ y, rx: rx * bw, rz: rz * bw, cx, cz: 0, w, cell, mirror: side > 0 });
-  const shortCut = 1.24; // tee/apron/dress sleeves end mid-bicep
+  const shortCut = 1.30; // tee/apron sleeves end mid-bicep; forearm stays bare skin
   const cellAt = (y) => (longSleeve || y >= shortCut ? 'sleeve' : 'skin');
+  const u = side < 0 ? uarmL : uarmR, f = side < 0 ? farmL : farmR;
   const rows = [
-    [1.460, 0.064, 0.060, W([chest, 0.28], [side < 0 ? uarmL : uarmR, 0.72])],
-    [1.400, 0.059, 0.056, W([chest, 0.15], [side < 0 ? uarmL : uarmR, 0.85])],
-    [1.330, 0.054, 0.052, W([side < 0 ? uarmL : uarmR, 1])],
-    [1.260, 0.050, 0.048, W([side < 0 ? uarmL : uarmR, 1])],
-    [1.190, 0.046, 0.045, W([side < 0 ? uarmL : uarmR, 0.88], [side < 0 ? farmL : farmR, 0.12])],
-    [1.140, 0.044, 0.043, W([side < 0 ? uarmL : uarmR, 0.68], [side < 0 ? farmL : farmR, 0.32])],
-    [1.095, 0.042, 0.041, W([side < 0 ? uarmL : uarmR, 0.50], [side < 0 ? farmL : farmR, 0.50])],
-    [1.050, 0.040, 0.039, W([side < 0 ? uarmL : uarmR, 0.30], [side < 0 ? farmL : farmR, 0.70])],
-    [0.990, 0.037, 0.036, W([side < 0 ? farmL : farmR, 1])],
-    [0.920, 0.034, 0.033, W([side < 0 ? farmL : farmR, 1])],
-    [0.850, 0.031, 0.030, W([side < 0 ? farmL : farmR, 1])],
-    [0.780, 0.029, 0.028, W([side < 0 ? farmL : farmR, 1])],
+    [1.460, 0.085, 0.078, W([chest, 0.30], [u, 0.70])],
+    [1.410, 0.081, 0.074, W([chest, 0.16], [u, 0.84])],
+    [1.350, 0.075, 0.068, W([u, 1])],
+    [1.290, 0.070, 0.064, W([u, 1])],
+    [1.230, 0.066, 0.060, W([u, 0.90], [f, 0.10])],
+    [1.170, 0.062, 0.056, W([u, 0.68], [f, 0.32])],
+    [1.120, 0.058, 0.053, W([u, 0.50], [f, 0.50])],
+    [1.060, 0.054, 0.049, W([u, 0.30], [f, 0.70])],
+    [1.000, 0.051, 0.046, W([f, 1])],
+    [0.940, 0.048, 0.043, W([f, 1])],
+    [0.850, 0.044, 0.040, W([f, 1])],
   ];
   return rows.map(([y, rx, rz, w]) => R(y, rx, rz, w, cellAt(y)));
 }
@@ -642,28 +663,30 @@ function legRings(side, bw, bare) {
   const cell = bare ? 'skin' : 'jeans';
   const R = (y, rx, rz, w) => ({ y, rx: rx * bw, rz: rz * bw, cx, cz: 0, w, cell, mirror: side > 0 });
   return [
-    R(0.935, 0.090, 0.084, W([side < 0 ? thighL : thighR, 0.52], [hips, 0.48])),
-    R(0.885, 0.083, 0.077, W([side < 0 ? thighL : thighR, 0.70], [hips, 0.30])),
-    R(0.800, 0.075, 0.069, W([side < 0 ? thighL : thighR, 1])),
-    R(0.700, 0.067, 0.061, W([side < 0 ? thighL : thighR, 1])),
-    R(0.610, 0.061, 0.056, W([side < 0 ? thighL : thighR, 0.82], [side < 0 ? shinL : shinR, 0.18])),
-    R(0.540, 0.057, 0.052, W([side < 0 ? thighL : thighR, 0.62], [side < 0 ? shinL : shinR, 0.38])),
-    R(0.500, 0.055, 0.050, W([side < 0 ? thighL : thighR, 0.50], [side < 0 ? shinL : shinR, 0.50])),
-    R(0.450, 0.052, 0.048, W([side < 0 ? thighL : thighR, 0.30], [side < 0 ? shinL : shinR, 0.70])),
-    R(0.350, 0.048, 0.044, W([side < 0 ? shinL : shinR, 1])),
-    R(0.250, 0.045, 0.041, W([side < 0 ? shinL : shinR, 1])),
-    R(0.150, 0.042, 0.038, W([side < 0 ? shinL : shinR, 1])),
-    R(0.085, 0.040, 0.036, W([side < 0 ? shinL : shinR, 1])),
+    R(0.935, 0.100, 0.092, W([side < 0 ? thighL : thighR, 0.52], [hips, 0.48])),
+    R(0.885, 0.093, 0.085, W([side < 0 ? thighL : thighR, 0.70], [hips, 0.30])),
+    R(0.800, 0.084, 0.076, W([side < 0 ? thighL : thighR, 1])),
+    R(0.700, 0.076, 0.068, W([side < 0 ? thighL : thighR, 1])),
+    R(0.610, 0.069, 0.062, W([side < 0 ? thighL : thighR, 0.82], [side < 0 ? shinL : shinR, 0.18])),
+    R(0.540, 0.064, 0.058, W([side < 0 ? thighL : thighR, 0.62], [side < 0 ? shinL : shinR, 0.38])),
+    R(0.500, 0.061, 0.055, W([side < 0 ? thighL : thighR, 0.50], [side < 0 ? shinL : shinR, 0.50])),
+    R(0.450, 0.057, 0.051, W([side < 0 ? thighL : thighR, 0.30], [side < 0 ? shinL : shinR, 0.70])),
+    R(0.350, 0.052, 0.047, W([side < 0 ? shinL : shinR, 1])),
+    R(0.250, 0.048, 0.043, W([side < 0 ? shinL : shinR, 1])),
+    R(0.150, 0.045, 0.040, W([side < 0 ? shinL : shinR, 1])),
+    R(0.085, 0.042, 0.037, W([side < 0 ? shinL : shinR, 1])),
   ];
 }
 
-// Dress skirt: flared rings from waist to hem. Per-vertex weights pull the sides toward the
-// nearest thigh while the front/back hangs from the hips, so the skirt follows the legs.
+// Dress skirt: flared rings from waist to a near-floor hem. Per-vertex weights keep the
+// waistband on the hips and only pull the sides slightly toward the thighs, so a gown hangs
+// as a free cone instead of clinging to the legs.
 function skirtRings(bw) {
-  const hemK = [0, 0.12, 0.24, 0.36, 0.48, 0.60, 0.70];
+  const hemK = [0, 0.08, 0.15, 0.22, 0.28, 0.33, 0.38, 0.42, 0.45, 0.48];
   const ys = [
     [1.005, 0.165, 0.112], [0.920, 0.185, 0.122], [0.820, 0.210, 0.132],
-    [0.700, 0.238, 0.142], [0.560, 0.262, 0.152], [0.420, 0.280, 0.160], [0.320, 0.292, 0.166],
+    [0.700, 0.238, 0.142], [0.560, 0.262, 0.152], [0.420, 0.282, 0.160],
+    [0.320, 0.300, 0.168], [0.220, 0.314, 0.176], [0.140, 0.324, 0.182], [0.070, 0.330, 0.186],
   ];
   return ys.map(([y, rx, rz], i) => ({
     y, rx: rx * bw, rz: rz * bw, cx: 0, cz: 0, cell: 'skirt',
@@ -675,13 +698,14 @@ function skirtRings(bw) {
   }));
 }
 
-// Hands: palm + finger mass + thumb, all weighted to the forearm bone.
+// Hands: palm + finger mass + thumb, all weighted to the forearm bone. They hang at
+// mid-thigh, just below the wrist end of the arm tube.
 function handGeos(side, bw) {
-  const sx = side * 0.215 * bw;
+  const sx = side * 0.220 * bw;
   return [
-    [blob(0.042, 0.062, 0.046, 8, 6), setM(sx, 0.715, 0.008, 0, 0, 0), 'skin', () => 0.9],
-    [blob(0.036, 0.050, 0.030, 7, 5), setM(sx, 0.655, 0.014, 0.15, 0, 0), 'skin', () => 0.82],
-    [blob(0.015, 0.034, 0.018, 6, 5), setM(sx - side * 0.034, 0.700, 0.026, 0, 0, side * 0.5), 'skin', () => 0.86],
+    [blob(0.046, 0.070, 0.048, 8, 6), setM(sx, 0.815, 0.008, 0, 0, 0), 'skin', () => 0.9],
+    [blob(0.038, 0.054, 0.032, 7, 5), setM(sx, 0.755, 0.014, 0.15, 0, 0), 'skin', () => 0.82],
+    [blob(0.016, 0.037, 0.019, 6, 5), setM(sx - side * 0.036, 0.798, 0.026, 0, 0, side * 0.5), 'skin', () => 0.86],
   ];
 }
 
@@ -713,8 +737,7 @@ function buildBodyGeo(o, dress) {
   const acc = newAcc();
   const bw = BUILD_W[o.build] || 1;
   const fig = FIGURE[o.figure] || {};
-  const longSleeve = ['hoodie', 'jacket', 'suit', 'uniform'].includes(o.outfit);
-  const shoulderCell = o.outfit === 'dress' ? 'skin' : 'sleeve';
+  const longSleeve = ['hoodie', 'jacket', 'suit', 'uniform', 'dress'].includes(o.outfit);
   emitTube(acc, torsoRings(bw, fig), { segs: 10, colorFor: AO.torso });
   for (const s of [-1, 1]) {
     const armBone = s < 0 ? uarmL : uarmR;
@@ -722,9 +745,10 @@ function buildBodyGeo(o, dress) {
     const shinBone = s < 0 ? shinL : shinR;
     emitTube(acc, armRings(s, bw, longSleeve), { segs: 8, colorFor: AO.arm });
     emitTube(acc, legRings(s, bw, dress), { segs: 9, colorFor: AO.leg });
-    // Deltoid cap bridging torso side and upper arm so the shoulder reads as one mass.
-    emitPrim(acc, blob(0.082, 0.078, 0.076, 8, 6), setM(s * 0.192 * bw, 1.408, 0), {
-      cell: shoulderCell, weight: W([chest, 0.45], [armBone, 0.55]), colorFor: AO.arm,
+    // Deltoid cap bridging torso side and upper arm so the shoulder reads as one mass. Always
+    // sleeve cloth — a skin-coloured cap reads as a bright ball sitting on the shoulder line.
+    emitPrim(acc, blob(0.072, 0.068, 0.066, 8, 6), setM(s * 0.205 * bw, 1.415, 0), {
+      cell: 'sleeve', weight: W([chest, 0.45], [armBone, 0.55]), colorFor: AO.arm,
     });
     for (const [geo, mat, cell, cf] of handGeos(s, bw)) {
       emitPrim(acc, geo, mat, { cell, weight: W([farmBone, 1]), colorFor: cf });
@@ -733,7 +757,14 @@ function buildBodyGeo(o, dress) {
       emitPrim(acc, geo, mat, { cell, weight: W([shinBone, 1]), colorFor: cf });
     }
   }
-  if (dress) emitTube(acc, skirtRings(bw), { segs: 12, colorFor: (x, y) => 0.82 + 0.18 * smooth(y, 0.32, 1.0) });
+  if (dress) emitTube(acc, skirtRings(bw), {
+    segs: 12,
+    // Vertical falloff plus radial pleat stripes so the gown reads as folded cloth, not a tube.
+    colorFor: (x, y, z) => {
+      const fold = 0.5 + 0.5 * Math.cos(Math.atan2(z, x) * 7);
+      return (0.80 + 0.20 * smooth(y, 0.30, 1.0)) * (0.84 + 0.16 * fold);
+    },
+  });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(acc.v, 3));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(acc.n, 3));
@@ -845,6 +876,15 @@ function headGeoFor(o, hairStyle) {
     }
     const bridge = new THREE.BoxGeometry(0.022, 0.006, 0.006);
     emitPrim(acc, bridge, setM(0, 0.016, 0.084), { cell: 'glasses', weight: hairW, colorFor: () => 0.4 });
+  }
+  // Uniform ~24% enlargement: the skull reads ~1/7.5 of body height (was a pinhead). Every
+  // head-local part — skull, face patch, hair, glasses, neck stub — scales together about the
+  // skull centre so nothing falls out of alignment.
+  const HS = 1.24;
+  for (let i = 0; i < acc.v.length; i += 3) {
+    acc.v[i] *= HS;
+    acc.v[i + 1] *= HS;
+    acc.v[i + 2] *= HS;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(acc.v, 3));

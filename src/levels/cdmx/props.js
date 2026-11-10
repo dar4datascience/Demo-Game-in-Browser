@@ -308,12 +308,14 @@ export function bride(b, M) {
   // Window glass and the mannequin behind it.
   add(b, new THREE.PlaneGeometry(9, 4), basic({ color: 0xbfe0ff, transparent: true, opacity: 0.1, depthWrite: false }), X, 2.3, Z + 0.02);
   slab(b, 1.4, 0.5, 1.4, M.stone, X, Z - 1.6);
-  const doll = new NPC({ top: '#efe9dc', skin: '#e6ded0', hair: '#2a2420', dress: true, veil: true, outfit: 'dress', hairStyle: 'long', build: 'slim', figure: 'femme', height: 1.02 }, b.scene);
+  const doll = new NPC({ top: '#f4f0e6', bottom: '#efe9da', skin: '#e6ded0', hair: '#2a2420', dress: true, veil: true, outfit: 'dress', hairStyle: 'long', build: 'slim', figure: 'femme', height: 1.02 }, b.scene);
   doll.place(X, Z - 1.6);
   doll.face(X, Z + 4);
   doll.root.position.y = 0.5;
   b.light(X, 2.6, Z - 1.4, 0xffe6c8, 18, 10);
   b.light(X, 3.4, Z + 2, 0xb090ff, 12, 12);
+  // Warm key on the gown itself so the white dress reads against the purple neon.
+  b.light(X, 1.7, Z + 0.6, 0xffe9d2, 14, 8);
   return { doll };
 }
 
