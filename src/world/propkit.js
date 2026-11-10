@@ -80,7 +80,7 @@ export function pot(color = 0xa8552e) {
 // PET bottle ~0.30 m: `kind` 0 = water label, 1 = soft-drink label.
 export function bottle(kind = 0) {
   const g = new THREE.Group();
-  put(g, paint(lathe([[0.001, 0], [0.03, 0.004], [0.038, 0.02], [0.041, 0.09], [0.039, 0.17], [0.031, 0.225], [0.017, 0.245], [0.014, 0.265], [0.016, 0.275]], 8)), kind ? kitMats.bottleB() : kitMats.bottleA());
+  put(g, paint(lathe([[0.001, 0], [0.03, 0.004], [0.038, 0.02], [0.041, 0.09], [0.039, 0.17], [0.031, 0.225], [0.017, 0.245], [0.014, 0.265], [0.016, 0.275]], 6)), kind ? kitMats.bottleB() : kitMats.bottleA());
   put(g, paint(new THREE.CylinderGeometry(0.0165, 0.0165, 0.03, 8), 0xd8d0b8), kitMats.tint(), 0, 0.288, 0);
   return g;
 }
@@ -120,10 +120,10 @@ export function stool(h = 0.45) {
 export function tire() {
   const g = new THREE.Group();
   const t = kitMats.tint();
-  const torus = new THREE.TorusGeometry(0.25, 0.085, 8, 14);
+  const torus = new THREE.TorusGeometry(0.25, 0.085, 6, 10);
   torus.rotateX(Math.PI / 2);
   put(g, paint(torus, 0x14161a), t, 0, 0.085, 0);
-  put(g, paint(new THREE.CylinderGeometry(0.075, 0.075, 0.02, 10), 0x2a2e34), t, 0, 0.172, 0);
+  put(g, paint(new THREE.CylinderGeometry(0.075, 0.075, 0.02, 8), 0x2a2e34), t, 0, 0.172, 0);
   return g;
 }
 
@@ -146,9 +146,9 @@ export function sack(h = 0.6) {
   const g = new THREE.Group();
   const b = kitMats.burlap();
   const k = h / 0.63;
-  put(g, paint(lathe([[0.001, 0], [0.2, 0.02], [0.27, 0.1], [0.3, 0.26], [0.27, 0.44], [0.18, 0.53], [0.115, 0.565], [0.1, 0.6], [0.125, 0.63]].map(([r, y]) => [r, y * k]))), b);
-  put(g, paint(new THREE.TorusGeometry(0.105, 0.02, 5, 10), 0x6b5232), b, 0, 0.6 * k, 0, { rx: Math.PI / 2 });
-  put(g, paint(new THREE.SphereGeometry(0.05, 6, 5), 0x6b5232), b, 0, 0.63 * k, 0);
+  put(g, paint(lathe([[0.001, 0], [0.2, 0.02], [0.27, 0.1], [0.3, 0.26], [0.27, 0.44], [0.18, 0.53], [0.115, 0.565], [0.1, 0.6], [0.125, 0.63]].map(([r, y]) => [r, y * k]), 8)), b);
+  put(g, paint(new THREE.TorusGeometry(0.105, 0.02, 4, 8), 0x6b5232), b, 0, 0.6 * k, 0, { rx: Math.PI / 2 });
+  put(g, paint(new THREE.SphereGeometry(0.05, 5, 4), 0x6b5232), b, 0, 0.63 * k, 0);
   return g;
 }
 
@@ -228,10 +228,10 @@ export function tarpPile(w = 1.3, d = 0.9, h = 0.6, color = 0x4a5f8a) {
   const g = new THREE.Group();
   const tarp = kitMats.tarp(), tint = kitMats.tint();
   put(g, paint(new THREE.CylinderGeometry(w * 0.4, w * 0.44, h * 0.22, 10), 0x2a2620), tint, 0, h * 0.11, 0);
-  const mound = new THREE.SphereGeometry(0.5, 9, 6, 0, Math.PI * 2, 0, 1.7);
+  const mound = new THREE.SphereGeometry(0.5, 8, 5, 0, Math.PI * 2, 0, 1.7);
   mound.scale(w * 0.62, h * 0.9, d * 0.62);
   put(g, paint(mound, 0x35302a), tint, 0, h * 0.2, 0);
-  const cover = new THREE.SphereGeometry(0.52, 10, 6, 0, Math.PI * 2, 0.12, 1.78);
+  const cover = new THREE.SphereGeometry(0.52, 9, 5, 0, Math.PI * 2, 0.12, 1.78);
   cover.scale(w * 0.68, h * 1.02, d * 0.68);
   put(g, paint(cover, color), tarp, 0, h * 0.34, 0);
   put(g, paint(new THREE.BoxGeometry(w * 0.5, 0.05, d * 0.4), color), tarp, w * 0.18, 0.03, -d * 0.12, { ry: 0.3 });

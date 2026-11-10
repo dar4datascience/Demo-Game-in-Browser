@@ -421,8 +421,8 @@ export function buildWorld(scene) {
   }
   // Dock aprons behind the bodegas: stacked crates, tyres, sacks and tarp piles.
   const apronProps = [
-    () => { const g = new THREE.Group(); for (const y of [0, 0.325, 0.65]) { const c = PK.crateSlats(0.55, 0.42, 0.32); c.position.y = y; g.add(c); } return g; },
-    () => { const g = new THREE.Group(); for (const [i, y] of [[0, 0], [1, 0.35], [2, 0.68]]) { const c = PK.plasticCrate(0.5, 0.36, 0.32, [0x2e6fd9, 0xd94f3d, 0x3b7d3a][i]); c.position.y = y; g.add(c); } return g; },
+    () => { const g = new THREE.Group(); for (const y of [0, 0.325]) { const c = PK.crateSlats(0.55, 0.42, 0.32); c.position.y = y; g.add(c); } return g; },
+    () => { const g = new THREE.Group(); for (const [i, y] of [[0, 0], [1, 0.35]]) { const c = PK.plasticCrate(0.5, 0.36, 0.32, [0x2e6fd9, 0xd94f3d][i]); c.position.y = y; g.add(c); } return g; },
     () => { const g = new THREE.Group(); const t = PK.tire(); g.add(t); const t2 = PK.tire(); t2.position.y = 0.16; t2.rotation.y = 0.4; g.add(t2); return g; },
     () => PK.tarpPile(1.2 + T.rand() * 0.4, 0.85, 0.55 + T.rand() * 0.2, [0x4a5f8a, 0x3f6b4f, 0x6b4a3a][Math.floor(T.rand() * 3)]),
     () => { const g = new THREE.Group(); const s = PK.sack(0.55); g.add(s); const s2 = PK.sack(0.5); s2.position.set(0.3, 0, 0.15); s2.rotation.y = 0.5; g.add(s2); return g; },
@@ -433,7 +433,7 @@ export function buildWorld(scene) {
     const front = ROWS[row], face = ROW_FACE[row];
     const back = front - face * DEPTH;
     for (const [x0, x1] of SEGMENTS) {
-      if (T.rand() > 0.16) continue;
+      if (T.rand() > 0.13) continue;
       const x = (x0 + x1) / 2 + (T.rand() - 0.5) * (x1 - x0) * 0.55;
       const z = back - face * (DOCK * 0.55);
       if (nearKeep(x, z, 3.5)) continue;
@@ -447,9 +447,9 @@ export function buildWorld(scene) {
     f.rotation.y = Math.PI / 2;
     scene.add(f);
   }
-  for (let z = -4; z < 352; z += 16) {
+  for (let z = -4; z < 352; z += 20) {
     for (const x of [-70.9, 70.9]) {
-      if (T.rand() < 0.22) continue;
+      if (T.rand() < 0.28) continue;
       const f = PK.fence(4, 2);
       f.position.set(x, 0, z + (T.rand() - 0.5) * 4);
       f.rotation.y = Math.PI / 2;
