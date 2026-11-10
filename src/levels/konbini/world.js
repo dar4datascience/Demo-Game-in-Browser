@@ -100,16 +100,13 @@ export function buildWorld(scene) {
 
   // Volumetric hints: the warm spill of the street lamp onto the lot and a soft shaft under
   // the centre ceiling panels. Additive, no depth write — two draw calls for the whole store.
-  const shaft = (x, y, z, h, r, color, opacity = 0.05) => {
-    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8, 1, true), basic({
-      color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending,
-    }));
+  const shaft = (x, y, z, h, r, color, opacity = 0.04) => {
+    const m = PK.shaftCone(color, h, r, opacity);
     m.position.set(x, y - h / 2, z);
-    m.userData.noBatch = true;
     scene.add(m);
   };
-  shaft(-3.4, 4.7, 12, 4.4, 1.9, 0xffb36b, 0.06);   // street lamp over the parking lot
-  shaft(0.4, H - 0.04, 0.4, 2.9, 2.1, 0xeef3ff, 0.045); // centre ceiling panels
+  shaft(-3.4, 4.7, 12, 4.4, 1.9, 0xffb36b, 0.045);   // street lamp over the parking lot
+  shaft(0.4, H - 0.04, 0.4, 2.9, 2.1, 0xeef3ff, 0.032); // centre ceiling panels
 
   // --- Store fixtures ----------------------------------------------------
   const fridgeMat = glowMat({ map: T.fridgeTex() }, 0x2a2a2a);

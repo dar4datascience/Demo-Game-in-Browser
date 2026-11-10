@@ -238,6 +238,62 @@ export function tarpPile(w = 1.3, d = 0.9, h = 0.6, color = 0x4a5f8a) {
   return g;
 }
 
+// --- Volumetric light shafts ---------------------------------------------------
+// One tiny shader shared by every lamp cone: the silhouette feathers out with view angle
+// (no hard triangle rim) and alpha fades from the lamp apex toward the floor, so cones read
+// as haze rather than geometry. Cached per colour/height/opacity; all variants share a program.
+const shaftMats = new Map();
+export const shaftMat = (color, h, opacity = 0.045) => {
+  const key = `${color}|${Math.round(h * 10)}|${opacity}`;
+  let m = shaftMats.get(key);
+  if (!m) {
+    m = new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(color) },
+        uH: { value: h },
+        uOpacity: { value: opacity },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vN;
+        varying vec3 vV;
+        varying float vY;
+        void main() {
+          vY = position.y;
+          vN = normalize(normalMatrix * normal);
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vV = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uColor;
+        uniform float uH;
+        uniform float uOpacity;
+        varying vec3 vN;
+        varying vec3 vV;
+        varying float vY;
+        void main() {
+          float face = pow(abs(dot(normalize(vN), normalize(vV))), 1.7);
+          float vert = smoothstep(-uH * 0.5, uH * 0.5, vY);
+          float a = uOpacity * face * (0.3 + 0.7 * vert);
+          if (a < 0.003) discard;
+          gl_FragColor = vec4(uColor, a);
+        }`,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    shaftMats.set(key, m);
+  }
+  return m;
+};
+
+// Open cone, h tall, r at the base, apex at +h/2 — place the apex at the lamp.
+export function shaftCone(color, h, r, opacity) {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 10, 1, true), shaftMat(color, h, opacity));
+  m.userData.noBatch = true;
+  return m;
+}
+
 // Traffic cone ~0.65 m: chamfered base, tapered body, white band.
 export function cone() {
   const g = new THREE.Group();

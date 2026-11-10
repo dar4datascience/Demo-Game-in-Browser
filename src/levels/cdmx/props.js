@@ -32,12 +32,9 @@ const cyl = (b, r0, r1, h, seg, mat, x, y, z, opts = {}) =>
  * a solid tan pyramid (a linear 0.1 becomes ~0.4 on screen).
  */
 export const lightCone = (b, x, y, z, color = 0xffb066, h = 4.5, r = 1.4) => {
-  const mat = basic({
-    color, transparent: true, opacity: 0.035, depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  const cone = add(b, new THREE.ConeGeometry(r, h, 8, 1, true), mat, x, y - h / 2, z);
-  cone.userData.noBatch = true;
+  const cone = PK.shaftCone(color, h, r, 0.03);
+  cone.position.set(x, y - h / 2, z);
+  b.scene.add(cone);
   return cone;
 };
 
