@@ -77,10 +77,12 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
   g.save();
   g.translate(x, y);
   g.scale(w / 64, h / 64);
-  const base = emis ? lumColor(skin, 0.45) : skin;
+  // Diffuse matches the dimmed skin cell; the emissive face stays low so features read via
+  // shading contrast instead of self-illuminating into a blown highlight.
+  const base = emis ? lumColor(skin, 0.22) : dim(skin, 0.85);
   g.fillStyle = base;
   g.fillRect(0, 0, 64, 64);
-  soft(g, 32, 16, 26, 'rgba(255,255,255,0.07)');
+  soft(g, 32, 16, 26, emis ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)');
   soft(g, 18, 46, 15, 'rgba(120,60,40,0.12)');
   soft(g, 46, 46, 15, 'rgba(120,60,40,0.12)');
   const rnd = lcg(hashStr(`face|${skin}|${hollow}|${emis}`));
@@ -95,7 +97,7 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
       g.ellipse(ex, 30.5, 8, 7, 0, 0, Math.PI * 2);
       g.fill();
     } else {
-      g.fillStyle = '#ece5d6';
+      g.fillStyle = emis ? '#8d8578' : '#ece5d6';
       g.beginPath();
       g.ellipse(ex, 30, 7.2, 6, 0, 0, Math.PI * 2);
       g.fill();
@@ -103,7 +105,7 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
       g.beginPath();
       g.arc(ex, 31, 3.4, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.95)';
+      g.fillStyle = emis ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.95)';
       g.fillRect(ex - 2.1, 28.4, 2.3, 2.3);
       g.strokeStyle = 'rgba(52,28,20,0.55)';
       g.lineWidth = 1.5;
@@ -123,7 +125,7 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
   ng.addColorStop(1, 'rgba(90,50,35,0)');
   g.fillStyle = ng;
   g.fillRect(28, 32, 8, 18);
-  soft(g, 32, 46, 5.5, 'rgba(255,255,255,0.12)');
+  soft(g, 32, 46, 5.5, emis ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)');
   g.strokeStyle = hollow ? '#120202' : 'rgba(72,26,22,0.95)';
   g.lineWidth = hollow ? 4.5 : 3.3;
   g.beginPath();
@@ -389,14 +391,16 @@ const PAINTERS = {
     };
     const [fx, fy, fw, fh] = CELLS.face;
     paintFace(g, fx, fy, fw, fh, o.skin, o.hollow, true);
-    // Emissive floor ~0.08-0.12 luminance: enough to keep NPCs readable in moonlight without
-    // flattening the real Lambert shading (ghosts scale it up via `emissive`).
-    flat('skin', o.skin, 0.4);
+    // Emissive floor ~0.06-0.1 luminance: enough to keep NPCs readable in moonlight without
+    // flattening the real Lambert shading (ghosts scale it up via `emissive`). Gowns emit less
+    // so ivory fabric keeps its fold shading instead of glowing flat.
+    const gown = o.outfit === 'dress' ? 0.7 : 1;
+    flat('skin', o.skin, 0.28);
     flat('hair', o.hair, 0.18);
-    flat('shirt', o.top, 0.32);
-    flat('sleeve', o.top, 0.32);
+    flat('shirt', o.top, 0.32 * gown);
+    flat('sleeve', o.top, 0.32 * gown);
     flat('jeans', o.bottom, 0.32);
-    flat('skirt', o.bottom, 0.32);
+    flat('skirt', o.bottom, 0.32 * gown);
     flat('shoe', '#241d16', 0.24);
     flat('cap', o.hair, 0.28);
     flat('glasses', '#000000', 0.04);
@@ -807,29 +811,29 @@ function headGeoFor(o, hairStyle) {
     skull.computeVertexNormals();
   }
   skull.translate(0, 0.005, -0.005);
-  emitPrim(acc, skull, IDENT, { cell: skinCell, weight: W([BONE.head, 1]), colorFor: (x, y) => 0.95 - 0.08 * Math.max(0, -y / 0.1) });
+  emitPrim(acc, skull, IDENT, { cell: skinCell, weight: W([BONE.head, 1]), colorFor: (x, y) => 0.87 - 0.07 * Math.max(0, -y / 0.1) });
   // Nose wedge.
   const nose = new THREE.ConeGeometry(0.012, 0.032, 4);
   nose.rotateX(Math.PI / 2);
   nose.scale(1, 1, 0.7);
   nose.computeVertexNormals();
   nose.translate(0, -0.006, 0.080);
-  emitPrim(acc, nose, IDENT, { cell: 'skin', weight: W([BONE.head, 1]), colorFor: () => 0.95 });
+  emitPrim(acc, nose, IDENT, { cell: 'skin', weight: W([BONE.head, 1]), colorFor: () => 0.88 });
   // Ears.
   for (const s of [-1, 1]) {
     const ear = blob(0.016, 0.026, 0.012, 6, 5);
-    emitPrim(acc, ear, setM(s * 0.077 * bw, -0.004, 0.002), { cell: 'skin', weight: W([BONE.head, 1]), colorFor: () => 0.9 });
+    emitPrim(acc, ear, setM(s * 0.077 * bw, -0.004, 0.002), { cell: 'skin', weight: W([BONE.head, 1]), colorFor: () => 0.85 });
   }
   // Neck stub into the torso collar.
   const neckStub = new THREE.CylinderGeometry(0.042, 0.048, 0.10, 8);
   neckStub.translate(0, -0.10, 0.004);
-  emitPrim(acc, neckStub, IDENT, { cell: 'skin', weight: W([BONE.neck, 0.7], [BONE.head, 0.3]), colorFor: () => 0.88 });
+  emitPrim(acc, neckStub, IDENT, { cell: 'skin', weight: W([BONE.neck, 0.7], [BONE.head, 0.3]), colorFor: () => 0.84 });
   // Painted face patch hugging the skull front.
   const face = new THREE.SphereGeometry(1, 10, 8, Math.PI / 2 - 0.63, 1.26, Math.PI / 2 - 1.02, 1.9);
   face.scale(0.0785 * bw, 0.0935 * bw, 0.0815 * bw);
   face.computeVertexNormals();
   face.translate(0, 0.005, -0.005);
-  emitPrim(acc, face, IDENT, { cell: 'face', weight: W([BONE.head, 1]), colorFor: () => 1 });
+  emitPrim(acc, face, IDENT, { cell: 'face', weight: W([BONE.head, 1]), colorFor: () => 0.92 });
   // Hair volumes.
   const hairW = W([BONE.head, 1]);
   const hairCol = (x, y) => 0.82 + 0.18 * smooth(y, -0.5, 0.1);
@@ -849,9 +853,11 @@ function headGeoFor(o, hairStyle) {
       curtain.translate(0, -0.28, -0.022);
       emitPrim(acc, curtain, IDENT, { cell: 'hair', weight: hairW, colorFor: (x, y) => 0.9 - 0.18 * Math.min(1, (-y - 0.05) / 0.5) });
       for (const s of [-1, 1]) {
-        const lock = new THREE.CylinderGeometry(0.026 * bw, 0.013 * bw, 0.36, 6);
-        lock.rotateZ(s * 0.36);
-        lock.translate(s * 0.072 * bw, -0.055, 0.012);
+        // Side locks hug the back of the skull and end at jaw level — they used to poke out
+        // in front of the neck and read as floating strings.
+        const lock = new THREE.CylinderGeometry(0.024 * bw, 0.012 * bw, 0.30, 6);
+        lock.rotateZ(s * 0.20);
+        lock.translate(s * 0.086 * bw, -0.05, -0.046);
         emitPrim(acc, lock, IDENT, { cell: 'hair', weight: hairW, colorFor: (x, y) => 0.9 - 0.15 * (-y / 0.4) });
       }
     }

@@ -312,10 +312,11 @@ export function bride(b, M) {
   doll.place(X, Z - 1.6);
   doll.face(X, Z + 4);
   doll.root.position.y = 0.5;
-  b.light(X, 2.6, Z - 1.4, 0xffe6c8, 18, 10);
+  // Key light pulled up and back — it used to sit point-blank in front of her face.
+  b.light(X, 3.2, Z - 0.8, 0xffe6c8, 10, 10);
   b.light(X, 3.4, Z + 2, 0xb090ff, 12, 12);
-  // Warm key on the gown itself so the white dress reads against the purple neon.
-  b.light(X, 1.7, Z + 0.6, 0xffe9d2, 14, 8);
+  // Soft warm fill on the gown from camera-left so the white dress reads against the purple neon.
+  b.light(X - 1.6, 2.1, Z + 0.9, 0xffe9d2, 6, 9);
   return { doll };
 }
 
