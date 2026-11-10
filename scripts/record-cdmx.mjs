@@ -1,6 +1,7 @@
 // Records each CDMX showcase shot as its own vertical clip with the page's own MediaRecorder
 // (canvas.captureStream), which is much faster than Playwright's screencast under SwiftShader.
-// The internal render is dropped to 240p for speed and upscaled with ffmpeg; see make-cdmx-video.sh.
+// The internal render height is dropped via ?renderH (RENDER_H env, default 360) for speed and
+// upscaled with ffmpeg; see make-cdmx-video.sh.
 //   docker run --rm --network host -v "$PWD:/repo" --entrypoint node mcp/playwright /repo/scripts/record-cdmx.mjs
 //   SHOTS="1 4 10" records only those shot numbers (1-based).
 import { chromium } from '/app/node_modules/playwright/index.mjs';
@@ -13,7 +14,7 @@ mkdirSync(RAW, { recursive: true });
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const SHOTS = (process.env.SHOTS ?? ALL.join(' ')).split(' ').map(Number);
 const SPEED = process.env.SPEED ?? '4';
-const RENDER_H = process.env.RENDER_H ?? '240';
+const RENDER_H = process.env.RENDER_H ?? '360';
 
 const browser = await chromium.launch({
   channel: 'chromium',

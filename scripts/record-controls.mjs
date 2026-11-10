@@ -2,11 +2,17 @@
 // WebMs are trimmed, concatenated and converted to mp4/gif with ffmpeg (see README/AGENTS).
 //   docker run --rm --network host -v "$PWD:/repo" --entrypoint node mcp/playwright /repo/scripts/record-controls.mjs
 import { chromium } from '/app/node_modules/playwright/index.mjs';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 
 const RAW = '/repo/docs/raw';
-rmSync(RAW, { recursive: true, force: true });
 mkdirSync(RAW, { recursive: true });
+// Only clear this script's own outputs — docs/raw/cdmx/ and cdmx-audio.wav belong to the
+// CDMX recording pipeline and may still be needed by make-cdmx-video.sh.
+for (const f of readdirSync(RAW)) {
+  if (f === 'controls.webm' || f === 'flow.webm' || f === 'times.json' || f.startsWith('page@')) {
+    rmSync(`${RAW}/${f}`, { force: true });
+  }
+}
 
 const browser = await chromium.launch({
   channel: 'chromium',
@@ -19,7 +25,8 @@ const startGame = async (page, speed) => {
   await page.click('[data-map=ceda]');
   await page.click('[data-char=diablero]');
   await page.click('[data-variant=nonbinary]');
-  await page.waitForFunction(() => document.getElementById('objective').textContent.includes('Agarra'), null, { timeout: 25000 });
+  // Software rendering can take a minute for the level to boot and the intro line to play.
+  await page.waitForFunction(() => document.getElementById('objective').textContent.includes('Agarra'), null, { timeout: 90000 });
 };
 
 const times = {};
