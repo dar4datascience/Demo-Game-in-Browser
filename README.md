@@ -136,8 +136,14 @@ Desktop browser with WebGL2 required. Headphones recommended.
 ## Tech
 
 - **Three.js** + **Vite**, plain JavaScript, no other runtime dependencies.
-- PS1/VHS look: the scene renders to a 240p target and gets upscaled with nearest-neighbor filtering. A post shader adds
-  Bayer dithering, film grain, scanlines, chromatic aberration and vignette, and vertex snapping makes polygons jitter.
+- PS1/VHS look: the scene renders to a low-res target (360p by default, 480p "photo" mode on the
+  CDMX showcase) and gets upscaled with nearest-neighbor filtering. A post shader adds
+  Bayer dithering, film grain, chromatic aberration, bloom and vignette, and vertex snapping makes
+  polygons jitter.
+- Characters are smooth-skinned low-poly humanoids (a shared 13-bone skeleton, painted atlases,
+  idle life and head look-at) rather than segmented box figures; levels are dressed with a shared
+  procedural prop kit (crates, sacks, bottles, fences, cones) plus wet-ground puddles and soft
+  volumetric light shafts on the night streets.
 - Textures come from `<canvas>` drawing; audio (hum, chimes, shutters, diablito squeaks, stingers) is synthesized with WebAudio.
 - Music is procedural too: a 68 BPM lofi bed (Dm9–Bbmaj9–Gm9–A7b9) with warm detuned pads, vinyl
   crackle and a soft brushed beat, and a 92 BPM sonidera cumbia loop (tumbao bass, guiro, clap,
@@ -148,11 +154,13 @@ Desktop browser with WebGL2 required. Headphones recommended.
 ```
 src/
   engine/          post.js (render pipeline + PS1 material), textures.js, audio.js, music.js, input.js
-  world/           builder.js (shared level helpers, oriented-box colliders), person.js (NPCs)
+  world/           builder.js (shared level helpers, oriented-box colliders, halos, AO/chamfer),
+                   person.js (skinned NPCs), propkit.js (shared props + light shafts), batch.js
   game/            player.js, hud.js, scheduler.js, interaction.js, director.js, rng.js (shared story helpers)
   levels/index.js  level registry
   levels/konbini/  world.js, story.js
   levels/ceda/     world.js, props.js (trucks, diablitos, pancarta, shrine, fire), story.js (3 characters)
+  levels/cdmx/     world.js, props.js (city set pieces, wet ground), story.js (showcase camera tour)
   main.js          menu, level loading, main loop
 ```
 

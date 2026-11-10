@@ -10,7 +10,9 @@
   CI deploys to https://nightshift.radarcentral.dev on every push to `main` via `.github/workflows/deploy.yml`.
 - Browser E2E playthroughs of every story (slow, needs Docker): `npm run test:e2e`
 - CDMX showcase tour (non-playable, camera-driven): open the "Ciudad de México" menu card, or
-  `?debug&shot=N` (1–10) to play one shot. `?renderH=240` drops the internal render height for fast recording.
+  `?debug&shot=N` (1–10) to play one shot. The showcase renders at 480p in "photo" mode; the default
+  internal render height is 360 (`RENDER_HEIGHT` in `src/engine/post.js`). `?renderH=N` overrides it —
+  `record-cdmx.mjs` defaults to `RENDER_H=360`, drop to 300/240 if SwiftShader can't keep up.
 - Record the showcase to `docs/cdmx-night.mp4` (needs the dev server on :5173):
 
   ```bash
@@ -20,8 +22,10 @@
   ```
 
   `record-cdmx.mjs` uses the page's own `canvas.captureStream` + MediaRecorder (much faster than
-  Playwright's screencast under SwiftShader) at 270×480 with `renderH=240`, then `make-cdmx-video.sh`
+  Playwright's screencast under SwiftShader), then `make-cdmx-video.sh`
   upscales to 1080×1920 H.264 24fps and muxes the offline-rendered lofi bed.
+  Both make scripts take `FFMPEG`/`FFPROBE` env vars pointing at any ffmpeg/ffprobe binary
+  (e.g. a static build in /tmp) and fall back to `ffmpeg`/`ffprobe` on PATH.
 - Screenshot tour of every shot: `docker run --rm --network host -v "$PWD/scripts:/out" --entrypoint node mcp/playwright /out/look-cdmx.mjs`
 
 ## Verification
@@ -49,9 +53,11 @@
   docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=diablero -e CHOICE=beer -e OUTCOME=win --entrypoint node mcp/playwright /out/playthrough-ceda.mjs
   ```
 
-- Software rendering in that container runs at about 25-30 fps on the CEDA map (the level merges static
-  geometry and keeps only 8 point lights live), so a full run takes a couple of minutes. The scripts wait on
-  rendered frames, not wall-clock time. `npm run test:e2e` (`scripts/e2e.sh`) starts its own Vite server on
+- Software rendering in that container is slow on the heavy maps (the level merges static
+  geometry and keeps only 8 point lights live), so a full run takes a couple of minutes and level
+  boot + intro can take ~75 s wall-clock. The scripts wait on rendered frames, not wall-clock time;
+  `record-controls.mjs` allows up to 90 s for the first objective to appear. `npm run test:e2e`
+  (`scripts/e2e.sh`) starts its own Vite server on
   port 5199 and runs all playthroughs (NightMart, both diablero ghost choices with win/lose outcomes, and the
   seller/consumer shared finale).
 - `scripts/profile.mjs` prints draw calls, mesh/light counts and frame time (`CHAR=diablero`); `scripts/look.mjs`
@@ -60,8 +66,9 @@
 - `scripts/map.mjs` generates `docs/ceda-map.svg` from the level constants; render the PNG with
   `docker run --rm --network host -v "$PWD:/repo" --entrypoint node mcp/playwright /repo/scripts/render-map.mjs`.
 - `scripts/record-controls.mjs` records the controls and Flow clips (`-v "$PWD:/repo"`); then run
-  `bash scripts/make-controls-video.sh` on the host (needs ffmpeg) to produce `docs/diablero-controls.mp4` and
-  the README GIF.
+  `bash scripts/make-controls-video.sh` on the host (needs ffmpeg, or `FFMPEG=/path/to/ffmpeg`) to
+  produce `docs/diablero-controls.mp4` and the README GIF. It only deletes its own files under
+  `docs/raw/`, so it can run before/after the CDMX recorders without clobbering their webms.
 - `scripts/shots/` is gitignored, so agent file tools can't read it; copy the screenshots out first (`cp -r scripts/shots /tmp/`).
 
 ## Conventions

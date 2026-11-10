@@ -19,14 +19,17 @@ this file tracks the code, it does not replace it.
 
 ## What the game is
 
-Three.js + Vite, plain ES modules, no runtime dependencies beyond `three`. Two playable maps:
+Three.js + Vite, plain ES modules, no runtime dependencies beyond `three`. Two playable maps plus
+one showcase:
 
 - **NightMart** (`konbini`): 11:40 PM convenience-store shift. One scripted mission.
 - **Central de Abasto** (`ceda`): 4:10 AM Iztapalapa market. Three characters (diablero, seller,
   consumer), each with its own mission, all sharing one blackout-chase finale.
+- **Ciudad de México** (`cdmx`): non-playable night-city showcase; `story.js` drives a 10-shot
+  camera tour (`?shot=N` plays one shot) used for `docs/cdmx-night.mp4`.
 
-Everything is procedural: canvas textures, box-model people, WebAudio. No copied assets or real
-business names.
+Everything is procedural: canvas textures, skinned low-poly people, WebAudio. No copied assets or
+real business names.
 
 ## Commands
 
@@ -45,8 +48,8 @@ runs game time 4x. E2E scripts live in `scripts/` (see `AGENTS.md` for the Docke
 
 ```
 src/main.js                 menu, level boot, frame loop
-src/engine/post.js          render pipeline, lam()/basic() materials (PS1 vertex snapping)
-src/engine/textures.js      canvas textures, seeded rand()
+src/engine/post.js          render pipeline, lam()/basic()/phong() materials (PS1 vertex snapping)
+src/engine/textures.js      canvas textures, blotch()/grime() wear helpers, seeded rand()
 src/engine/audio.js         WebAudio Sfx (beeps, chimes, squeaks, stingers, tension, flow, fire, lofi)
 src/engine/music.js         pure lofi/cumbia patterns, MIDI helpers and step timing
 src/engine/input.js         keys/pressed/mouse, pointer lock
@@ -56,12 +59,15 @@ src/game/player.js          Player movement, collision, held items, flashlight
 src/game/interaction.js     raycast interactions with label gating + occlusion
 src/game/hud.js             objective/prompt/subtitle/clock/camera/ending
 src/game/director.js        story helpers: spawn/despawn/say/power/flicker/jumpscare + GHOST
-src/world/builder.js        createBuilder: meshes, oriented colliders, pooled lights, power
+src/world/builder.js        createBuilder: meshes, oriented colliders, pooled lights, halos,
+                            chamferedBox(), bakeAO(), power
 src/world/batch.js          static geometry merging + light budget helpers for draw calls
-src/world/person.js         NPC box humanoid + walk/face/update
+src/world/person.js         skinned-humanoid NPCs (13-bone rig) + walk/face/update/lookAt
+src/world/propkit.js        shared low-poly prop kit + soft light-shaft cones
 src/levels/index.js         LEVELS registry
 src/levels/konbini/         world.js, story.js
 src/levels/ceda/            world.js, props.js, story.js
+src/levels/cdmx/            world.js, props.js (incl. wetGround), story.js — showcase, not playable
 tests/helpers/harness.js    headless story runner + reachability helpers
 tests/unit/                 scheduler, player, interaction, world/NPC/HUD/layout
 tests/integration/          level contract/reachability, story playthroughs
@@ -203,9 +209,61 @@ Builder (`src/world/builder.js`):
   1.4 s, fades, waits 1.6 s. Caller decides the ending.
 - `GHOST` look: pale, long hair, hollow eyes, slightly short.
 
-`NPC` faces +z. `walk(points, speed)` returns a promise that resolves on arrival; `update(dt)`
-moves along `path`, turns toward the target, and swings limbs. `pos` is `root.position`.
-Setting `npc.path = []` stops it; `place(x,z)` teleports; `face(x,z)` aims it.
+### People (`src/world/person.js`)
+
+`makePerson(opts)` builds a smooth-skinned humanoid: one `THREE.SkinnedMesh` for the body (torso,
+limbs, hands, shoes — welded tube geometry with blended weights across shoulders/elbows/hips/knees)
+plus a head mesh on the head bone, all deforming a shared 13-bone skeleton (hips → spine → chest →
+neck → head; shoulderL/R → elbowL/R → hand; hipL/R → knee → foot). Materials come from a cached
+painted atlas per look (face, cloth folds, skin) with a small emissive floor and a fresnel rim —
+never rely on flat emissive for readability. Every skinned mesh sets `userData.noBatch` so
+`batchStatic` leaves it alone; geometry/materials are cached per look key, so crowds are cheap.
+
+Options (all optional, legacy keys still work):
+
+- Legacy: `skin`, `top`, `bottom`, `hair`, `longHair`, `veil`, `dress`, `height`, `emissive`,
+  `hollow` (hollow = black sockets/mouth for the ghost).
+- New: `outfit` (`'tee'|'hoodie'|'jacket'|'apron'|'suit'|'uniform'|'dress'`), `build`
+  (`'slim'|'average'|'heavy'` scales limb/torso width), `figure` (`'masc'|'femme'` — skirt vs
+  trousers under outfits), `hairStyle` (`'short'|'long'|'bob'|'bun'|'cap'|'bald'`; `longHair`
+  maps to `'long'`), `glasses`, `cap`/`hat` (alias), `pose` (`'stand'|'sit'|'present'|'hold'`).
+
+Returns `{ root, legs, arms, head, rig }` where `legs`/`arms`/`head` are the **bones** (thighL/R,
+uarmL/R, head) — story code rotates them directly (`legs[i].rotation.x`, `head.rotation.z`) and
+`root.add(...)` still works for attachments. `rig` exposes the full bone map, `skeleton`, `mesh`,
+`headMesh`, `shins`, `forearms`, `chest`, `neck`, `spine`, `hips` and `base` rest rotations.
+
+`NPC` (director `spawn`) adds `walk(points, speed)` → promise, `place(x,z)`, `face(x,z)`, `pos`,
+and `update(dt)` which runs the walk cycle (legs swing with knee flex, arms counter-swing with
+elbow flex, hip bob), idle breathing/weight shift, and head look-at. `lookAt(target, lift)` /
+`lookAtPlayer(player)` ease the head bone toward a point within ~6 m (yaw ±40°, pitch capped);
+they only write `rotation.x/y`, so story `rotation.z` head tilts survive. Clearing works by
+calling `lookAt(null)`.
+
+### Props and environment (`src/world/propkit.js`)
+
+Shared low-poly prop kit, all batch-mergeable through `kitMats` (module-cached `lam()`/`basic()`
+materials shared with the level sets): `bucket`, `pot`, `bottle`, `bottleCrate`, `stool`, `tire`,
+`taped box` (`box(w,h,d,{open,tint})`), `sack`, `crateSlats`, `fence` (alpha-tested chain-link),
+`plasticCrate`, `table`, `tarpPile`, `cone` (traffic). Geometry is tapered cylinders / lathe /
+`chamferedBox` with `bakeAO` vertex tinting and `blotch`/`grime` canvas wear. Keep new clutter
+off paths: only add colliders where a similar prop already has one, and the reachability test in
+`tests/integration/levels.test.js` must stay green.
+
+Wet ground and light: `phong()` (in `post.js`) is the lit material with specular — CDMX
+`wetGround()` (in `levels/cdmx/props.js`) merges puddle decals + additive reflection streaks into
+3 draw calls. `PK.shaftCone(color, h, r, opacity)` / `PK.shaftMat` make soft volumetric cones: a
+tiny shared shader feathers alpha by view angle and fades apex→floor, `depthWrite:false`, additive —
+use for lamp spills and window shafts, never hard-edged cone geometry. Builder `light()` already
+adds a camera-facing halo quad per lamp (one merged mesh, `aLevel` attribute dims with power).
+
+### Render profile
+
+`RENDER_HEIGHT = 360` in `post.js` is the default internal target; `?renderH=N` overrides it per
+URL. Levels can return `render: { height, photo }` from `buildWorld` — the CDMX showcase uses
+`{ height: 480, photo: true }` (photo mode dials grain/CA/monitor artifacts down). `snap` grid and
+bloom thresholds live in the same file; keep face/cloth emissive low or highlights bloom into
+white blobs.
 
 ## HUD
 
@@ -412,8 +470,9 @@ Pitfalls:
 - Keep story code DOM-free or the harness cannot run it.
 
 Existing coverage: scheduler semantics, collision/movement (including flow-speed sub-stepping),
-raycast gating/occlusion, builder power/colliders, NPC walking, clock, textures, seeded RNG, music
-patterns, CEDA
+raycast gating/occlusion, builder power/colliders/halos, skinned-person contract (weights, budgets,
+poses, look-at clamps, GHOST), propkit budgets/finite geometry, NPC walking, clock, textures,
+seeded RNG, music patterns, CEDA
 layout invariants (26 rows, 13 naves, pasillo numbering, prop collider footprints), every mission
 target and shrine spot reachable, the diablero pancarta/Flow 70 s window and both ghost branches
 (win and lose), all three presentations, and full playthroughs of NightMart and the
@@ -425,7 +484,7 @@ When adding a level: `world.js` + `story.js`, register in `LEVELS`, add a menu c
 ## Conventions
 
 - Plain ES modules, 2-space indent, single quotes.
-- `lam()` / `basic()` for every Three.js material.
+- `lam()` / `basic()` / `phong()` for every Three.js material.
 - Procedural assets only; no copied art/audio/names; Central de Abasto businesses stay fictional.
 - Pin dependency versions exactly, at least 7 days old.
 - Small, focused commits with Conventional Commit messages; no AI attribution.
