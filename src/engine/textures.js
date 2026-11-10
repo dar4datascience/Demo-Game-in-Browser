@@ -1091,6 +1091,45 @@ export const haloTex = () => {
   return _haloTex;
 };
 
+// Irregular dark mirror for wet-ground decals: near-black blue centre feathered to nothing,
+// with a couple of paler flecks so the edge doesn't read as a perfect ellipse.
+export const puddleTex = () => canvasTexture(128, 128, (g, w, h) => {
+  const cx = w / 2, cy = h / 2;
+  const gr = g.createRadialGradient(cx, cy, 4, cx, cy, w * 0.48);
+  gr.addColorStop(0, 'rgba(9,12,24,0.92)');
+  gr.addColorStop(0.55, 'rgba(11,15,30,0.72)');
+  gr.addColorStop(0.82, 'rgba(13,17,34,0.34)');
+  gr.addColorStop(1, 'rgba(13,17,34,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 26; i++) {
+    const a = rand() * Math.PI * 2, r = w * (0.18 + rand() * 0.3);
+    g.fillStyle = `rgba(30,40,70,${0.05 + rand() * 0.12})`;
+    g.beginPath();
+    g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 2 + rand() * 7, 0, Math.PI * 2);
+    g.fill();
+  }
+});
+
+// Vertical smear for fake light reflections on wet asphalt. Bright at the top edge (the lamp
+// side of the quad) and feathered on the long sides; the material tints it per light.
+export const streakTex = () => canvasTexture(32, 128, (g, w, h) => {
+  for (let y = 0; y < h; y++) {
+    const a = Math.pow(1 - y / h, 1.7) * 0.9;
+    g.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+    g.fillRect(0, y, w, 1);
+  }
+  const edge = g.createLinearGradient(0, 0, w, 0);
+  edge.addColorStop(0, 'rgba(0,0,0,1)');
+  edge.addColorStop(0.22, 'rgba(0,0,0,0)');
+  edge.addColorStop(0.78, 'rgba(0,0,0,0)');
+  edge.addColorStop(1, 'rgba(0,0,0,1)');
+  g.globalCompositeOperation = 'destination-out';
+  g.fillStyle = edge;
+  g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'source-over';
+});
+
 export function staticScreen() {
   const canvas = document.createElement('canvas');
   canvas.width = 48;

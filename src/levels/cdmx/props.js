@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { lam, basic } from '../../engine/post.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { lam, basic, phong } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { bakeAO } from '../../world/builder.js';
 import { NPC } from '../../world/person.js';
@@ -344,6 +345,73 @@ export function field(b, M) {
   b.light(X + 1, 2.6, Z + 11, 0x8a76c0, 16, 30);
   b.light(X - 2, 3.6, Z - 4, 0x5a4a90, 9, 24);
   return { beast };
+}
+
+/*
+ * Wet ground for the night streets: every puddle decal and reflection streak is baked into a
+ * single merged geometry per material, so the whole effect costs three draw calls. Puddles use
+ * a phong sheen so the sodium lamps and moon catch a specular edge; streaks are additive
+ * smears lying under each lamp, tinted warm or cool to match the source.
+ */
+export function wetGround(b) {
+  const puddles = [];
+  for (const [x, z, rx, rz] of [
+    // The road the camera dollies down.
+    [-38, 27.5, 2.4, 1.3], [-30, 32, 1.8, 1.0], [-20, 28.5, 2.6, 1.4], [-13, 34, 1.5, 0.9],
+    [-2, 29.5, 2.2, 1.2], [7, 32.5, 1.9, 1.0], [16, 28.2, 2.4, 1.3], [25, 31.8, 1.7, 0.9],
+    [34, 29.2, 2.0, 1.1], [42, 32.4, 1.5, 0.85],
+    // Abarrotes pavement and the plaza edge.
+    [-13, 88.5, 1.8, 1.0], [-5, 89.5, 1.4, 0.8], [5, 88.8, 2.0, 1.1], [13, 89.2, 1.6, 0.9],
+    [-3.5, 7.5, 2.2, 1.2], [4, -6, 1.6, 0.9],
+    // Park, metro forecourt and the field road.
+    [44, 12.5, 1.7, 0.95], [-110, 19.5, 1.5, 0.85],
+    [-152.5, -58, 2.0, 1.1], [-147.5, -66, 1.6, 0.9], [-151, -74, 1.9, 1.0],
+  ]) {
+    const g = new THREE.CircleGeometry(1, 14);
+    g.rotateX(-PI / 2);
+    g.scale(rx, 1, rz);
+    g.translate(x, 0.03, z);
+    puddles.push(g);
+  }
+  const puddleMat = phong({
+    map: T.puddleTex(), transparent: true, depthWrite: false,
+    shininess: 90, specular: 0x8fa8d8,
+  });
+  const puddleMesh = new THREE.Mesh(mergeGeometries(puddles, false), puddleMat);
+  puddleMesh.renderOrder = 1;
+  b.scene.add(puddleMesh);
+
+  // Reflection streaks: [x, zCentre, length, width, tint]. Bright end sits at -z (the lamp side).
+  const warm = [], cool = [];
+  for (const x of [-40, -24, -8, 8, 24, 40]) warm.push([x, 28, 7.5, 1.3]);
+  for (const x of [-9, 0, 9]) warm.push([x, 88, 4.2, 1.1]);
+  warm.push([-40, 86.5, 3.6, 1.0], [9, 86.5, 3.6, 1.0]);
+  cool.push([0, 6.5, 4.5, 1.4], [-40, 84.5, 4.0, 1.2, 1], [-150, -62, 6, 1.2]);
+  const streakMesh = (spots, color) => {
+    const geos = spots.map(([x, z, len, w, flip]) => {
+      const g = new THREE.PlaneGeometry(w, len);
+      g.rotateX(-PI / 2);
+      if (flip) g.rotateY(PI); // bright end toward +z when the source sits south of the smear
+      g.translate(x, 0.042, z);
+      return g;
+    });
+    const m = new THREE.Mesh(mergeGeometries(geos, false), basic({
+      map: T.streakTex(), color, transparent: true, opacity: 0.14, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    m.renderOrder = 2;
+    b.scene.add(m);
+    return m;
+  };
+  // One warm material can't tint per-spot, so warm streaks share the sodium colour and the
+  // cooler neon/moon spills get their own merged mesh.
+  streakMesh(warm, 0xffb070);
+  streakMesh(cool, 0x9a86ff);
+
+  // A few more volumetric hints where the set has lamps but no cone yet.
+  lightCone(b, 0, 4.6, -3, 0x9a7cff, 5, 2.0);       // statue fill light
+  lightCone(b, -40, 4.6, 84, 0xb090ff, 4.5, 2.2);  // bride neon spilling onto the pavement
+  lightCone(b, -149, 3.2, -61, 0x8a76c0, 3.2, 1.7); // field road gloom
 }
 
 // Distant city silhouettes so the horizon never shows a hard ground/sky seam.

@@ -12,12 +12,12 @@ export const SHOTS = [
   {
     id: 'angel', caption: '3:00 AM', dur: 5.5, fov: 55,
     pos: [[0, 2.2, 26], [0, 6.6, 15]], look: [[0, 9, 0], [0, 10.6, 0]],
-    fog: [0x2a2140, 12, 150],
+    fog: [0x2c2454, 14, 170],
   },
   {
     id: 'road', caption: 'AVENIDA', dur: 4.5, fov: 52,
     pos: [[-28, 1.35, 34.5], [-2, 1.4, 32.8]], look: [[-18, 1.4, 30], [10, 1.5, 30]],
-    fog: [0x1c1730, 8, 90],
+    fog: [0x242048, 10, 120],
   },
   {
     id: 'metro', caption: 'LÍNEA 7', dur: 4.5, fov: 55,
@@ -32,27 +32,27 @@ export const SHOTS = [
   {
     id: 'abarrotes', caption: 'MERCADO', dur: 4.5, fov: 50,
     pos: [[0, 1.7, 97], [2, 1.7, 94]], look: [[-14, 1.6, 85], [14, 1.6, 85]],
-    fog: [0x2a2140, 8, 90],
+    fog: [0x2c2454, 10, 115],
   },
   {
     id: 'park', caption: 'JACARANDAS', dur: 4.5, fov: 50,
     orbit: { cx: 45, cz: 10, r: 13, a: [3.5, 5.9], y: [2.4, 3.2] }, look: [[45, 3.6, 10], [45, 4.2, 10]],
-    fog: [0x2e2448, 8, 80],
+    fog: [0x322a58, 10, 105],
   },
   {
     id: 'biblioteca', caption: 'BIBLIOTECA', dur: 4.5, fov: 55,
     pos: [[-90, 1.8, -16], [-82, 3.4, -24]], look: [[-76, 7.5, -50], [-73, 8, -50]],
-    fog: [0x241c38, 12, 120],
+    fog: [0x282050, 14, 140],
   },
   {
     id: 'torre', caption: 'LA TORRE', dur: 5, fov: 60,
     pos: [[80, 2.2, -35], [80, 3.2, -40]], look: [[80, 18, -95], [80, 62, -95]],
-    fog: [0x2a2140, 14, 180],
+    fog: [0x2c2454, 16, 200],
   },
   {
     id: 'bride', caption: 'LA NOVIA', dur: 4.5, fov: 50,
     pos: [[-40, 1.55, 95], [-40, 1.5, 88.5]], look: [[-40, 2.0, 83], [-40, 1.9, 83]],
-    fog: [0x241c38, 6, 60],
+    fog: [0x282050, 8, 75],
   },
   {
     id: 'field', caption: 'CARRETERA', dur: 5.5, fov: 55,

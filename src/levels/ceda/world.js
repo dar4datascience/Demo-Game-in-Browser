@@ -504,7 +504,7 @@ export function buildWorld(scene) {
   return Object.assign(b, {
     refs,
     cameras: [],
-    fog: [0x141126, 6, 44],
+    fog: [0x191540, 9, 60],
     update(dt, movers) {
       for (const u of Object.values(refs.units)) {
         if (u.roll === u.target) continue;
