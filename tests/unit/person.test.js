@@ -223,6 +223,25 @@ describe('skinned person', () => {
     expect(Math.abs(npc.rig.head.rotation.y)).toBeGreaterThan(0.05);
   });
 
+  it('face fill rises near the player and releases beyond ~7 m', () => {
+    const npc = new NPC({}, new THREE.Scene());
+    npc.place(0, 0);
+    const player = { pos: new THREE.Vector3(2, 0, 1) };
+    for (let i = 0; i < 40; i++) npc.update(0.1, player);
+    const u = npc.headMat.userData.faceFill;
+    expect(u.value).toBeGreaterThan(0.2);
+    expect(u.value).toBeLessThanOrEqual(0.5);
+    // Beyond 7 m the fill eases back to zero.
+    player.pos.set(0, 0, 20);
+    for (let i = 0; i < 60; i++) npc.update(0.1, player);
+    expect(u.value).toBeLessThan(0.02);
+    // No player -> stays dark.
+    const npc2 = new NPC({}, new THREE.Scene());
+    npc2.place(0, 0);
+    for (let i = 0; i < 30; i++) npc2.update(0.1);
+    expect(npc2.headMat.userData.faceFill.value).toBe(0);
+  });
+
   it('builds ghost, bride and beast variants', () => {
     for (const opts of [GHOST, BRIDE, BEAST]) {
       const { root, legs, arms, head } = makePerson(opts);
