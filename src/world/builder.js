@@ -189,6 +189,7 @@ export function createBuilder(scene, { poolSize = 8 } = {}) {
         vUv = aCorner * 0.5 + 0.5;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         mv.xy += aCorner * aSize;
+        vColor *= 1.0 - smoothstep(60.0, 110.0, -mv.z);
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: `
