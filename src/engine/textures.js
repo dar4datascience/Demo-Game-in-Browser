@@ -1130,6 +1130,178 @@ export const streakTex = () => canvasTexture(32, 128, (g, w, h) => {
   g.globalCompositeOperation = 'source-over';
 });
 
+// --- CDMX building kit -------------------------------------------------------
+
+// Deterministic per-key PRNG so facade pairs stay stable between loads.
+const prng = (key) => {
+  let s = 2166136261;
+  for (const ch of key) s = Math.imul(s ^ ch.charCodeAt(0), 16777619) >>> 0;
+  return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296;
+};
+
+// Window grid shared by the facade albedo and its emissive twin: same cells, same insets,
+// so lit panes always land inside their dark recesses.
+const winCells = (cols, rows) => {
+  const cw = 256 / cols, ch = 512 / rows, cells = [];
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    cells.push([x * cw + cw * 0.24, y * ch + ch * 0.26, cw * 0.52, ch * 0.46]);
+  }
+  return cells;
+};
+
+// Facade albedo: tinted plaster/concrete with floor lines, dark window recesses and grime
+// streaks. The lit panes live in windowsTex (the emissive map), not here.
+export const buildingTex = (base = '#5a5470', cols = 6, rows = 12, seedKey = 'b') => canvasTexture(256, 512, (g, w, h) => {
+  const rnd = prng(`fac|${base}|${cols}|${rows}|${seedKey}`);
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, shade(base, 1.07));
+  grad.addColorStop(0.72, base);
+  grad.addColorStop(1, shade(base, 0.78));
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+  // Floor slab shadow lines.
+  g.fillStyle = 'rgba(8,6,14,0.4)';
+  for (let y = 0; y <= rows; y++) g.fillRect(0, (y * h) / rows - 1, w, 2);
+  // Window recesses with a faint sky reflection at the top of the glass.
+  for (const [x, y, ww, hh] of winCells(cols, rows)) {
+    g.fillStyle = '#0e1220';
+    g.fillRect(x, y, ww, hh);
+    g.fillStyle = 'rgba(150,175,220,0.10)';
+    g.fillRect(x, y, ww, hh * 0.28);
+    g.fillStyle = 'rgba(0,0,0,0.45)';
+    g.fillRect(x - 1, y + hh, ww + 2, 2);
+  }
+  // Grime bleeding down from a few sills plus general weathering.
+  g.fillStyle = 'rgba(8,6,12,0.28)';
+  for (let i = 0; i < 12; i++) {
+    const x = rnd() * w;
+    g.fillRect(x, rnd() * h * 0.45, 2 + rnd() * 5, h * (0.18 + rnd() * 0.5));
+  }
+  blotch(g, w, h, '#0c0a14', 0.3, 10, 42);
+  grain(g, w, h, 10);
+});
+
+// Emissive twin: black everywhere except lit panes — warm tungsten or cool fluorescent mixed
+// per building, a few dead floors for variety. Feeds MeshLambertMaterial.emissiveMap.
+export const windowsTex = (cols = 6, rows = 12, seedKey = 'b') => canvasTexture(256, 512, (g, w, h) => {
+  const rnd = prng(`win|${cols}|${rows}|${seedKey}`);
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, w, h);
+  const cells = winCells(cols, rows);
+  const deadRows = new Set();
+  for (let y = 0; y < rows; y++) if (rnd() < 0.16) deadRows.add(y);
+  for (let i = 0; i < cells.length; i++) {
+    const row = Math.floor(i / cols);
+    if (deadRows.has(row) || rnd() > 0.46) continue;
+    const [x, y, ww, hh] = cells[i];
+    const warm = rnd() < 0.62;
+    const a = 0.55 + rnd() * 0.45;
+    g.fillStyle = warm ? `rgba(255,206,142,${a})` : `rgba(158,198,255,${a * 0.92})`;
+    const litH = rnd() < 0.18 ? hh * 0.55 : hh; // half-lit pane
+    g.fillRect(x, y + hh - litH, ww, litH);
+    if (rnd() < 0.3) {
+      g.fillStyle = 'rgba(0,0,0,0.55)';
+      g.fillRect(x + ww / 2 - 0.5, y, 1, hh);
+    }
+  }
+});
+
+// Striped shop awning with a scalloped valance.
+export const awningTex = (c1 = '#b3322c', c2 = '#e8ddc4') => canvasTexture(128, 40, (g, w, h) => {
+  for (let x = 0; x < w; x += 16) {
+    g.fillStyle = (x / 16) % 2 ? c1 : c2;
+    g.fillRect(x, 0, 16, h - 8);
+  }
+  for (let x = 0; x < w; x += 16) {
+    g.fillStyle = (x / 16) % 2 ? c1 : c2;
+    g.beginPath();
+    g.arc(x + 8, h - 8, 8, 0, Math.PI);
+    g.fill();
+  }
+  g.fillStyle = 'rgba(10,8,12,0.35)';
+  g.fillRect(0, h - 10, w, 3);
+  blotch(g, w, h, '#0c0a10', 0.3, 5, 14);
+});
+
+// Roller-shutter slats with side guides and rust streaks.
+export const shutterTex = () => canvasTexture(128, 128, (g, w, h) => {
+  g.fillStyle = '#7d8894';
+  g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 8) {
+    g.fillStyle = 'rgba(0,0,0,0.38)';
+    g.fillRect(0, y, w, 2);
+    g.fillStyle = 'rgba(255,255,255,0.15)';
+    g.fillRect(0, y + 3, w, 2);
+  }
+  g.fillStyle = 'rgba(18,22,28,0.65)';
+  g.fillRect(0, 0, 3, h);
+  g.fillRect(w - 3, 0, 3, h);
+  g.fillStyle = 'rgba(122,72,40,0.3)';
+  for (let i = 0; i < 6; i++) g.fillRect(8 + rand() * (w - 24), rand() * h * 0.5, 3 + rand() * 6, h * (0.3 + rand() * 0.5));
+  blotch(g, w, h, '#14100e', 0.4, 8, 22);
+  grain(g, w, h, 10);
+});
+
+// Patchy night grass for the football pitch: dark green base, straw flecks, worn mud.
+export const grassTex = () => canvasTexture(256, 256, (g, w, h) => {
+  g.fillStyle = '#1c2a19';
+  g.fillRect(0, 0, w, h);
+  blotch(g, w, h, '#26391f', 0.5, 14, 44);
+  blotch(g, w, h, '#121b10', 0.5, 12, 48);
+  blotch(g, w, h, '#3a3226', 0.25, 6, 30); // worn mud patches
+  for (let i = 0; i < 1100; i++) {
+    g.fillStyle = `rgba(${42 + rand() * 44},${74 + rand() * 52},${30 + rand() * 30},${0.22 + rand() * 0.42})`;
+    g.fillRect(rand() * w, rand() * h, 1 + rand() * 2, 1 + rand() * 3);
+  }
+  grain(g, w, h, 12);
+});
+
+// Large abstract mural for blank concrete walls: bold colour fields and geometric shapes,
+// fictional by construction — no lettering, no copied artwork.
+export const muralTex = (seedKey = 'm') => canvasTexture(256, 128, (g, w, h) => {
+  const rnd = prng(`mural|${seedKey}`);
+  const bg = pick(['#3a2a4a', '#27364e', '#46302a', '#2e4034', '#40304e']);
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  const palette = ['#d9822b', '#c94f6d', '#e8c95a', '#5aa8a0', '#e8e0cc', '#8a5ac8'];
+  // Horizon band + big geometric forms.
+  g.fillStyle = palette[Math.floor(rnd() * palette.length)];
+  g.globalAlpha = 0.85;
+  g.fillRect(0, h * (0.45 + rnd() * 0.2), w, h * 0.3);
+  for (let i = 0; i < 7; i++) {
+    g.fillStyle = palette[Math.floor(rnd() * palette.length)];
+    g.globalAlpha = 0.5 + rnd() * 0.4;
+    const x = rnd() * w, y = rnd() * h, s = 12 + rnd() * 42;
+    if (rnd() < 0.5) {
+      g.beginPath();
+      g.arc(x, y, s * 0.5, 0, Math.PI * 2);
+      g.fill();
+    } else {
+      g.save();
+      g.translate(x, y);
+      g.rotate(rnd() * 3);
+      g.fillRect(-s / 2, -s * 0.3, s, s * 0.6);
+      g.restore();
+    }
+  }
+  g.globalAlpha = 1;
+  // Cracks and weathering so it reads painted-on, not a screen.
+  g.strokeStyle = 'rgba(10,8,14,0.5)';
+  for (let i = 0; i < 8; i++) {
+    g.beginPath();
+    let x = rnd() * w, y = rnd() * h;
+    g.moveTo(x, y);
+    for (let s = 0; s < 3; s++) {
+      x += (rnd() - 0.5) * 40;
+      y += rnd() * 26;
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  blotch(g, w, h, '#0e0b12', 0.35, 8, 30);
+  grain(g, w, h, 14);
+});
+
 export function staticScreen() {
   const canvas = document.createElement('canvas');
   canvas.width = 48;

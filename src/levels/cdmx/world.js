@@ -7,6 +7,7 @@ import { createSky } from '../../world/sky.js';
 import {
   plaza, skyline, skylineRing, torre, biblioteca, park, road, metroStation, metroCar, abarrotes, bride, field, fence, clutter, wetGround,
 } from './props.js';
+import { dressCity } from './buildings.js';
 
 /*
  * CDMX showcase backlot. The sets are separate islands spread over ~300 m so a shot only ever
@@ -66,6 +67,7 @@ export function buildWorld(scene) {
   refs.field = field(b, M);
   fence(b, M);
   clutter(b);
+  dressCity(b);
   wetGround(b);
 
   // Footprints so the camera-clearance test has something to check against, and so the level

@@ -5,8 +5,16 @@ import * as T from '../../engine/textures.js';
 import { bakeAO } from '../../world/builder.js';
 import { NPC } from '../../world/person.js';
 import * as PK from '../../world/propkit.js';
+import { building, meshFence, signPlane } from './buildings.js';
 
 const PI = Math.PI;
+const BEACON = basic({ color: 0xff3a3a });
+// Shared materials for repeated dressing — one material per colour, not per mesh.
+const TRAIN_WIN = basic({ color: 0xffc37a });
+const TRAIN_STRIPE = basic({ color: 0xd9822b });
+const TUNNEL_DARK = basic({ color: 0x0a0c18 });
+const CEIL_STRIP = basic({ color: 0x9a8a68 });
+const ROAD_DASH = basic({ color: 0x8a8478 });
 const add = (b, geo, mat, x, y, z, { parent = b.scene, ry = 0, rx = 0, rz = 0 } = {}) => {
   // Solids get baked AO; flat planes stay white so signs and floors are unaffected.
   if (geo.type === 'PlaneGeometry') {
@@ -76,19 +84,23 @@ export function plaza(b, M) {
 
 // --- Glass towers behind the plaza -----------------------------------------
 export function skyline(b, M) {
+  // Hero towers rebuilt on the building kit: stepped tiers, parapets, antennas and
+  // emissive-window facades instead of flat blue slabs.
   const towers = [
-    [-26, -58, 18, 18, 62, '#9fd0ff'],
-    [4, -74, 15, 15, 84, '#bfe0ff'],
-    [32, -56, 20, 20, 48, '#9fd0ff'],
-    [-58, -86, 22, 22, 70, '#8fc4ff'],
-    [62, -110, 24, 24, 58, '#a8d4ff'],
+    [-26, -58, 18, 18, 62],
+    [4, -74, 15, 15, 84],
+    [32, -56, 20, 20, 48],
+    [-58, -86, 22, 22, 70],
+    [62, -110, 24, 24, 58],
   ];
-  for (const [x, z, w, d, h, tint] of towers) {
-    const mat = basic({ map: T.facadeTex(5 + (h % 3), Math.round(h / 3), tint) });
-    slab(b, w, h, d, mat, x, z);
+  towers.forEach(([x, z, w, d, h], i) => {
+    building(b, {
+      x, z, w, d, h, ry: Math.atan2(-x, -z), seed: `sky${i}`,
+      shop: null, balconies: false, roof: true,
+    });
     // Rooftop beacon so the silhouette has a red dot.
-    add(b, new THREE.BoxGeometry(0.4, 0.4, 0.4), basic({ color: 0xff3a3a }), x, h + 0.3, z);
-  }
+    add(b, new THREE.BoxGeometry(0.4, 0.4, 0.4), BEACON, x, h + 0.3, z);
+  });
   b.light(0, 12, -40, 0x5a7cff, 20, 60);
 }
 
@@ -227,9 +239,9 @@ export function metroStation(b, M) {
   for (let i = 0; i < 3; i++) {
     add(b, new THREE.BoxGeometry(9, 3.2, 3), M.metroBody, i * 9.2 - 9.2, 2.5, 0, { parent: train });
     for (let w = 0; w < 3; w++) {
-      add(b, new THREE.PlaneGeometry(1.8, 1.2), basic({ color: 0xffc37a }), i * 9.2 - 12 + w * 2.8, 2.9, 1.52, { parent: train });
+      add(b, new THREE.PlaneGeometry(1.8, 1.2), TRAIN_WIN, i * 9.2 - 12 + w * 2.8, 2.9, 1.52, { parent: train });
     }
-    add(b, new THREE.BoxGeometry(9.2, 0.35, 3.1), basic({ color: 0xd9822b }), i * 9.2 - 9.2, 3.95, 0, { parent: train });
+    add(b, new THREE.BoxGeometry(9.2, 0.35, 3.1), TRAIN_STRIPE, i * 9.2 - 9.2, 3.95, 0, { parent: train });
   }
   for (let i = 0; i < 6; i++) cyl(b, 0.3, 0.3, 0.24, 10, M.tyre, X - 17 + i * 5.2, 0.45, Z - 7.2, { rx: PI / 2 });
 
@@ -250,7 +262,7 @@ export function metroCar(b, M) {
     slab(b, 0.62, 0.16, 18, M.metroSeat, s * 1.28, 0, { parent: shell }).position.y = 0.55;
     add(b, new THREE.BoxGeometry(0.14, 0.9, 18), M.metroSeat, s * 1.58, 0.95, 0, { parent: shell });
     // Window band
-    add(b, new THREE.PlaneGeometry(20, 0.8), basic({ color: 0x0a0c18 }), s * 1.59, 1.85, 0, { parent: shell, ry: s * PI / 2 });
+    add(b, new THREE.PlaneGeometry(20, 0.8), TUNNEL_DARK, s * 1.59, 1.85, 0, { parent: shell, ry: s * PI / 2 });
     for (let i = 0; i < 7; i++) {
       cyl(b, 0.035, 0.035, 2.4, 6, M.chrome, s * 0.95, 1.5, -9 + i * 3);
       add(b, new THREE.BoxGeometry(0.05, 0.9, 0.05), M.chrome, s * 0.95, 2.3, -9 + i * 3, { parent: shell });
@@ -261,7 +273,7 @@ export function metroCar(b, M) {
   // Concrete floor over the shell's streaky default UVs.
   add(b, new THREE.PlaneGeometry(3, 23.6), M.stationFloor, 0, 0.02, 0, { parent: shell, rx: -PI / 2 });
   for (let i = 0; i < 5; i++) {
-    add(b, new THREE.BoxGeometry(0.7, 0.05, 1.3), basic({ color: 0x9a8a68 }), 0, 2.75, -9.6 + i * 4.8, { parent: shell });
+    add(b, new THREE.BoxGeometry(0.7, 0.05, 1.3), CEIL_STRIP, 0, 2.75, -9.6 + i * 4.8, { parent: shell });
     b.light(X, 2.5, Z - 9.6 + i * 4.8, 0xffe0b0, 12, 8, false);
   }
   return { shell };
@@ -276,6 +288,7 @@ const SHOPS = [
 
 export function abarrotes(b, M) {
   const Z = 85;
+  const goodsMat = lam({ map: T.productsTex(['#e9c46a', '#e76f51', '#2a9d8f', '#f4f1de', '#b5179e']) });
   for (const s of SHOPS) {
     slab(b, 8, 4.2, 6, M.plaster, s.x, Z - 2.5);
     // Open front: interior backdrop and shelves, all lit.
@@ -283,10 +296,9 @@ export function abarrotes(b, M) {
     for (let i = 0; i < 3; i++) {
       add(b, new THREE.BoxGeometry(6.4, 0.16, 0.5), M.metal, s.x, 0.7 + i * 0.75, Z - 4.9 - i * 0.35);
     }
-    add(b, new THREE.PlaneGeometry(6.4, 2.2), lam({ map: T.productsTex(['#e9c46a', '#e76f51', '#2a9d8f', '#f4f1de', '#b5179e']) }),
-      s.x, 1.6, Z - 5.36);
-    // Sign band above the shutter.
-    add(b, new THREE.PlaneGeometry(7.6, 1.1), basic({ map: T.signTex(s.name, s.bg, s.fg, 256, 32) }), s.x, 4.2, Z + 0.51);
+    add(b, new THREE.PlaneGeometry(6.4, 2.2), goodsMat, s.x, 1.6, Z - 5.36);
+    // Sign band above the shutter — shares the city-wide sign atlas.
+    signPlane(b, s.name, s.bg, s.fg, 7.6, 1.1, s.x, 4.2, Z + 0.51, { collide: false });
     add(b, new THREE.BoxGeometry(8, 0.5, 0.5), M.plaster, s.x, 0.25, Z + 0.3);
     b.light(s.x, 2.2, Z - 3.4, s.tint, 22, 16);
     lightCone(b, s.x, 4.0, Z + 1.6, s.tint, 4.2, 2.6);
@@ -324,7 +336,7 @@ export function field(b, M) {
   // The road the camera travels: dark asphalt with a faded centre line, running into the fog.
   add(b, new THREE.PlaneGeometry(9, 70), M.asphalt, X, 0.02, Z + 10, { rx: -PI / 2 });
   for (let z = Z - 18; z < Z + 40; z += 4) {
-    add(b, new THREE.PlaneGeometry(0.18, 2.2), basic({ color: 0x8a8478 }), X, 0.035, z, { rx: -PI / 2 });
+    add(b, new THREE.PlaneGeometry(0.18, 2.2), ROAD_DASH, X, 0.035, z, { rx: -PI / 2 });
   }
   // Bare tree: trunk plus crooked branches leaning up and out.
   cyl(b, 0.3, 0.8, 7, 5, M.bark, X, 3.5, Z);
@@ -422,10 +434,11 @@ export function skylineRing(b, M) {
   }
 }
 
-// Fence posts and low walls that frame the field shot — now chain-link panels.
+// Fence posts and low walls that frame the field shot — thin-bar geometry, not the
+// alpha-tested chain-link texture that dithered into a noise block at this distance.
 export function fence(b, M) {
   for (let i = 0; i < 8; i++) {
-    const f = PK.fence(4, 1.6);
+    const f = meshFence(b, 4, 1.7);
     f.position.set(-174 + i * 4, 0, -52);
     b.scene.add(f);
   }
