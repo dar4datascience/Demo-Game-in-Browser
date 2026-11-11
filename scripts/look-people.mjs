@@ -12,6 +12,15 @@ const frames = (n = 4) => page.evaluate((n) => new Promise((resolve) => {
   requestAnimationFrame(step);
 }, n), n);
 
+// Both levels open on a fade-in; under software rendering that is ~30 wall seconds.
+const waitFade = async () => {
+  for (let i = 0; i < 240; i++) {
+    const f = await page.evaluate(() => pipe.u.uFade.value);
+    if (f <= 0.01) return;
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 250)));
+  }
+};
+
 // Injected into the page: variant lineup + a free camera; returns head screen positions.
 const LINEUP = async ([xs, z, camPos, look]) => {
   const { NPC } = await import('/src/world/person.js');
@@ -83,7 +92,7 @@ const STUDIO = async () => {
 await page.goto('http://localhost:5173/?debug&speed=1');
 await page.waitForTimeout(800);
 await page.click('[data-map=konbini]');
-await page.waitForTimeout(2000);
+await waitFade();
 await page.evaluate(STUDIO);
 const studioHeads = await page.evaluate(LINEUP, [[-3.6, -2.7, -1.8, -0.9, 0, 0.9, 1.8, 2.7, 3.6], 0, [0, 1.55, 5.4], [0, 1.05, 0]]);
 console.log('studio:', JSON.stringify(studioHeads));
@@ -132,7 +141,7 @@ await page.waitForTimeout(800);
 await page.click('[data-map=ceda]');
 await page.click('[data-char=diablero]');
 await page.click('[data-variant=nonbinary]');
-await page.waitForTimeout(3000);
+await waitFade();
 const cedaHeads = await page.evaluate(LINEUP, [[-31.2, -30.2, -29.2, -28.2, -27.2, -26.2, -25.2, -24.2, -23.2], -15, [-27.2, 1.6, -9.0], [-27.2, 1.1, -15]]);
 console.log('ceda:', JSON.stringify(cedaHeads));
 await frames(8);

@@ -10,12 +10,20 @@ await page.waitForTimeout(700);
 await page.click('[data-map=ceda]');
 await page.click('[data-char=diablero]');
 await page.click('[data-variant=nonbinary]');
-await page.waitForTimeout(1200);
 
 const frames = (n = 4) => page.evaluate((n) => new Promise((resolve) => {
   const step = () => (--n <= 0 ? resolve() : requestAnimationFrame(step));
   requestAnimationFrame(step);
 }), n);
+
+// The story opens on a 3 s fade-in; under software rendering that is ~30 wall
+// seconds, so wait for the fade to finish before judging brightness.
+for (let i = 0; i < 240; i++) {
+  const f = await page.evaluate(() => pipe.u.uFade.value);
+  if (f <= 0.01) break;
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 250)));
+}
+console.log('fade cleared:', await page.evaluate(() => pipe.u.uFade.value.toFixed(3)));
 
 const views = [
   ['spawn', -26, -18, Math.PI, 0],

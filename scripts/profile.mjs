@@ -1,20 +1,36 @@
-// Frame/draw-call profiler for one character. Prints scene composition and renderer stats.
+// Frame/draw-call profiler for one level. Prints scene composition and renderer stats.
 //   docker run --rm --network host -v "$PWD/scripts:/out" -e CHAR=diablero --entrypoint node mcp/playwright /out/profile.mjs
+//   LEVEL=cdmx profiles the showcase instead of a CEDA run.
 import { chromium } from '/app/node_modules/playwright/index.mjs';
 
+const LEVEL = process.env.LEVEL ?? 'ceda';
 const CHAR = process.env.CHAR ?? 'diablero';
 const SPEED = process.env.SPEED ?? '1';
-const URL = `${process.env.GAME_URL ?? 'http://localhost:5173'}/?debug&speed=${SPEED}&seed=1`;
+const SHOT_PARAM = process.env.SHOTID && LEVEL === 'cdmx'
+  ? `&shot=${['angel', 'road', 'metro', 'metro-car', 'abarrotes', 'park', 'biblioteca', 'torre', 'bride', 'field'].indexOf(process.env.SHOTID) + 1}`
+  : '';
+const URL = `${process.env.GAME_URL ?? 'http://localhost:5173'}/?debug&speed=${SPEED}&seed=1${SHOT_PARAM}`;
 
 const browser = await chromium.launch({ channel: 'chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1024, height: 640 } });
 page.on('pageerror', (e) => console.log(`pageerror: ${e.message}`));
 await page.goto(URL);
 await page.waitForTimeout(800);
-await page.click('[data-map=ceda]');
-await page.click(`[data-char=${CHAR}]`);
-if (CHAR === 'diablero') await page.click('[data-variant=nonbinary]');
+await page.click(`[data-map=${LEVEL}]`);
+if (LEVEL === 'ceda') {
+  await page.click(`[data-char=${CHAR}]`);
+  if (CHAR === 'diablero') await page.click('[data-variant=nonbinary]');
+}
 await page.waitForTimeout(1500);
+if (LEVEL === 'cdmx') {
+  // The showcase drives its own camera; wait for a deterministic point in the tour.
+  const shotId = process.env.SHOTID;
+  const shotK = Number(process.env.SHOTK ?? 0.5);
+  await page.waitForFunction(
+    ([id, k]) => game.cam && (!id || (game.flags?.shot === id && game.flags?.shotK > k)),
+    [shotId ?? null, shotK], { timeout: 120000 },
+  );
+}
 
 const stats = await page.evaluate(async () => {
   const counts = {};
