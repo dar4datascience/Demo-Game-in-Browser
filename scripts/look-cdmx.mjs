@@ -2,7 +2,7 @@
 //   docker run --rm --network host -v "$PWD/scripts:/out" --entrypoint node mcp/playwright /out/look-cdmx.mjs
 import { chromium } from '/app/node_modules/playwright/index.mjs';
 
-const SHOTS = ['angel', 'road', 'metro', 'metro-car', 'abarrotes', 'park', 'biblioteca', 'torre', 'bride', 'field'];
+const SHOTS = ['angel', 'metro', 'abarrotes', 'park', 'biblioteca', 'library', 'torre'];
 const browser = await chromium.launch({ channel: 'chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 540, height: 960 } });
 page.on('pageerror', (e) => console.log(`pageerror: ${e.message}`));

@@ -168,8 +168,10 @@ describe('Ciudad de México showcase', () => {
     expect(typeof world.update).toBe('function');
     expect(world.render).toEqual({ height: 480, photo: true });
     expect(world.refs.sky.dome).toBeDefined();
-    expect(world.refs.road.car).toBeDefined();
-    expect(world.refs.bride.doll).toBeDefined();
+    expect(world.refs.stars).toBeDefined();
+    expect(world.refs.taxi.taxi).toBeDefined();
+    expect(world.refs.library.book).toBeDefined();
+    expect(world.refs.torre.beacon).toBeDefined();
   });
 
   it('keeps every shot camera out of the scenery at ground level', () => {
@@ -190,8 +192,18 @@ describe('Ciudad de México showcase', () => {
       const dir = world.shotCam.getWorldDirection(new THREE.Vector3());
       const target = new THREE.Vector3(...shot.look[1]).sub(world.shotCam.position).normalize();
       expect(dir.dot(target), shot.id).toBeGreaterThan(0.99);
-      expect(shot.dur).toBeGreaterThan(3);
+      expect(shot.dur).toBeGreaterThan(2.5);
     }
+  });
+
+  it('runs seven shots of about three seconds each (~20 s total)', () => {
+    expect(SHOTS).toHaveLength(7);
+    expect(SHOTS.map((s) => s.id)).toEqual([
+      'angel', 'metro', 'abarrotes', 'park', 'biblioteca', 'library', 'torre',
+    ]);
+    const total = SHOTS.reduce((a, s) => a + s.dur, 0);
+    expect(total).toBeGreaterThan(19);
+    expect(total).toBeLessThan(21.5);
   });
 
   it('leaves the default player spawn clear of geometry', () => {

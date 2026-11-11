@@ -1,63 +1,51 @@
 import * as THREE from 'three';
 
 /*
- * Shot list for the CDMX showcase. Each entry is a short camera move framed like the reference
- * clips: slow dolly, pan or orbit, hard cut, violet fog. `look` is what the camera aims at; both
- * ends are interpolated with a smoothstep so every move eases in and out.
+ * Seven-shot CDMX showcase matching the reference video (~2.9 s per shot, ~20 s total).
+ * Each entry is a short camera move: slow push, pan, tilt or dolly, hard cut, violet fog.
+ * `look` is what the camera aims at; both ends are interpolated with a smoothstep so every
+ * move eases in and out. `fog` is [colour, near, far] and is swapped per shot; the sky dome
+ * and the backlot islands are far enough apart that a shot only ever sees its own set.
  *
- * `fog` is [colour, near, far] and is swapped per shot; the sky dome and the backlot islands are
- * far enough apart that a shot only ever sees its own set.
+ *   1 Ángel de la Independencia   2 Metro (elevated)   3 Abarrotes + taxi
+ *   4 Parque (jacaranda)          5 Biblioteca exterior 6 Biblioteca interior
+ *   7 Torre Latinoamericana
  */
 export const SHOTS = [
   {
-    id: 'angel', caption: '3:00 AM', dur: 5.5, fov: 55,
-    pos: [[0, 2.2, 26], [0, 6.6, 15]], look: [[0, 9, 0], [0, 10.6, 0]],
+    id: 'angel', caption: '3:00 AM', dur: 2.9, fov: 55,
+    pos: [[8, 2.0, 27], [10, 6.2, 15]], look: [[1.5, 10.5, 0], [1.5, 13.5, 0]],
     fog: [0x2c2454, 14, 170],
   },
   {
-    id: 'road', caption: 'AVENIDA', dur: 4.5, fov: 52,
-    pos: [[-28, 1.35, 34.5], [-2, 1.4, 32.8]], look: [[-18, 1.4, 30], [10, 1.5, 30]],
-    fog: [0x242048, 10, 120],
+    id: 'metro', caption: 'LÍNEA 7', dur: 2.9, fov: 55,
+    pos: [[34, 1.75, -295.5], [20, 1.7, -296.8]], look: [[-28, 2.7, -301.5], [-36, 2.8, -301.5]],
+    fog: [0x241e44, 8, 95],
   },
   {
-    id: 'metro', caption: 'LÍNEA 7', dur: 4.5, fov: 55,
-    pos: [[-115, 2.0, 27], [-115, 1.85, 18.5]], look: [[-115, 3.3, 11], [-115, 3.1, 11]],
-    fog: [0x1a1626, 6, 70],
-  },
-  {
-    id: 'metro-car', caption: 'ÚLTIMO TREN', dur: 4.5, fov: 55,
-    pos: [[0, 1.55, -139], [0, 1.5, -152]], look: [[0, 1.4, -162], [0, 1.3, -162]],
-    fog: [0x0c0a14, 2, 40],
-  },
-  {
-    id: 'abarrotes', caption: 'MERCADO', dur: 4.5, fov: 50,
-    pos: [[0, 1.7, 97], [2, 1.7, 94]], look: [[-14, 1.6, 85], [14, 1.6, 85]],
+    id: 'abarrotes', caption: 'MERCADO', dur: 2.9, fov: 50,
+    pos: [[46, 1.6, 310.5], [44.5, 1.6, 309.5]], look: [[38, 1.9, 300], [37, 1.85, 300]],
     fog: [0x2c2454, 10, 115],
   },
   {
-    id: 'park', caption: 'JACARANDAS', dur: 4.5, fov: 50,
-    orbit: { cx: 45, cz: 10, r: 13, a: [3.5, 5.9], y: [2.4, 3.2] }, look: [[45, 3.6, 10], [45, 4.2, 10]],
+    id: 'park', caption: 'JACARANDAS', dur: 2.9, fov: 50,
+    pos: [[-275, 1.3, -70], [-276, 1.45, -71.5]], look: [[-285, 4.5, -92], [-286, 5.5, -95]],
     fog: [0x322a58, 10, 105],
   },
   {
-    id: 'biblioteca', caption: 'BIBLIOTECA', dur: 4.5, fov: 55,
-    pos: [[-90, 1.8, -16], [-82, 3.4, -24]], look: [[-76, 7.5, -50], [-73, 8, -50]],
+    id: 'biblioteca', caption: 'BIBLIOTECA', dur: 2.9, fov: 55,
+    pos: [[-306, 2.0, 190], [-304, 2.8, 192]], look: [[-300, 11, 120], [-299, 13, 120]],
     fog: [0x282050, 14, 140],
   },
   {
-    id: 'torre', caption: 'LA TORRE', dur: 5, fov: 60,
-    pos: [[80, 2.2, -35], [80, 3.2, -40]], look: [[80, 18, -95], [80, 62, -95]],
+    id: 'library', caption: 'FICHA', dur: 2.9, fov: 50,
+    pos: [[283.5, 1.55, 164.5], [282.5, 1.5, 163.5]], look: [[279.5, 1.8, 158.5], [279.8, 1.9, 158.8]],
+    fog: [0x181426, 3, 26],
+  },
+  {
+    id: 'torre', caption: 'LA TORRE', dur: 2.9, fov: 50,
+    pos: [[302, 3, -90], [300, 4.5, -88]], look: [[300, 56, -163], [300, 60, -163]],
     fog: [0x2c2454, 16, 200],
-  },
-  {
-    id: 'bride', caption: 'LA NOVIA', dur: 4.5, fov: 50,
-    pos: [[-40, 1.55, 95], [-40, 1.5, 88.5]], look: [[-40, 2.0, 83], [-40, 1.9, 83]],
-    fog: [0x282050, 8, 75],
-  },
-  {
-    id: 'field', caption: 'CARRETERA', dur: 5.5, fov: 55,
-    pos: [[-150, 2.7, -26], [-150, 2.2, -48]], look: [[-150, 1.6, -66], [-148, 1.6, -68]],
-    fog: [0x3a2f55, 3, 42],
   },
 ];
 
@@ -103,12 +91,15 @@ export async function runStory(ctx) {
   game.fadeTo(0, 0.9);
   await game.wait(0.6);
 
+  const taxi = world.refs?.taxi?.taxi;
   for (const [index, shot] of list.entries()) {
     game.fadeTo(1, 0.2);
     await game.wait(0.2);
     applyShot(world.shotCam, scene, shot, 0);
     game.fadeTo(0, 0.35);
     hud.say(shot.caption, Math.min(2.4, shot.dur * 0.6));
+    // The Beetle taxi only drives during its own shot; parked off-frame otherwise.
+    if (taxi) taxi.userData.on = shot.id === 'abarrotes';
     // Debug/recording hooks: which shot is on screen and how far through it is.
     Object.assign(game.flags, { shot: shot.id, shotIndex: index, shotK: 0 });
     const start = game.time;
@@ -121,6 +112,7 @@ export async function runStory(ctx) {
     game.hooks.push(hook);
     await game.wait(shot.dur);
     game.hooks = game.hooks.filter((h) => h !== hook);
+    if (taxi) taxi.userData.on = false;
     game.flags.shots = (game.flags.shots ?? 0) + 1;
   }
 

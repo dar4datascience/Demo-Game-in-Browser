@@ -11,7 +11,7 @@ const RAW = '/repo/docs/raw/cdmx';
 rmSync(RAW, { recursive: true, force: true });
 mkdirSync(RAW, { recursive: true });
 
-const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const ALL = [1, 2, 3, 4, 5, 6, 7];
 const SHOTS = (process.env.SHOTS ?? ALL.join(' ')).split(' ').map(Number);
 const SPEED = process.env.SPEED ?? '4';
 const RENDER_H = process.env.RENDER_H ?? '360';

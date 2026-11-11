@@ -998,24 +998,25 @@ export const cursiveSignTex = (text, bg = '#e9e0cc', fg = '#2b2320') => canvasTe
   grain(g, w, h, 8);
 });
 
-// Night sky: deep indigo gradient, a field of small static stars in warm and cool tints,
-// painterly violet clouds and a big glowing moon with a layered halo.
+// Night sky for the CDMX showcase: deep purple-violet gradient (#2a1f45 -> #4a3a66 at the
+// horizon), a dense field of small stars and soft horizontal lavender cloud bands that the
+// stars show through. No moon — the Torre shot carries its own.
 export const skyTex = () => canvasTexture(1024, 512, (g, w, h) => {
   const grad = g.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, '#04050e');
-  grad.addColorStop(0.4, '#0d0b26');
-  grad.addColorStop(0.68, '#1c1440');
-  grad.addColorStop(0.82, '#2c1f4e');
-  grad.addColorStop(1, '#171130');
+  grad.addColorStop(0, '#120d28');
+  grad.addColorStop(0.35, '#241b47');
+  grad.addColorStop(0.62, '#2a1f45');
+  grad.addColorStop(0.8, '#463763');
+  grad.addColorStop(1, '#352a52');
   g.fillStyle = grad;
   g.fillRect(0, 0, w, h);
-  // Stars: mostly faint pinpoints, a few brighter ones with a tiny sparkle cross.
-  for (let i = 0; i < 300; i++) {
-    const x = rand() * w, y = rand() * h * 0.7;
+  // Stars first so the thin cloud veils draw over them and let them through.
+  for (let i = 0; i < 1700; i++) {
+    const x = rand() * w, y = rand() * h * 0.78;
     const roll = rand();
-    const warm = roll < 0.22, cool = roll > 0.5 && roll < 0.8;
-    const bright = roll > 0.93;
-    const a = bright ? 0.95 : 0.2 + rand() * 0.55;
+    const warm = roll < 0.2, cool = roll > 0.45 && roll < 0.75;
+    const bright = roll > 0.965;
+    const a = bright ? 0.95 : 0.18 + rand() * 0.6;
     g.fillStyle = warm ? `rgba(255,224,180,${a})` : cool ? `rgba(170,200,255,${a})` : `rgba(235,240,255,${a})`;
     const s = bright ? 2 : 1;
     g.fillRect(x, y, s, s);
@@ -1025,36 +1026,24 @@ export const skyTex = () => canvasTexture(1024, 512, (g, w, h) => {
       g.fillRect(x, y - 2, 1, 5);
     }
   }
-  // Thin violet cloud veils low on the horizon.
-  for (let i = 0; i < 26; i++) {
-    g.fillStyle = `rgba(${110 + rand() * 40},${90 + rand() * 30},${150 + rand() * 50},${0.04 + rand() * 0.07})`;
-    g.beginPath();
-    g.ellipse(rand() * w, h * (0.4 + rand() * 0.45), 70 + rand() * 190, 8 + rand() * 22, 0, 0, Math.PI * 2);
-    g.fill();
+  // Wide smoky cloud bands: stacked soft ellipses in lavender-grey, drifting with the dome.
+  for (let i = 0; i < 34; i++) {
+    const cy = h * (0.3 + rand() * 0.5);
+    const cx = rand() * w;
+    const rx = 90 + rand() * 240, ry = 6 + rand() * 18;
+    const base = 106 + rand() * 40, a = 0.05 + rand() * 0.09;
+    for (let k = 0; k < 4; k++) {
+      g.fillStyle = `rgba(${base + rand() * 30},${base * 0.86 + rand() * 20},${base * 1.25 + rand() * 30},${(a * (1 - k * 0.22)).toFixed(3)})`;
+      g.beginPath();
+      g.ellipse(cx + (rand() - 0.5) * rx * 0.7, cy + (rand() - 0.5) * ry * 1.6, rx * (0.75 + rand() * 0.5), ry * (0.7 + rand() * 0.6), 0, 0, Math.PI * 2);
+      g.fill();
+    }
   }
-  const mx = w * 0.64, my = h * 0.26;
-  // Wide cool halo, then a tight one around a modest disc.
-  let halo = g.createRadialGradient(mx, my, 8, mx, my, 78);
-  halo.addColorStop(0, 'rgba(208,220,255,0.32)');
-  halo.addColorStop(0.45, 'rgba(198,210,255,0.10)');
-  halo.addColorStop(1, 'rgba(198,210,255,0)');
-  g.fillStyle = halo;
-  g.fillRect(mx - 84, my - 84, 168, 168);
-  halo = g.createRadialGradient(mx, my, 5, mx, my, 30);
-  halo.addColorStop(0, 'rgba(234,239,255,0.9)');
-  halo.addColorStop(0.5, 'rgba(222,230,255,0.32)');
-  halo.addColorStop(1, 'rgba(222,230,255,0)');
-  g.fillStyle = halo;
-  g.fillRect(mx - 34, my - 34, 68, 68);
-  // Small pale disc with faint bluish maria — reads as a moon, not a blotch.
-  g.fillStyle = '#e8ebf6';
-  g.beginPath();
-  g.arc(mx, my, 14, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = 'rgba(176,196,240,0.28)';
-  for (const [dx, dy, r] of [[-4, -3, 3.4], [3.5, 2, 2.4], [-1, 4.5, 2.8]]) {
+  // A few darker violet masses low on the horizon for depth.
+  for (let i = 0; i < 10; i++) {
+    g.fillStyle = `rgba(38,28,66,${0.08 + rand() * 0.1})`;
     g.beginPath();
-    g.arc(mx + dx, my + dy, r, 0, Math.PI * 2);
+    g.ellipse(rand() * w, h * (0.72 + rand() * 0.26), 120 + rand() * 200, 14 + rand() * 26, 0, 0, Math.PI * 2);
     g.fill();
   }
 });
@@ -1300,6 +1289,518 @@ export const muralTex = (seedKey = 'm') => canvasTexture(256, 128, (g, w, h) => 
   }
   blotch(g, w, h, '#0e0b12', 0.35, 8, 30);
   grain(g, w, h, 14);
+});
+
+// --- CDMX showcase, reference-matched sets ------------------------------------
+
+// Hand-painted shop lettering: 'ABARROTES VINOS Y LICORES' in orange-red on the white wall.
+// Letters are stamped one by one with tiny jitter so it reads brushed-on, not typeset.
+export const shopFrontTex = () => canvasTexture(1024, 224, (g, w, h) => {
+  g.fillStyle = '#ece5d4';
+  g.fillRect(0, 0, w, h);
+  blotch(g, w, h, '#d8cfba', 0.3, 6, 30);
+  const paint = (text, y, size, color) => {
+    g.fillStyle = color;
+    g.font = `bold ${size}px "Arial Black", Arial, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    const widths = [...text].map((ch) => g.measureText(ch).width);
+    const total = widths.reduce((a, b) => a + b, 0) + (text.length - 1) * size * 0.06;
+    let x = w / 2 - total / 2;
+    [...text].forEach((ch, i) => {
+      g.save();
+      g.translate(x + widths[i] / 2, y + (rand() - 0.5) * size * 0.08);
+      g.rotate((rand() - 0.5) * 0.05);
+      g.fillText(ch, 0, 0);
+      g.restore();
+      x += widths[i] + size * 0.06;
+    });
+  };
+  paint('ABARROTES', h * 0.34, 92, '#d8451a');
+  paint('VINOS Y LICORES', h * 0.74, 62, '#c23a10');
+  // Paint wear: a few drips and rubbed patches.
+  g.fillStyle = 'rgba(120,60,30,0.25)';
+  for (let i = 0; i < 8; i++) g.fillRect(rand() * w, h * 0.3 + rand() * h * 0.5, 2, 6 + rand() * 14);
+  grime(g, w, h, { stain: 0.3, edge: 0.1, crack: 0.15, scratch: 0.2 });
+  grain(g, w, h, 10);
+});
+
+// Blue fascia band with white lettering for under the shop awning.
+export const awningSignTex = (text = 'TIENDA DE ABARROTES') => canvasTexture(1024, 96, (g, w, h) => {
+  g.fillStyle = '#1d5aa8';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,255,255,0.92)';
+  g.font = 'bold 52px "Arial Black", Arial, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2 + 2, w - 40);
+  g.fillStyle = 'rgba(10,20,40,0.4)';
+  g.fillRect(0, h - 6, w, 6);
+  blotch(g, w, h, '#0e2c58', 0.3, 5, 20);
+  grain(g, w, h, 8);
+});
+
+// Lit interior seen through a metro train window: grey frame border, warm-white cabin,
+// grab poles and seat hints. Used with basic() so the panes read as lit from outside.
+export const metroWinTex = () => canvasTexture(128, 80, (g, w, h) => {
+  // Frame: grey border with a darker gasket line.
+  g.fillStyle = '#4a4e56';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#2c2f36';
+  g.fillRect(0, 0, w, 5);
+  g.fillRect(0, h - 5, w, 5);
+  g.fillRect(0, 0, 5, h);
+  g.fillRect(w - 5, 0, 5, h);
+  g.fillStyle = '#6a7078';
+  g.fillRect(5, 5, w - 10, 3);
+  g.fillRect(5, h - 8, w - 10, 3);
+  const ix = 8, iy = 9, iw = w - 16, ih = h - 18;
+  const grad = g.createLinearGradient(0, iy, 0, iy + ih);
+  grad.addColorStop(0, '#cfe0ee');
+  grad.addColorStop(0.45, '#f2e8d4');
+  grad.addColorStop(1, '#8a7a64');
+  g.fillStyle = grad;
+  g.fillRect(ix, iy, iw, ih);
+  // Ceiling light strip glow at the top of the cabin.
+  g.fillStyle = 'rgba(255,246,220,0.85)';
+  g.fillRect(ix + iw * 0.2, iy + 2, iw * 0.6, 3);
+  // Grab poles: two thin verticals with a slight lean.
+  g.fillStyle = '#3a3f46';
+  for (const px of [ix + iw * 0.3, ix + iw * 0.68]) {
+    g.fillRect(px - 1.5, iy + 2, 3, ih * 0.72);
+    g.fillStyle = '#565d66';
+    g.fillRect(px - 1.5, iy + 2, 1.4, ih * 0.72);
+    g.fillStyle = '#3a3f46';
+  }
+  // Seat backs along the bottom: teal bench silhouettes with headrest gaps.
+  g.fillStyle = '#2e6f78';
+  g.fillRect(ix, iy + ih * 0.66, iw, ih * 0.34);
+  g.fillStyle = '#3f8a94';
+  for (let x = ix + 4; x < ix + iw - 4; x += 22) g.fillRect(x, iy + ih * 0.68, 18, ih * 0.2);
+  g.fillStyle = 'rgba(20,26,30,0.55)';
+  for (let x = ix + 4; x < ix + iw - 4; x += 22) g.fillRect(x + 18, iy + ih * 0.68, 4, ih * 0.2);
+  // Passenger shoulder hints.
+  g.fillStyle = 'rgba(60,50,44,0.5)';
+  for (const [px, pw] of [[ix + iw * 0.18, 14], [ix + iw * 0.5, 16], [ix + iw * 0.84, 13]]) {
+    g.beginPath();
+    g.ellipse(px, iy + ih * 0.62, pw, 7, 0, Math.PI, 0);
+    g.fill();
+  }
+  grain(g, w, h, 8);
+});
+
+// Plug door: orange panel with a center seam, a small wired-glass slot near the top
+// and warm light leaking around the edges.
+export const metroDoorTex = () => canvasTexture(96, 160, (g, w, h) => {
+  g.fillStyle = '#b34a14';
+  g.fillRect(0, 0, w, h);
+  // Panel seams and rivets.
+  g.fillStyle = 'rgba(40,18,8,0.6)';
+  g.fillRect(w / 2 - 1.5, 8, 3, h - 16);
+  g.fillStyle = 'rgba(255,200,150,0.25)';
+  g.fillRect(4, 8, 2, h - 16);
+  g.fillRect(w - 6, 8, 2, h - 16);
+  // Wired-glass slot.
+  g.fillStyle = '#2c3038';
+  g.fillRect(w * 0.18, h * 0.1, w * 0.64, h * 0.16);
+  g.fillStyle = 'rgba(220,235,250,0.8)';
+  for (let i = 0; i < 7; i++) g.fillRect(w * 0.2 + i * w * 0.09, h * 0.12, 3, h * 0.12);
+  // Handle block.
+  g.fillStyle = '#3a3f46';
+  g.fillRect(w * 0.4, h * 0.62, w * 0.2, h * 0.09);
+  // Warm light leak at the bottom edge (interior spill under the door).
+  const leak = g.createLinearGradient(0, h - 26, 0, h);
+  leak.addColorStop(0, 'rgba(255,210,150,0)');
+  leak.addColorStop(1, 'rgba(255,214,160,0.85)');
+  g.fillStyle = leak;
+  g.fillRect(0, h - 26, w, 26);
+  grain(g, w, h, 10);
+});
+
+// 'Español' textbook cover: yellow field, black title, subtitle and a simple llama panel.
+export const bookTex = () => canvasTexture(256, 340, (g, w, h) => {
+  g.fillStyle = '#f0c02e';
+  g.fillRect(0, 0, w, h);
+  // Page-edge shading on the right/bottom.
+  const shadeG = g.createLinearGradient(w - 26, 0, w, 0);
+  shadeG.addColorStop(0, 'rgba(120,80,20,0)');
+  shadeG.addColorStop(1, 'rgba(120,80,20,0.5)');
+  g.fillStyle = shadeG;
+  g.fillRect(w - 26, 0, 26, h);
+  g.fillStyle = '#1c1a16';
+  g.font = 'bold 44px "Arial Black", Arial, sans-serif';
+  g.textAlign = 'left';
+  g.textBaseline = 'alphabetic';
+  g.fillText('Español', 18, 62);
+  g.font = 'bold 17px Arial, sans-serif';
+  g.fillStyle = 'rgba(28,26,22,0.85)';
+  g.fillText('Lecturas y escritura', 20, 88);
+  // Illustration panel: sky, sun, hills and a simple llama silhouette (own drawing).
+  const px = 18, py = 108, pw = w - 36, ph = h - 140;
+  g.fillStyle = '#2e5f9e';
+  g.fillRect(px, py, pw, ph);
+  g.fillStyle = '#f4d03f';
+  g.beginPath();
+  g.arc(px + pw * 0.72, py + ph * 0.24, 20, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#7fb069';
+  g.beginPath();
+  g.ellipse(px + pw * 0.3, py + ph * 0.95, pw * 0.5, ph * 0.3, 0, Math.PI, 0);
+  g.fill();
+  g.fillStyle = '#8a5a2e';
+  // Llama body, neck, head, ears, legs — chunky geometric silhouette.
+  g.fillRect(px + pw * 0.42, py + ph * 0.52, pw * 0.3, ph * 0.2);       // body
+  g.fillRect(px + pw * 0.6, py + ph * 0.3, pw * 0.09, ph * 0.26);      // neck
+  g.fillRect(px + pw * 0.55, py + ph * 0.22, pw * 0.16, ph * 0.1);     // head
+  g.fillRect(px + pw * 0.56, py + ph * 0.18, pw * 0.035, ph * 0.06);   // ear
+  g.fillRect(px + pw * 0.67, py + ph * 0.18, pw * 0.035, ph * 0.06);   // ear
+  g.fillStyle = '#5e3d1e';
+  g.fillRect(px + pw * 0.44, py + ph * 0.72, pw * 0.035, ph * 0.24);   // legs
+  g.fillRect(px + pw * 0.52, py + ph * 0.72, pw * 0.035, ph * 0.24);
+  g.fillRect(px + pw * 0.6, py + ph * 0.72, pw * 0.035, ph * 0.24);
+  g.fillRect(px + pw * 0.66, py + ph * 0.72, pw * 0.035, ph * 0.24);
+  // Panel frame.
+  g.strokeStyle = '#1c1a16';
+  g.lineWidth = 6;
+  g.strokeRect(px + 3, py + 3, pw - 6, ph - 6);
+  g.fillStyle = 'rgba(0,0,0,0.08)';
+  g.fillRect(px, py + ph - 8, pw, 8);
+  grain(g, w, h, 8);
+});
+
+// Library shelf face: dark metal uprights, many rows of colourful spines and a few
+// forward-facing covers. One texture tiles across whole shelf walls.
+export const libShelfTex = () => canvasTexture(256, 512, (g, w, h) => {
+  g.fillStyle = '#23262c';
+  g.fillRect(0, 0, w, h);
+  const spineCols = ['#c94f4f', '#4f7dc9', '#4fae7c', '#c9a44f', '#8a5ac8', '#d97fb0', '#5aa8a0', '#e8e0cc', '#7a4a8a', '#b5452e'];
+  const rows = 12, rh = h / rows;
+  for (let r = 0; r < rows; r++) {
+    const y0 = r * rh;
+    // Shelf board.
+    g.fillStyle = '#3a3e46';
+    g.fillRect(0, y0 + rh - 5, w, 5);
+    g.fillStyle = 'rgba(0,0,0,0.4)';
+    g.fillRect(0, y0 + rh - 7, w, 2);
+    let x = 3;
+    while (x < w - 4) {
+      if (rand() < 0.12) {
+        // Forward-facing cover: pale rectangle with title lines.
+        const cw = 12 + rand() * 10, ch = rh * (0.62 + rand() * 0.2);
+        g.fillStyle = pick(spineCols);
+        g.fillRect(x, y0 + rh - 6 - ch, cw, ch);
+        g.fillStyle = 'rgba(255,255,255,0.75)';
+        g.fillRect(x + 2, y0 + rh - 6 - ch + 3, cw - 4, 2);
+        g.fillRect(x + 2, y0 + rh - 6 - ch + 7, cw - 6, 1.5);
+        g.fillRect(x + 2, y0 + rh - 6 - ch + 11, cw - 8, 1.5);
+        x += cw + 2;
+      } else {
+        const sw = 3 + rand() * 6, sh = rh * (0.55 + rand() * 0.38);
+        g.fillStyle = pick(spineCols);
+        g.fillRect(x, y0 + rh - 6 - sh, sw, sh);
+        g.fillStyle = 'rgba(255,255,255,0.28)';
+        g.fillRect(x, y0 + rh - 6 - sh, sw, 1.5);
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        g.fillRect(x + sw - 1, y0 + rh - 6 - sh, 1, sh);
+        x += sw + (rand() < 0.2 ? 3 : 0.6);
+      }
+    }
+  }
+  // Uprights.
+  g.fillStyle = '#17191e';
+  g.fillRect(0, 0, 5, h);
+  g.fillRect(w - 5, 0, 5, h);
+  g.fillStyle = 'rgba(255,255,255,0.06)';
+  g.fillRect(5, 0, 2, h);
+  g.fillRect(w - 7, 0, 2, h);
+  grain(g, w, h, 10);
+});
+
+// Concrete library pillar face with big '920' digits and a small red label.
+export const libPillarTex = () => canvasTexture(128, 512, (g, w, h) => {
+  g.fillStyle = '#8d8d94';
+  g.fillRect(0, 0, w, h);
+  blotch(g, w, h, '#6e6e76', 0.5, 8, 30);
+  blotch(g, w, h, '#a8a8b0', 0.3, 5, 24);
+  g.fillStyle = '#d8d8de';
+  g.font = 'bold 150px "Arial Black", Arial, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('920', w / 2, h * 0.3);
+  g.fillStyle = 'rgba(0,0,0,0.18)';
+  g.font = 'bold 120px "Arial Black", Arial, sans-serif';
+  g.fillText('920', w / 2 + 4, h * 0.3 + 5);
+  // Red label plate below.
+  g.fillStyle = '#a03028';
+  g.fillRect(w * 0.18, h * 0.56, w * 0.64, h * 0.1);
+  g.fillStyle = '#f2e8d8';
+  g.font = 'bold 26px Arial, sans-serif';
+  g.fillText('SALA', w / 2, h * 0.61);
+  grime(g, w, h, { stain: 0.5, edge: 0.2, crack: 0.4, scratch: 0.3 });
+  grain(g, w, h, 12);
+});
+
+// Torre Latinoamericana shaft: stacked floor bands, each a row of lit windows in a
+// rotating warm/cool hue, separated by bright horizontal strip-light lines.
+export const torreFacadeTex = () => canvasTexture(256, 1024, (g, w, h) => {
+  g.fillStyle = '#141824';
+  g.fillRect(0, 0, w, h);
+  const hues = ['#ffb054', '#ff8a3a', '#54d8c8', '#5aa8ff', '#ffd88a', '#ff6a4a'];
+  const floors = 26, fh = h / floors;
+  for (let f = 0; f < floors; f++) {
+    const y0 = f * fh;
+    const hue = hues[f % hues.length];
+    const lit = 0.5 + rand() * 0.5;
+    // Window cells across the floor.
+    const cols = 7, cw = w / cols;
+    for (let c = 0; c < cols; c++) {
+      if (rand() < 0.18) continue;
+      g.fillStyle = hue;
+      g.globalAlpha = lit * (0.55 + rand() * 0.45);
+      g.fillRect(c * cw + cw * 0.22, y0 + fh * 0.24, cw * 0.56, fh * 0.44);
+    }
+    g.globalAlpha = 1;
+    // Bright floor separator line — the strip-light glow between storeys.
+    const gl = g.createLinearGradient(0, y0 + fh - 4, 0, y0 + fh + 4);
+    gl.addColorStop(0, 'rgba(255,190,110,0)');
+    gl.addColorStop(0.5, 'rgba(255,205,130,0.75)');
+    gl.addColorStop(1, 'rgba(255,190,110,0)');
+    g.fillStyle = gl;
+    g.fillRect(0, y0 + fh - 4, w, 8);
+  }
+  // Vertical piers between window columns.
+  g.fillStyle = 'rgba(8,10,16,0.55)';
+  for (let c = 0; c <= 7; c++) g.fillRect(c * (w / 7) - 1, 0, 2, h);
+});
+
+// Illuminated name band: warm white field, big dark 'LATINOAMERICANA' letterspaced.
+export const towerSignTex = (text = 'LATINOAMERICANA') => canvasTexture(1024, 96, (g, w, h) => {
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#f7ecd2');
+  grad.addColorStop(0.5, '#fff6e0');
+  grad.addColorStop(1, '#e8d8b8');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#23222c';
+  g.font = 'bold 58px "Arial Black", Arial, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  // Letterspace manually for the monumental look.
+  const spacing = 14;
+  const widths = [...text].map((ch) => g.measureText(ch).width);
+  const total = widths.reduce((a, b) => a + b, 0) + spacing * (text.length - 1);
+  let x = w / 2 - total / 2;
+  [...text].forEach((ch, i) => {
+    g.fillText(ch, x + widths[i] / 2, h / 2 + 2);
+    x += widths[i] + spacing;
+  });
+  g.fillStyle = 'rgba(120,90,50,0.25)';
+  g.fillRect(0, 0, w, 4);
+  g.fillRect(0, h - 4, w, 4);
+  grain(g, w, h, 6);
+});
+
+// Small tower with thin horizontal white stripes — the mid-ground slab behind the Ángel.
+export const stripeTowerTex = () => canvasTexture(256, 512, (g, w, h) => {
+  g.fillStyle = '#1a2030';
+  g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 18) {
+    g.fillStyle = 'rgba(226,232,244,0.8)';
+    g.fillRect(0, y, w, 3);
+    g.fillStyle = 'rgba(120,140,180,0.25)';
+    g.fillRect(0, y + 3, w, 2);
+  }
+  // Sparse cool window glints between the stripes.
+  for (let i = 0; i < 90; i++) {
+    g.fillStyle = `rgba(170,210,255,${0.3 + rand() * 0.5})`;
+    g.fillRect(rand() * w, rand() * h, 3 + rand() * 8, 2);
+  }
+});
+
+// Biblioteca Central mural: own procedural stone-mosaic in the UNAM spirit — terracotta
+// ground, cream glyph lines, black/dark-blue accents, turquoise tiles, two sun discs,
+// stepped figure stacks and a serpent zig-zag. No copied artwork.
+export const bibliotecaMuralTex = () => canvasTexture(1024, 640, (g, w, h) => {
+  const rnd = prng('bibmural');
+  // Terracotta mosaic ground: per-tile jitter reads as thousands of stones.
+  const tile = 16;
+  const base = ['#8f3a20', '#a04020', '#96502a', '#7e3418', '#b05028'];
+  for (let y = 0; y < h; y += tile) {
+    for (let x = 0; x < w; x += tile) {
+      g.fillStyle = base[Math.floor(rnd() * base.length)];
+      g.fillRect(x, y, tile, tile);
+      if (rnd() < 0.16) {
+        g.fillStyle = rnd() < 0.5 ? 'rgba(240,220,190,0.5)' : 'rgba(20,14,10,0.4)';
+        g.fillRect(x + rnd() * 8, y + rnd() * 8, 5 + rnd() * 8, 5 + rnd() * 8);
+      }
+    }
+  }
+  const grout = (a = 0.5) => {
+    g.fillStyle = `rgba(24,16,10,${a})`;
+    for (let x = 0; x < w; x += tile) g.fillRect(x, 0, 1.5, h);
+    for (let y = 0; y < h; y += tile) g.fillRect(0, y, w, 1.5);
+  };
+  const glyph = (x, y, s, col, kind) => {
+    g.fillStyle = col;
+    if (kind === 0) { // stepped figure
+      for (let i = 0; i < 4; i++) g.fillRect(x - s * (0.5 - i * 0.11), y - i * s * 0.42, s * (1 - i * 0.22), s * 0.4);
+      g.beginPath(); g.arc(x, y - 4 * s * 0.42 - s * 0.1, s * 0.16, 0, Math.PI * 2); g.fill();
+    } else if (kind === 1) { // ring + dot
+      g.strokeStyle = col; g.lineWidth = s * 0.09;
+      g.beginPath(); g.arc(x, y, s * 0.4, 0, Math.PI * 2); g.stroke();
+      g.fillRect(x - s * 0.05, y - s * 0.05, s * 0.1, s * 0.1);
+    } else if (kind === 2) { // cross
+      g.fillRect(x - s * 0.05, y - s * 0.45, s * 0.1, s * 0.9);
+      g.fillRect(x - s * 0.45, y - s * 0.05, s * 0.9, s * 0.1);
+    } else { // diamond
+      g.beginPath();
+      g.moveTo(x, y - s * 0.4); g.lineTo(x + s * 0.3, y); g.lineTo(x, y + s * 0.4); g.lineTo(x - s * 0.3, y);
+      g.fill();
+    }
+  };
+  const cream = '#e8d9b8', white = '#f2ead8', black = '#1c1a20', blue = '#2a3a5e', teal = '#3f8a8a', ochre = '#c88a3a';
+  // Two big sun/calendar discs with tick rings.
+  const disc = (cx, cy, r, colA, colB) => {
+    g.fillStyle = colA;
+    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+    g.fillStyle = colB;
+    g.beginPath(); g.arc(cx, cy, r * 0.72, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = cream; g.lineWidth = r * 0.06;
+    g.beginPath(); g.arc(cx, cy, r * 0.86, 0, Math.PI * 2); g.stroke();
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      g.fillStyle = cream;
+      g.fillRect(cx + Math.cos(a) * r * 0.86 - 2, cy + Math.sin(a) * r * 0.86 - 2, 4, 4);
+    }
+    g.fillStyle = white;
+    g.beginPath(); g.arc(cx, cy, r * 0.3, 0, Math.PI * 2); g.fill();
+  };
+  disc(w * 0.07, h * 0.5, 74, teal, black);
+  disc(w * 0.6, h * 0.58, 88, cream, '#a04020');
+  // Vertical stacks of stepped figure motifs through the centre.
+  for (let col = 0; col < 3; col++) {
+    const sx = w * (0.3 + col * 0.09), top = h * (0.1 + col * 0.05);
+    for (let i = 0; i < 4; i++) {
+      glyph(sx + (rnd() - 0.5) * 10, top + i * h * 0.16, 34 + rnd() * 10, i % 2 ? cream : black, 0);
+    }
+  }
+  // Serpent zig-zag bands top and bottom.
+  const zig = (y0, amp, col) => {
+    g.strokeStyle = col; g.lineWidth = 7; g.lineJoin = 'miter';
+    g.beginPath();
+    g.moveTo(0, y0);
+    for (let x = 0; x <= w; x += 32) g.lineTo(x, y0 + (Math.floor(x / 32) % 2 ? -amp : amp));
+    g.stroke();
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.moveTo(0, y0 + amp * 1.6);
+    for (let x = 0; x <= w; x += 32) g.lineTo(x, y0 + amp * 1.6 + (Math.floor(x / 32) % 2 ? -amp : amp));
+    g.stroke();
+  };
+  zig(h * 0.09, 14, white);
+  zig(h * 0.9, 14, cream);
+  // Scattered glyph fields.
+  for (let i = 0; i < 90; i++) {
+    const cols = [cream, white, black, blue, teal, ochre];
+    glyph(rnd() * w, h * 0.16 + rnd() * h * 0.7, 10 + rnd() * 16, cols[Math.floor(rnd() * cols.length)], Math.floor(rnd() * 4));
+  }
+  // Horizontal register bands framing the field.
+  g.fillStyle = black;
+  g.fillRect(0, h * 0.02, w, h * 0.035);
+  g.fillRect(0, h * 0.955, w, h * 0.045);
+  g.fillStyle = teal;
+  g.fillRect(0, h * 0.055, w, 4);
+  g.fillRect(0, h * 0.94, w, 4);
+  grout(0.55);
+  // Uplight falloff baked in: darker toward the top, hot at the base.
+  const up = g.createLinearGradient(0, 0, 0, h);
+  up.addColorStop(0, 'rgba(10,6,16,0.5)');
+  up.addColorStop(0.45, 'rgba(10,6,16,0.12)');
+  up.addColorStop(1, 'rgba(255,190,120,0.14)');
+  g.fillStyle = up;
+  g.fillRect(0, 0, w, h);
+  grain(g, w, h, 14);
+});
+
+// Yellow full moon for the Torre shot: warm disc, faint maria, layered halo.
+export const moonGlowTex = () => canvasTexture(128, 128, (g, w, h) => {
+  const cx = w / 2, cy = h / 2;
+  let halo = g.createRadialGradient(cx, cy, 6, cx, cy, w * 0.48);
+  halo.addColorStop(0, 'rgba(255,224,150,0.5)');
+  halo.addColorStop(0.35, 'rgba(255,214,140,0.16)');
+  halo.addColorStop(1, 'rgba(255,214,140,0)');
+  g.fillStyle = halo;
+  g.fillRect(0, 0, w, h);
+  halo = g.createRadialGradient(cx, cy, 2, cx, cy, w * 0.24);
+  halo.addColorStop(0, 'rgba(255,240,200,0.95)');
+  halo.addColorStop(0.7, 'rgba(255,230,170,0.55)');
+  halo.addColorStop(1, 'rgba(255,230,170,0)');
+  g.fillStyle = halo;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#ffdf9e';
+  g.beginPath(); g.arc(cx, cy, w * 0.15, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(190,150,90,0.4)';
+  for (const [dx, dy, r] of [[-4, -3, 3], [4, 2, 2.4], [0, 5, 2.8], [-2, -6, 1.8]]) {
+    g.beginPath(); g.arc(cx + dx, cy + dy, r, 0, Math.PI * 2); g.fill();
+  }
+});
+
+// Moonlit park path: pale lavender paving with slab joints and a soft sheen.
+export const pathTex = () => canvasTexture(256, 256, (g, w, h) => {
+  g.fillStyle = '#8f8ba4';
+  g.fillRect(0, 0, w, h);
+  blotch(g, w, h, '#7d79a0', 0.4, 8, 34);
+  blotch(g, w, h, '#a8a4c0', 0.35, 6, 28);
+  // Large slabs: 2x2 per repeat.
+  g.fillStyle = 'rgba(40,36,60,0.7)';
+  for (const B of [0, 128]) {
+    g.fillRect(B - 2, 0, 4, h);
+    g.fillRect(0, B - 2, w, 4);
+  }
+  for (let i = 0; i < 60; i++) {
+    g.fillStyle = `rgba(230,226,245,${0.04 + rand() * 0.08})`;
+    g.fillRect(rand() * w, rand() * h, 2 + rand() * 8, 1 + rand() * 3);
+  }
+  grime(g, w, h, { stain: 0.4, edge: 0.15, crack: 0.5, scratch: 0.2 });
+  grain(g, w, h, 10);
+});
+
+// Dark earth/leaf litter for the park floor away from the path.
+export const parkGroundTex = () => canvasTexture(256, 256, (g, w, h) => {
+  g.fillStyle = '#1c2418';
+  g.fillRect(0, 0, w, h);
+  blotch(g, w, h, '#26331f', 0.5, 12, 40);
+  blotch(g, w, h, '#121a10', 0.5, 10, 44);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = `rgba(${50 + rand() * 40},${80 + rand() * 50},${36 + rand() * 30},${0.15 + rand() * 0.3})`;
+    g.fillRect(rand() * w, rand() * h, 1 + rand() * 3, 1 + rand() * 2);
+  }
+  grain(g, w, h, 14);
+});
+
+// Cool glass-curtain facade for the towers behind the Ángel: dense blue/teal window grid.
+export const glassTowerTex = (tint = '#7fd0e8', cols = 9, rows = 22) => canvasTexture(256, 512, (g, w, h) => {
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#0d1424');
+  grad.addColorStop(0.6, '#101a30');
+  grad.addColorStop(1, '#0a0e1c');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+  const cw = w / cols, ch = h / rows;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const r = rand();
+      if (r < 0.3) continue;
+      const warm = r > 0.86;
+      g.fillStyle = warm ? `rgba(255,206,142,${0.4 + rand() * 0.5})` : tint;
+      g.globalAlpha = 0.3 + rand() * 0.6;
+      g.fillRect(x * cw + cw * 0.16, y * ch + ch * 0.2, cw * 0.68, ch * 0.5);
+    }
+  }
+  g.globalAlpha = 1;
+  // Floor lines.
+  g.fillStyle = 'rgba(6,8,14,0.6)';
+  for (let y = 0; y <= rows; y++) g.fillRect(0, y * ch - 0.5, w, 1.5);
 });
 
 export function staticScreen() {

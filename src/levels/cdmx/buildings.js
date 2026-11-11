@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { lam, basic } from '../../engine/post.js';
 import * as T from '../../engine/textures.js';
 import { bakeAO } from '../../world/builder.js';
-import { NPC } from '../../world/person.js';
 
 /*
  * Procedural CDMX architecture kit. `building()` composes a stepped concrete block with a
@@ -455,204 +454,47 @@ export function parkedCar(b, x, z, ry = 0, color = 0x23222e) {
  * world.js after the hero sets so batchWorld merges everything together.
  */
 export function dressCity(b) {
-  // --- Plaza ring: mid-rise blocks ringing the statue, visible in the angel shot. ---
-  const ring = [
-    [-52, -18, 12, 12, 16], [-58, -38, 14, 12, 24], [-38, -52, 12, 12, 20],
-    [-14, -60, 14, 12, 30], [16, -58, 12, 12, 22], [42, -48, 14, 12, 18],
-    [58, -26, 12, 12, 26], [60, 2, 12, 12, 15], [-62, 6, 12, 12, 19],
+  /*
+   * Per-set context blocks: stepped CDMX mid-rises ringing each hero set far enough away
+   * to read as skyline through the shot fog, close enough to stay out of the hero
+   * geometry. Everything shares the facade atlas + KIT materials, so the whole pass
+   * merges into a handful of draw calls.
+   */
+  const blocks = [
+    // Around the Ángel plaza (hero glass towers live in props.js).
+    [-52, -72, 14, 12, 30, 'c1'], [30, -80, 16, 12, 44, 'c2'], [-32, -92, 12, 10, 24, 'c3'],
+    [58, -62, 14, 12, 36, 'c4'], [-72, -42, 12, 10, 20, 'c5'], [78, -32, 14, 12, 30, 'c6'],
+    [8, -100, 18, 14, 52, 'c7'], [-95, -70, 14, 12, 26, 'c8'],
+    // Metro viaduct horizon.
+    [-60, -365, 14, 12, 28, 'm1'], [52, -375, 16, 12, 40, 'm2'], [-32, -395, 12, 10, 22, 'm3'],
+    [72, -345, 14, 12, 32, 'm4'], [-95, -330, 16, 12, 24, 'm5'],
+    // Abarrotes street flanks (the corner shop itself is in props.js).
+    [22, 294, 10, 9, 15, 'a1'], [57, 296, 11, 9, 19, 'a2'], [28, 314, 12, 10, 26, 'a3'],
+    [52, 315, 10, 9, 14, 'a4'],
+    // Park tree-line: low blocks beyond the dark trees.
+    [-325, -115, 14, 12, 24, 'p1'], [-248, -125, 16, 12, 32, 'p2'], [-345, -55, 12, 10, 18, 'p3'],
+    [-255, -140, 14, 12, 20, 'p4'],
+    // Biblioteca surroundings.
+    [-345, 95, 14, 12, 28, 'b1'], [-258, 145, 12, 10, 22, 'b2'], [-335, 155, 12, 12, 34, 'b3'],
+    [-275, 90, 10, 9, 16, 'b4'],
+    // Torre district lower right.
+    [345, -205, 16, 12, 42, 't1'], [278, -215, 14, 12, 30, 't2'], [365, -150, 14, 12, 38, 't3'],
+    [255, -190, 12, 10, 26, 't4'],
   ];
-  ring.forEach(([x, z, w, d, h], i) => {
-    const ry = Math.atan2(-x, -z); // face the plaza centre
+  blocks.forEach(([x, z, w, d, h, seed], i) => {
     building(b, {
-      x, z, w, d, h, ry, seed: `ring${i}`,
-      shop: i % 3 === 0 ? { kind: 'shutter', name: NAMES[(i * 5) % NAMES.length] } : null,
-      balconies: h > 18,
+      x, z, w, d, h, ry: 0, seed,
+      shop: i % 4 === 0 ? { kind: 'shutter', name: NAMES[(i * 5) % NAMES.length] } : null,
+      balconies: h > 20,
+      roof: i % 2 === 0,
     });
   });
 
-  // --- Road storefronts: two ranks behind the z=30 road, facing the camera. ---
-  const fronts = [
-    [-46, 23.5, 10, 9, 'open'], [-34, 23.5, 11, 12, 'shutter'], [-21, 23.5, 9, 8, 'half'],
-    [-8, 23.5, 12, 15, 'open'], [6, 23.5, 10, 10, 'shutter'], [19, 23.5, 11, 13, 'open'],
-    [32, 23.5, 9, 9, 'half'], [44, 23.5, 10, 11, 'shutter'],
-  ];
-  fronts.forEach(([x, z, w, h, kind], i) => {
-    building(b, {
-      x, z, w, d: 9, h, ry: Math.PI, seed: `st${i}`,
-      shop: { kind, name: NAMES[(i * 3 + 1) % NAMES.length], bg: ['#1f1a2e', '#3a1f2e', '#1f2e3a'][i % 3], fg: '#ffd9a0' },
-      balconies: h > 12,
-    });
-  });
-  const backs = [
-    [-40, 14, 13, 10, 26], [-24, 14, 12, 10, 34], [-6, 14, 14, 10, 22],
-    [10, 14, 12, 10, 30], [28, 14, 13, 10, 24], [44, 14, 11, 10, 18],
-  ];
-  backs.forEach(([x, z, w, d, h], i) => {
-    building(b, { x, z, w, d, h, ry: Math.PI, seed: `bk${i}`, shop: null, balconies: true });
-  });
-
-  // --- Power grid along the road and plaza edge. ---
+  // Power poles + sagging spans along the abarrotes street for depth.
   const poles = [];
-  for (let x = -48; x <= 48; x += 16) poles.push(pole(b, x, 20.5, 6.2));
+  for (let x = 28; x <= 54; x += 13) poles.push(pole(b, x, 312.5, 6.4));
   for (let i = 0; i + 1 < poles.length; i++) {
     powerSpan(b, poles[i], poles[i + 1]);
     powerSpan(b, { x: poles[i].x, y: poles[i].y - 0.35, z: poles[i].z }, { x: poles[i + 1].x, y: poles[i + 1].y - 0.35, z: poles[i + 1].z }, 0.9);
   }
-  // Cross-street run toward the plaza.
-  const p2 = pole(b, -20, 8, 6.2, 0.4);
-  const p3 = pole(b, 12, 2, 6.2, -0.3);
-  powerSpan(b, poles[1], p2, 1.3);
-  powerSpan(b, p2, p3, 1.5);
-
-  // --- Road dressing: curbs, parked cars, markings. ---
-  curb(b, -48, 48, 26.6, -1);
-  curb(b, -48, 48, 33.4, 1);
-  parkedCar(b, -18, 27.2, 0.06, 0x2a2438);
-  parkedCar(b, 12, 32.8, Math.PI - 0.08, 0x33272a);
-  parkedCar(b, 30, 27.4, -0.05, 0x24302a);
-  // Painted edge lines and a couple of manholes (merged by batchWorld).
-  const lineMat = basic({ color: 0x9a927e });
-  for (let x = -46; x < 46; x += 4) {
-    add(b, new THREE.PlaneGeometry(2.2, 0.14), lineMat, x + 1.1, 0.028, 26.85, { rx: -Math.PI / 2 });
-    add(b, new THREE.PlaneGeometry(2.2, 0.14), lineMat, x + 1.1, 0.028, 33.15, { rx: -Math.PI / 2 });
-  }
-  const manMat = lam({ color: 0x1c1a22, vertexColors: true });
-  for (const [x, z] of [[-30, 30], [-4, 31.5], [22, 29.5], [38, 31]]) {
-    const mh = new THREE.CylinderGeometry(0.55, 0.55, 0.03, 12);
-    add(b, mh, manMat, x, 0.035, z);
-  }
-  // Dark patch repairs in the cobbles.
-  const patchMat = lam({ color: 0x2c2740, vertexColors: true });
-  for (const [x, z, s] of [[-36, 24, 3], [-12, 34, 2.4], [18, 25, 2.8], [40, 33, 2], [-52, 12, 3.4], [8, -4, 2.6]]) {
-    const pg = new THREE.CircleGeometry(s * 0.5, 10);
-    pg.rotateX(-Math.PI / 2);
-    pg.scale(1, 1, 0.7);
-    pg.translate(x, 0.018, z);
-    add(b, pg, patchMat, 0, 0, 0);
-  }
-
-  // --- Field: grass pitch, goalposts, floodlights, perimeter buildings. ---
-  const FX = -150, FZ = -72;
-  const grass = lam({ map: T.grassTex(), vertexColors: true });
-  add(b, new THREE.PlaneGeometry(90, 90), grass, FX, 0.012, FZ, { rx: -Math.PI / 2 });
-  // Pitch markings: boundary, halfway line, centre circle, penalty boxes.
-  const mark = basic({ color: 0xd8d2c0 });
-  const stripe = (w, l, x, z, ry = 0) => {
-    const m = new THREE.PlaneGeometry(w, l);
-    m.rotateX(-Math.PI / 2);
-    m.rotateY(ry);
-    m.translate(x, 0.03, z);
-    add(b, m, mark, 0, 0, 0);
-  };
-  stripe(90, 0.3, FX, FZ - 44); stripe(90, 0.3, FX, FZ + 44);
-  stripe(0.3, 88, FX - 44, FZ); stripe(0.3, 88, FX + 44, FZ);
-  stripe(0.3, 88, FX, FZ);
-  const circ = new THREE.RingGeometry(6, 6.3, 24);
-  circ.rotateX(-Math.PI / 2);
-  circ.translate(FX, 0.03, FZ);
-  add(b, circ, mark, 0, 0, 0);
-  stripe(16, 0.3, FX - 36, FZ - 20); stripe(16, 0.3, FX - 36, FZ + 20);
-  stripe(0.3, 40, FX - 36, FZ);
-  // Goals at both ends.
-  for (const s of [-1, 1]) {
-    const gz = FZ + s * 43;
-    for (const px of [-3.6, 3.6]) {
-      cyl(b, 0.07, 0.07, 2.6, 6, KIT.metal, FX + px, 1.3, gz, { collide: false });
-    }
-    box(b, 7.6, 0.09, 0.09, KIT.metal, FX, 2.55, gz, { collide: false });
-    // Net suggestion: faint plane behind the mouth.
-    const net = new THREE.PlaneGeometry(7.2, 2.4);
-    net.rotateY(Math.PI / 2);
-    add(b, net, basic({ color: 0x9aa4b8, transparent: true, opacity: 0.16, depthWrite: false }), FX + s * 0.8, 1.3, gz, { collide: false });
-  }
-  // Floodlight pylons at the corners with real lights (pool picks nearest per shot).
-  const headMat = b.glowMat({ color: 0xeef2ff }, 0x1a1c26);
-  for (const [dx, dz] of [[-38, -38], [38, -38], [-38, 38], [38, 38]]) {
-    cyl(b, 0.14, 0.22, 11, 6, KIT.metal, FX + dx, 5.5, FZ + dz, { collide: false });
-    box(b, 1.6, 0.9, 0.3, KIT.metal, FX + dx, 11.2, FZ + dz, { collide: false });
-    box(b, 1.4, 0.7, 0.1, headMat, FX + dx, 11.2, FZ + dz + 0.2, { collide: false });
-    b.light(FX + dx, 10.6, FZ + dz, 0xcfe0ff, 26, 42);
-  }
-  // Distant blocks beyond the fence so the field doesn't end in fog.
-  for (let i = 0; i < 6; i++) {
-    const bx = FX - 30 + i * 13, bz = FZ - 62 - (i % 2) * 10;
-    building(b, { x: bx, z: bz, w: 12 + (i % 3) * 3, d: 11, h: 16 + (i * 5) % 22, seed: `fd${i}`, shop: null, balconies: false, roof: i % 2 === 0 });
-  }
-
-  // --- Biblioteca forecourt: planters, lamp, kiosk, readers. ---
-  const BX = -75, BZ = -55;
-  for (const [dx, dz] of [[-16, 12], [16, 12], [-20, 4], [20, 4]]) {
-    box(b, 2.6, 0.7, 1.1, KIT.concrete, BX + dx, 0.35, BZ + dz + 6);
-    const bush = new THREE.IcosahedronGeometry(0.75, 0);
-    bush.scale(1.3, 0.7, 0.9);
-    add(b, bush, lam({ color: 0x2c4426, vertexColors: true }), BX + dx, 0.95, BZ + dz + 6, { collide: false });
-  }
-  cyl(b, 0.09, 0.14, 4.6, 6, KIT.metal, BX - 24, 2.3, BZ + 9);
-  const bl = new THREE.SphereGeometry(0.3, 8, 6);
-  add(b, bl, KIT.glowWarm, BX - 24, 4.8, BZ + 9, { collide: false });
-  b.light(BX - 24, 4.6, BZ + 9, 0xffb066, 18, 18);
-  // Kiosk: small lit booth with a shutter half-open.
-  box(b, 3, 2.6, 2.4, KIT.plaster, BX + 22, 1.3, BZ + 8);
-  box(b, 2.4, 1.1, 0.1, KIT.shutter, BX + 22, 1.5, BZ + 9.25, { collide: false });
-  box(b, 2.6, 0.7, 0.15, KIT.awningA, BX + 22, 2.4, BZ + 10.1, { collide: false, rx: -0.3 });
-  b.light(BX + 22, 2.0, BZ + 8.5, 0xffcf8a, 10, 12);
-  // Readers on a bench facing the mural — quiet life at the library steps.
-  box(b, 2.8, 0.14, 0.7, KIT.concrete, BX - 8, 0.55, BZ + 10.6, { collide: false });
-  box(b, 2.8, 0.55, 0.12, KIT.concrete, BX - 8, 0.92, BZ + 10.95, { collide: false });
-  for (const [i, o] of [
-    [0, { top: '#3a4a6e', bottom: '#2a3244', skin: '#c9a184', hair: '#1c1816', outfit: 'tee' }],
-    [1, { top: '#6e3a4a', bottom: '#3a2a30', skin: '#a87e62', hair: '#0e0c0a', outfit: 'dress', dress: true }],
-  ]) {
-    const r = new NPC({ ...o, pose: 'sit', height: 0.96 + i * 0.04 }, b.scene);
-    r.place(BX - 8.6 + i * 1.3, BZ + 10.3);
-    r.face(BX, BZ - 20);
-  }
-
-  // --- Metro platform extras: pillars, hanging signs, bench, headlight. ---
-  const MX = -115, MZ = 22;
-  for (const px of [MX - 7, MX + 7]) {
-    cyl(b, 0.28, 0.32, 6.8, 8, KIT.metal, px, 3.4, MZ + 3, { collide: false });
-    box(b, 0.9, 0.5, 0.9, KIT.metal, px, 6.9, MZ + 3, { collide: false });
-  }
-  // Hanging blade signs over the platform (planes facing the arriving camera).
-  for (const [sx, nm] of [[MX - 4, 'SALIDA'], [MX + 9, 'MERCADO'], [MX - 11, 'ANDÉN']]) {
-    signPlane(b, nm, '#1f4a7a', '#ffffff', 1.4, 0.7, sx, 4.6, MZ + 5, { collide: false });
-    box(b, 0.05, 1.2, 0.05, KIT.metal, sx, 5.6, MZ + 5, { collide: false });
-  }
-  // Second bench + trash can.
-  box(b, 2.6, 0.12, 0.65, KIT.concrete, MX - 2, 1.62, MZ - 6, { collide: false });
-  box(b, 2.6, 0.6, 0.1, KIT.concrete, MX - 2, 1.95, MZ - 5.68, { collide: false });
-  cyl(b, 0.3, 0.26, 0.85, 8, KIT.rust, MX + 14.5, 1.55, MZ - 4, { collide: false });
-  // Tactile paving strip beside the yellow line (raised dots, cheap geometry).
-  for (let i = 0; i < 40; i++) {
-    const dx = MX - 16.5 + i * 0.85;
-    cyl(b, 0.06, 0.06, 0.035, 5, KIT.concrete, dx, 1.14, MZ - 7.4, { collide: false });
-  }
-  // Train headlight: bright lamp + additive throw down the track.
-  const hl = new THREE.SphereGeometry(0.22, 8, 6);
-  add(b, hl, KIT.glowWarm, MX - 23.5, 1.5, MZ - 8.2, { collide: false });
-  b.light(MX - 22, 1.8, MZ - 9, 0xffd9a0, 14, 16);
-  const throwMat = basic({ color: 0xffd9a0, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending });
-  const throwCone = new THREE.ConeGeometry(2.2, 14, 10, 1, true);
-  const tc = add(b, throwCone, throwMat, MX - 27, 1.4, MZ - 8.4, { collide: false, rz: Math.PI / 2 });
-  tc.userData.noBatch = true;
-  // Destination board glow over the platform.
-  signPlane(b, 'CENTRO · LÍNEA 3', '#101820', '#7fd1ff', 5, 0.8, MX - 9, 6.6, MZ + 1, { collide: false });
-
-  // --- Abarrotes: two-storey blocks rising behind the shop row. ---
-  for (let i = 0; i < 3; i++) {
-    const sx = [-9, 0, 9][i];
-    building(b, {
-      x: sx, z: 74, w: 8.5, d: 7, h: 12 + i * 3, ry: 0, seed: `ab${i}`,
-      shop: null, balconies: true, roof: true,
-    });
-  }
-
-  // --- Torre roof clutter: antenna farm on the existing stepped tower. ---
-  cyl(b, 0.06, 0.1, 7, 5, KIT.metal, 80, 79, -95, { collide: false });
-  box(b, 1.6, 0.06, 0.06, KIT.metal, 80, 82.5, -95, { collide: false });
-  box(b, 0.06, 0.06, 1.6, KIT.metal, 80, 81.8, -95, { collide: false });
-  cyl(b, 0.9, 0.9, 1.1, 8, KIT.metal, 76, 74.5, -92, { collide: false });
-  const tlid = new THREE.ConeGeometry(0.95, 0.5, 8);
-  add(b, tlid, KIT.metal, 76, 75.6, -92, { collide: false });
 }

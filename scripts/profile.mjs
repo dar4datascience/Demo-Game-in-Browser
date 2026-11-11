@@ -7,7 +7,7 @@ const LEVEL = process.env.LEVEL ?? 'ceda';
 const CHAR = process.env.CHAR ?? 'diablero';
 const SPEED = process.env.SPEED ?? '1';
 const SHOT_PARAM = process.env.SHOTID && LEVEL === 'cdmx'
-  ? `&shot=${['angel', 'road', 'metro', 'metro-car', 'abarrotes', 'park', 'biblioteca', 'torre', 'bride', 'field'].indexOf(process.env.SHOTID) + 1}`
+  ? `&shot=${['angel', 'metro', 'abarrotes', 'park', 'biblioteca', 'library', 'torre'].indexOf(process.env.SHOTID) + 1}`
   : '';
 const URL = `${process.env.GAME_URL ?? 'http://localhost:5173'}/?debug&speed=${SPEED}&seed=1${SHOT_PARAM}`;
 
