@@ -67,7 +67,7 @@ function updateInteraction() {
 function update(dt) {
   game.tick(dt);
   player.update(dt, input, world.colliders, game.inputEnabled, () => sfx.step());
-  game.npcs.forEach((n) => n.update(dt));
+  game.npcs.forEach((n) => n.update(dt, player));
   world.update(dt, [player.pos, ...game.npcs.map((n) => n.pos)]);
   if (game.inputEnabled) updateInteraction();
   else hud.prompt(null);

@@ -519,7 +519,7 @@ export async function runStory(ctx) {
 
     await game.wait(6);
     const woman = spawn(PEOPLE.woman, x + 7, lane);
-    woman.head.rotation.z = 0.35;
+    woman.head.rotation.z = 0.15;
     sfx.setTension(0.45);
     await woman.walk(path, 0.55);
     woman.face(x, z);

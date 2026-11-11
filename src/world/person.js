@@ -38,19 +38,19 @@ const lumColor = (hex, target) => {
 /* ------------------------------------------------------------------ atlas */
 
 // 512x512 atlas cells, [x, y, w, h] in pixels. Every garment/skin region lives in one cell so a
-// single material covers the whole body; the face gets the biggest cell because it must read
-// at ~6 px on the 360p target.
+// single material covers the whole body; the face gets a dedicated 256px cell — big stylised
+// features painted at 4x resolution read as a face at game distance instead of a mask.
 const CELLS = {
-  face: [0, 0, 128, 128],
-  skin: [128, 0, 64, 64],
-  hair: [192, 0, 128, 128],
-  shirt: [0, 128, 128, 128],
-  sleeve: [128, 128, 64, 128],
-  jeans: [192, 128, 128, 128],
-  skirt: [320, 128, 128, 64],
-  shoe: [0, 256, 64, 64],
-  cap: [64, 256, 64, 64],
-  glasses: [128, 256, 48, 32],
+  face: [0, 0, 256, 256],
+  hair: [256, 0, 256, 128],
+  skin: [256, 128, 64, 64],
+  shirt: [0, 256, 128, 128],
+  sleeve: [128, 256, 64, 128],
+  jeans: [192, 256, 128, 128],
+  skirt: [320, 256, 128, 64],
+  shoe: [0, 384, 64, 64],
+  cap: [64, 384, 64, 64],
+  glasses: [128, 384, 48, 32],
 };
 const ATLAS = 512;
 
@@ -72,65 +72,105 @@ const soft = (g, x, y, r, color) => {
 };
 
 // Painted face, shared by the diffuse and emissive atlases. Painted in 64x64 space and scaled
-// into the 128px face cell; `emis` lifts the base skin so sockets/brows/mouth self-illuminate.
+// into the 256px face cell (4x supersampled, so features stay crisp at game distance);
+// `emis` lifts the base skin so sockets/brows/mouth self-illuminate.
 function paintFace(g, x, y, w, h, skin, hollow, emis) {
   g.save();
   g.translate(x, y);
   g.scale(w / 64, h / 64);
   // Diffuse matches the skin cell exactly so the patch edge feathers into the skull instead
   // of reading as a mask; the emissive face stays low so features read via shading contrast.
-  const base = emis ? lumColor(skin, 0.24) : dim(skin, 0.9);
+  const base = g.createRadialGradient(32, 24, 4, 32, 33, 38);
+  if (emis) {
+    base.addColorStop(0, lumColor(skin, 0.30));
+    base.addColorStop(0.6, lumColor(skin, 0.22));
+    base.addColorStop(1, lumColor(skin, 0.16));
+  } else {
+    base.addColorStop(0, dim(skin, 1.06));
+    base.addColorStop(0.5, dim(skin, 0.9));
+    base.addColorStop(1, dim(skin, 0.76));
+  }
   g.fillStyle = base;
   g.fillRect(0, 0, 64, 64);
-  soft(g, 32, 15, 24, emis ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)');
-  soft(g, 17, 47, 14, 'rgba(120,60,40,0.13)');
-  soft(g, 47, 47, 14, 'rgba(120,60,40,0.13)');
+  soft(g, 20, 14, 22, emis ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)');
+  soft(g, 17, 50, 13, 'rgba(120,60,40,0.15)');
+  soft(g, 47, 50, 13, 'rgba(120,60,40,0.15)');
+  // Cheek warmth and under-eye bags give the face form before any feature is drawn.
+  if (!hollow) {
+    for (const ex of [16, 48]) {
+      soft(g, ex, 41, 9, 'rgba(214,130,110,0.12)');
+      soft(g, ex, 36.5, 8, 'rgba(70,42,38,0.16)');
+      soft(g, ex, 39.5, 7, 'rgba(70,42,38,0.10)');
+    }
+  }
   const rnd = lcg(hashStr(`face|${skin}|${hollow}|${emis}`));
   for (const ex of [16, 48]) {
     // Socket: a wide soft shadow with a darker core — the pair that reads as eyes at ~6 px.
-    soft(g, ex, 30, 13, 'rgba(30,15,10,0.38)');
+    soft(g, ex, 30, 14, 'rgba(30,15,10,0.40)');
     g.fillStyle = 'rgba(24,12,9,0.97)';
     g.beginPath();
-    g.ellipse(ex, 30, hollow ? 12 : 11, hollow ? 9.5 : 8.5, 0, 0, Math.PI * 2);
+    g.ellipse(ex, 30, hollow ? 12.5 : 11.5, hollow ? 10 : 9, 0, 0, Math.PI * 2);
     g.fill();
     if (hollow) {
       g.fillStyle = '#030203';
       g.beginPath();
-      g.ellipse(ex, 30.5, 8.5, 7.5, 0, 0, Math.PI * 2);
+      g.ellipse(ex, 30.5, 9, 8, 0, 0, Math.PI * 2);
+      g.fill();
+      // Faint cold glint so hollow eyes read as eyes, not holes.
+      g.fillStyle = emis ? 'rgba(190,205,235,0.20)' : 'rgba(190,205,235,0.35)';
+      g.beginPath();
+      g.ellipse(ex - 1, 29, 3.4, 2.6, 0, 0, Math.PI * 2);
       g.fill();
     } else {
       // White, dark iris and catchlight — the trio that survives downscaling.
-      g.fillStyle = emis ? '#7d766b' : '#efe8da';
+      g.fillStyle = emis ? '#8a8378' : '#efe8da';
       g.beginPath();
-      g.ellipse(ex, 30, 8.0, 6.6, 0, 0, Math.PI * 2);
+      g.ellipse(ex, 30, 8.6, 7.2, 0, 0, Math.PI * 2);
       g.fill();
       g.fillStyle = '#17120f';
       g.beginPath();
-      g.arc(ex, 31, 4.0, 0, Math.PI * 2);
+      g.arc(ex, 31, 4.4, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = emis ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.95)';
-      g.fillRect(ex - 2.4, 28.2, 2.6, 2.6);
-      g.strokeStyle = 'rgba(52,28,20,0.55)';
-      g.lineWidth = 1.5;
+      g.fillStyle = emis ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.95)';
+      g.fillRect(ex - 2.6, 28.0, 2.8, 2.8);
+      // Upper lid: thick dark stroke + lower lid hint so the eye is an opening, not a dot.
+      g.strokeStyle = 'rgba(52,28,20,0.6)';
+      g.lineWidth = 1.8;
       g.beginPath();
-      g.ellipse(ex, 31.5, 7.0, 4.6, 0, 0.15 * Math.PI, 0.85 * Math.PI);
+      g.ellipse(ex, 31.5, 7.6, 5.2, 0, 0.1 * Math.PI, 0.9 * Math.PI);
+      g.stroke();
+      g.strokeStyle = 'rgba(70,44,40,0.4)';
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.ellipse(ex, 31.8, 7.4, 5.0, 0, -0.1 * Math.PI, 0.25 * Math.PI);
       g.stroke();
     }
     // Brow: thicker and higher so it separates from the socket shadow.
     g.strokeStyle = 'rgba(16,11,8,0.97)';
-    g.lineWidth = 5.0;
+    g.lineWidth = 5.6;
+    g.lineCap = 'round';
     g.beginPath();
-    g.moveTo(ex - (ex < 32 ? 8 : -8), 18.5 + (rnd() - 0.5));
-    g.quadraticCurveTo(ex, 16.5 + (rnd() - 0.5), ex + (ex < 32 ? 8 : -8), 19 + (rnd() - 0.5));
+    g.moveTo(ex - (ex < 32 ? 9 : -9), 17.8 + (rnd() - 0.5));
+    g.quadraticCurveTo(ex, 15.4 + (rnd() - 0.5), ex + (ex < 32 ? 9 : -9), 18.6 + (rnd() - 0.5));
+    g.stroke();
+    // Brow underside shadow.
+    g.strokeStyle = 'rgba(60,38,36,0.35)';
+    g.lineWidth = 2.0;
+    g.beginPath();
+    g.moveTo(ex - (ex < 32 ? 8.4 : -8.4), 20.4);
+    g.quadraticCurveTo(ex, 18.6, ex + (ex < 32 ? 8.4 : -8.4), 20.8);
     g.stroke();
   }
-  // Nose: shadow gradient plus faint bridge lines so the nose reads front-on.
+  // Nose: shadow column down the centre, bridge highlight, nostril dots.
   const ng = g.createLinearGradient(29, 30, 35, 50);
-  ng.addColorStop(0, 'rgba(88,48,34,0.42)');
+  ng.addColorStop(0, 'rgba(88,48,34,0.45)');
+  ng.addColorStop(0.65, 'rgba(88,48,34,0.18)');
   ng.addColorStop(1, 'rgba(88,48,34,0)');
   g.fillStyle = ng;
   g.fillRect(28, 30, 8, 20);
-  g.strokeStyle = 'rgba(88,48,34,0.35)';
+  g.fillStyle = 'rgba(255,230,214,0.16)';
+  g.fillRect(30.4, 32, 1.6, 11);
+  g.strokeStyle = 'rgba(88,48,34,0.4)';
   g.lineWidth = 1.6;
   g.beginPath();
   g.moveTo(30.5, 33);
@@ -138,34 +178,70 @@ function paintFace(g, x, y, w, h, skin, hollow, emis) {
   g.moveTo(33.5, 33);
   g.lineTo(33.5, 41);
   g.stroke();
+  g.fillStyle = 'rgba(52,30,26,0.6)';
+  g.beginPath();
+  g.ellipse(30.6, 44.5, 1.7, 1.1, 0, 0, Math.PI * 2);
+  g.ellipse(33.4, 44.5, 1.7, 1.1, 0, 0, Math.PI * 2);
+  g.fill();
   soft(g, 32, 46, 5.5, emis ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.10)');
   if (hollow) {
     g.fillStyle = '#0a0505';
     g.beginPath();
-    g.ellipse(32, 51.5, 6.5, 6.5, 0, 0, Math.PI * 2);
+    g.ellipse(32, 52, 7, 6.8, 0, 0, Math.PI * 2);
     g.fill();
     g.strokeStyle = '#1c0a0a';
     g.lineWidth = 4.5;
     g.beginPath();
-    g.ellipse(32, 51.5, 6.5, 6.5, 0, 0, Math.PI * 2);
+    g.ellipse(32, 52, 7, 6.8, 0, 0, Math.PI * 2);
     g.stroke();
   } else {
-    // Lips: a filled rose-brown shape clearly darker than the skin around it.
-    g.fillStyle = 'rgba(122,44,36,0.85)';
+    // Lips: a filled rose-brown shape clearly darker than the skin around it, with a
+    // cupid's bow and a lit lower lip.
+    g.fillStyle = 'rgba(122,44,36,0.9)';
     g.beginPath();
-    g.moveTo(23, 49.5);
-    g.quadraticCurveTo(32, 46.5, 41, 49.5);
-    g.quadraticCurveTo(38, 55.5, 32, 55.5);
-    g.quadraticCurveTo(26, 55.5, 23, 49.5);
+    g.moveTo(22.5, 49);
+    g.quadraticCurveTo(27, 46.8, 32, 48.6);
+    g.quadraticCurveTo(37, 46.8, 41.5, 49);
+    g.quadraticCurveTo(39, 56.5, 32, 56.5);
+    g.quadraticCurveTo(25, 56.5, 22.5, 49);
     g.closePath();
+    g.fill();
+    g.fillStyle = 'rgba(255,200,192,0.32)';
+    g.beginPath();
+    g.ellipse(32, 53.4, 5.6, 1.8, 0, 0, Math.PI * 2);
     g.fill();
     g.strokeStyle = 'rgba(74,24,20,0.95)';
     g.lineWidth = 3.4;
     g.beginPath();
-    g.moveTo(24, 50);
-    g.quadraticCurveTo(32, 54.5, 40, 50);
+    g.moveTo(24, 50.5);
+    g.quadraticCurveTo(32, 55, 40, 50.5);
+    g.stroke();
+    // Mouth corners pull down slightly — the uneasy PS-horror read.
+    g.strokeStyle = 'rgba(74,24,20,0.8)';
+    g.lineWidth = 2.2;
+    g.beginPath();
+    g.moveTo(23.4, 50.8);
+    g.lineTo(21.8, 52.6);
+    g.moveTo(40.6, 50.8);
+    g.lineTo(42.2, 52.6);
     g.stroke();
   }
+  // Jaw/chin shadow so the face doesn't end in a hard edge, plus temple shading.
+  const jaw = g.createLinearGradient(0, 55, 0, 64);
+  jaw.addColorStop(0, 'rgba(70,44,40,0.25)');
+  jaw.addColorStop(1, 'rgba(70,44,40,0)');
+  g.fillStyle = jaw;
+  g.fillRect(0, 55, 64, 9);
+  const templeL = g.createLinearGradient(0, 0, 8, 0);
+  templeL.addColorStop(0, 'rgba(60,38,36,0.28)');
+  templeL.addColorStop(1, 'rgba(60,38,36,0)');
+  g.fillStyle = templeL;
+  g.fillRect(0, 0, 8, 64);
+  const templeR = g.createLinearGradient(64, 0, 56, 0);
+  templeR.addColorStop(0, 'rgba(60,38,36,0.28)');
+  templeR.addColorStop(1, 'rgba(60,38,36,0)');
+  g.fillStyle = templeR;
+  g.fillRect(56, 0, 8, 64);
   g.restore();
 }
 
@@ -502,6 +578,32 @@ function materialFor(o) {
     })));
   }
   return MAT_CACHE.get(key);
+}
+
+// Per-NPC head material: same atlas/look as the shared material but with a uFaceFill uniform
+// the NPC update loop drives from player proximity. The fill is diffuse-colour weighted and
+// view-frontal, so skin lifts while dark hair barely does — faces read without blowing out.
+function headMaterialFor(o) {
+  const { diffuse, emis } = atlasFor(o);
+  const ei = 0.3 + o.emissive * 0.55;
+  const mat = rim(lam({
+    map: diffuse, emissive: 0xffffff, emissiveMap: emis, emissiveIntensity: ei,
+    vertexColors: true, side: THREE.DoubleSide,
+  }));
+  const fill = { value: 0 };
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev(shader, renderer);
+    shader.uniforms.uFaceFill = fill;
+    shader.fragmentShader = 'uniform float uFaceFill;\n' + shader.fragmentShader.replace(
+      '#include <opaque_fragment>',
+      `float ff = uFaceFill * pow(saturate(dot(normalize(normal), normalize(vViewPosition))), 1.6);
+       outgoingLight += diffuseColor.rgb * ff * vec3(1.0, 0.85, 0.68) * 0.7;
+       #include <opaque_fragment>`,
+    );
+  };
+  mat.userData.faceFill = fill;
+  return mat;
 }
 
 const veilMat = (() => {
@@ -877,12 +979,12 @@ function headGeoFor(o, hairStyle) {
   }
   skull.translate(0, 0.005, -0.005);
   emitPrim(acc, skull, IDENT, { cell: skinCell, weight: W([BONE.head, 1]), colorFor: (x, y) => 0.87 - 0.07 * Math.max(0, -y / 0.1) });
-  // Nose wedge.
-  const nose = new THREE.ConeGeometry(0.012, 0.032, 4);
+  // Nose wedge: chunky enough to catch the key light as a real protrusion off the face patch.
+  const nose = new THREE.ConeGeometry(0.016, 0.042, 5);
   nose.rotateX(Math.PI / 2);
   nose.scale(1, 1, 0.7);
   nose.computeVertexNormals();
-  nose.translate(0, -0.006, 0.080);
+  nose.translate(0, -0.006, 0.082);
   emitPrim(acc, nose, IDENT, { cell: 'skin', weight: W([BONE.head, 1]), colorFor: () => 0.88 });
   // Ears.
   for (const s of [-1, 1]) {
@@ -895,7 +997,7 @@ function headGeoFor(o, hairStyle) {
   emitPrim(acc, neckStub, IDENT, { cell: 'skin', weight: W([BONE.neck, 0.7], [BONE.head, 0.3]), colorFor: () => 0.84 });
   // Painted face patch hugging the skull front — slightly larger and a touch prouder than
   // the (now flatter) skull so features keep their size at game distance.
-  const face = new THREE.SphereGeometry(1, 10, 8, Math.PI / 2 - 0.72, 1.44, Math.PI / 2 - 1.10, 2.05);
+  const face = new THREE.SphereGeometry(1, 14, 10, Math.PI / 2 - 0.72, 1.44, Math.PI / 2 - 1.10, 2.05);
   face.scale(0.0805 * bw, 0.0955 * bw, 0.0835 * bw);
   face.computeVertexNormals();
   face.translate(0, 0.005, -0.005);
@@ -1034,7 +1136,8 @@ export function makePerson(opts = {}) {
   body.add(mesh);
 
   const headBone = byName.head;
-  const headMesh = new THREE.Mesh(headGeo, mat);
+  const headMat = headMaterialFor(o);
+  const headMesh = new THREE.Mesh(headGeo, headMat);
   headMesh.name = 'head';
   headMesh.userData.noBatch = true;
   headMesh.position.set(0, 0.08, 0);
@@ -1085,7 +1188,7 @@ export function makePerson(opts = {}) {
       hipsX: byName.hips.position.x, hipsY: byName.hips.position.y,
     },
   };
-  return { root, legs: rig.legs, arms: rig.arms, head: headBone, rig };
+  return { root, legs: rig.legs, arms: rig.arms, head: headBone, rig, headMat };
 }
 
 // Veil: pale flared sheet in front of the face, authored in head-local space.
@@ -1112,6 +1215,7 @@ export class NPC {
     this.lookLift = 1.5;
     this.lookYaw = 0;
     this.lookPitch = 0;
+    this.faceFill = 0;
   }
 
   get pos() {
@@ -1143,7 +1247,7 @@ export class NPC {
     this.lookAt(player, 1.55);
   }
 
-  update(dt) {
+  update(dt, player) {
     const p = this.pos;
     if (this.path.length) {
       const [tx, tz] = this.path[0];
@@ -1217,5 +1321,18 @@ export class NPC {
     this.lookPitch += (wantPitch - this.lookPitch) * lk;
     rig.head.rotation.y = B.headY + this.lookYaw;
     rig.head.rotation.x = B.headX - this.lookPitch; // +x pitch tips the face down, so negate
+    // Face fill: NPCs within ~7 m of the player get a soft frontal lift on the head material
+    // so faces read at game distance. Eased, head-only, capped well below blowout range.
+    const fu = this.headMat?.userData.faceFill;
+    if (fu) {
+      let target = 0;
+      if (player) {
+        const pp = player.pos || player;
+        const dist = Math.hypot(pp.x - p.x, pp.z - p.z);
+        if (dist < 7) target = (1 - dist / 7) * 0.5;
+      }
+      this.faceFill += (target - this.faceFill) * Math.min(1, dt * 4);
+      fu.value = this.faceFill;
+    }
   }
 }
