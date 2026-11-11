@@ -107,8 +107,8 @@ export function buildWorld(scene) {
   const cortinas = ['#8d9298', '#6f8a7c', '#9a8f7c', '#7b8496'].flatMap((c) => [lam({ map: T.cortinaTex(c) }), lam({ map: T.cortinaTex(c, true) })]);
   const lampMat = glowMat({ color: 0xffd7a0 }, 0x1d1a16);
 
-  scene.add(new THREE.AmbientLight(0x3a4568, 1.3), new THREE.HemisphereLight(0x5a6490, 0x2a2420, 1.7),
-    new THREE.HemisphereLight(0x3a4570, 0x2a2018, 0.35));
+  scene.add(new THREE.AmbientLight(0x3a4568, 2.5), new THREE.HemisphereLight(0x5a6490, 0x2a2420, 2.95),
+    new THREE.HemisphereLight(0x3a4570, 0x2a2018, 0.55));
 
   // --- Storefront catalogue and one shared sign atlas ------------------------
   const defs = [];
@@ -159,7 +159,7 @@ export function buildWorld(scene) {
     plane(w, len, M.concrete, px, 0.01, mid, 0, -Math.PI / 2);
     box(w + 1.2, 0.35, len, M.roof, px, 4.6, mid, { collide: false });
     for (let z = NORTH_Z + 4; z <= SOUTH_Z - 4; z += 12) for (const s of [-1, 1]) box(0.35, 4.45, 0.35, M.pillar, px + s * (w / 2 + 0.4), 2.22, z);
-    for (let z = NORTH_Z + 8; z < SOUTH_Z; z += 26) {
+    for (let z = NORTH_Z + 8; z < SOUTH_Z; z += 20) {
       box(0.5, 0.08, 1.2, lampMat, px, 4.39, z, { collide: false, tile: 0 });
       refs.lamps.push(light(px, 4.1, z, 0xffbf73, 55, 30));
     }
@@ -169,12 +169,15 @@ export function buildWorld(scene) {
     });
   });
 
-  // Wall lamps over the andadores, so walking between pasillos is never pitch black.
-  NAVES.forEach(([north], i) => {
-    const front = ROWS[north], face = ROW_FACE[north];
-    for (const x of [-60, -30, 0, 30, 60]) {
-      box(0.6, 0.1, 0.9, lampMat, x, 4.2, front + face * 0.25, { collide: false, tile: 0 });
-      refs.lamps.push(light(x, 4.05, front + face * 0.9, 0xffcf8a, 48, 26));
+  // Wall lamps over BOTH faces of every andador — registered lights are pool candidates, so
+  // doubling them costs no real lights, just better nearest-8 coverage while walking lanes.
+  NAVES.forEach(([north, south]) => {
+    for (const row of [north, south]) {
+      const front = ROWS[row], face = ROW_FACE[row];
+      for (const x of [-60, -36, -12, 12, 36, 60]) {
+        box(0.6, 0.1, 0.9, lampMat, x, 4.2, front + face * 0.25, { collide: false, tile: 0 });
+        refs.lamps.push(light(x, 4.05, front + face * 0.9, 0xffcf8a, 56, 28));
+      }
     }
   });
 
@@ -356,11 +359,11 @@ export function buildWorld(scene) {
 
   // Mercury pole lamps over the andenes.
   const poleMat = glowMat({ color: 0xdfe8ff }, 0x1d1d22);
-  for (let s = 0; s <= 13; s += 2) {
+  for (let s = 0; s <= 13; s++) {
     for (const x of [-60, 60]) {
       box(0.2, 6, 0.2, M.metal, x, 3, streetZ(s));
       box(0.8, 0.15, 0.4, poleMat, x, 6, streetZ(s), { collide: false, tile: 0 });
-      refs.lamps.push(light(x, 5.8, streetZ(s), 0xd8e4ff, 45, 26));
+      refs.lamps.push(light(x, 5.8, streetZ(s), 0xd8e4ff, 52, 28));
     }
   }
 
@@ -491,6 +494,13 @@ export function buildWorld(scene) {
   b.addBounds(-46, -6, NORTH_Z - 14, NORTH_Z - 13.6);
   b.addBounds(-46.4, -46, NORTH_Z - 14, NORTH_Z);
   b.addBounds(-6, -5.6, NORTH_Z - 14, NORTH_Z);
+
+  // Spawn-corridor practicals: a pair of warm bulbs just inside the gate so the first
+  // andador reads on arrival instead of dropping into black.
+  for (const x of [-36, -16]) {
+    box(0.5, 0.1, 0.9, lampMat, x, 3.9, -12, { collide: false, tile: 0 });
+    refs.lamps.push(light(x, 3.7, -12, 0xffbf73, 40, 24));
+  }
 
   // Emergency lights stay on through the blackout.
   light(-26, 4, NORTH_Z + 2, 0xff3020, 6, 14, false);

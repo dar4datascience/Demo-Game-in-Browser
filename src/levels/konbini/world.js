@@ -98,6 +98,17 @@ export function buildWorld(scene) {
   box(0.35, 0.06, 1.4, panelMat, 5.5, H - 0.03, -8, { collide: false, tile: 0 });
   const staffLight = light(5.5, 2.9, -8, 0xfff2dd, 9, 8);
 
+  // Register practicals: a warm pendant over the counter so the till and the customer's hands
+  // show form, and a cool fill from the storefront side that models faces without flattening.
+  box(0.02, 0.5, 0.02, mats.dark, -4.7, H - 0.3, 2.8, { collide: false });
+  const pendant = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.18, 8, 1, true),
+    lam({ color: 0x2a2c30, side: THREE.DoubleSide }));
+  pendant.position.set(-4.7, 2.35, 2.8);
+  scene.add(pendant);
+  box(0.09, 0.09, 0.09, glowMat({ color: 0xffc27a }, 0x33200f), -4.7, 2.24, 2.8, { collide: false, tile: 0 });
+  light(-4.7, 2.1, 2.7, 0xffb877, 8, 7);
+  light(-5.6, 2.6, 4.7, 0xaec8ff, 10, 12);
+
   // Volumetric hints: the warm spill of the street lamp onto the lot and a soft shaft under
   // the centre ceiling panels. Additive, no depth write — two draw calls for the whole store.
   const shaft = (x, y, z, h, r, color, opacity = 0.04) => {
