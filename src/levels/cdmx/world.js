@@ -28,10 +28,11 @@ export function buildWorld(scene) {
   const M = {
     stone: lam({ map: T.plasterTex('#8a86a0', '#4a4660'), vertexColors: true }),
     plaster: lam({ map: T.plasterTex('#e8e2d4', '#b8b0a0'), vertexColors: true }),
-    gold: phong({ color: 0xd8901c, specular: 0xffd890, shininess: 60, emissive: 0x140a00, vertexColors: true }),
-    goldHi: phong({ color: 0xf2b53c, specular: 0xfff0b8, shininess: 90, emissive: 0x2a1604 }),
-    goldDark: lam({ color: 0x6a3c0c, vertexColors: true }),
+    gold: phong({ color: 0xffc23a, specular: 0xfff4c0, shininess: 48, emissive: 0x6a3200 }),
+    goldHi: phong({ color: 0xffe08a, specular: 0xffffff, shininess: 60, emissive: 0x9a5a08, side: THREE.DoubleSide }),
+    goldDark: lam({ color: 0x8a4c10, emissive: 0x3a1a00 }),
     metal: lam({ map: T.metalTex(), vertexColors: true }),
+    parapet: lam({ color: 0x9a94b8, vertexColors: true }),
     bark: lam({ color: 0x241c22, vertexColors: true }),
     leaf: lam({ color: 0x14200f, vertexColors: true }),
     jacaranda: lam({ color: 0x9a5ad0, emissive: 0x2a1060, vertexColors: true }),
@@ -44,7 +45,7 @@ export function buildWorld(scene) {
     asphalt: phong({ map: T.asphaltTex(), shininess: 12, specular: 0x27324e, vertexColors: true }),
     path: phong({ map: T.pathTex(), shininess: 30, specular: 0x8a9aff, vertexColors: true }),
     parkGround: lam({ map: T.parkGroundTex(), vertexColors: true }),
-    orange: lam({ color: 0xd95a14, vertexColors: true }),
+    orange: lam({ color: 0xf06018, emissive: 0x3a1000, vertexColors: true }),
     trainDark: lam({ color: 0x241a16, vertexColors: true }),
     taxiGreen: lam({ color: 0x2e7d4a, vertexColors: true }),
     taxiWhite: lam({ color: 0xe8e6da, vertexColors: true }),
@@ -58,14 +59,14 @@ export function buildWorld(scene) {
     libFrame: lam({ color: 0x23262c, vertexColors: true }),
     libPillar: basic({ map: T.libPillarTex() }),
     shelf: basic({ map: T.libShelfTex() }),
-    book: basic({ map: T.bookTex() }),
+    book: basic({ map: T.bookTex(), fog: false }),
     bookBack: lam({ color: 0xd8b820 }),
   };
   M.stationFloor = M.concrete;
   M.sidewalk = M.concrete;   // sidewalk shares the concrete texture — one draw call
 
-  scene.add(new THREE.AmbientLight(0x5a4f80, 1.9), new THREE.HemisphereLight(0x7a6aa8, 0x241c30, 2.2),
-    new THREE.HemisphereLight(0x3a4570, 0x2a2018, 0.35));
+  scene.add(new THREE.AmbientLight(0x4a4068, 1.35), new THREE.HemisphereLight(0x6a5a98, 0x1e1830, 1.7),
+    new THREE.HemisphereLight(0x364070, 0x241c14, 0.3));
   // Set here as well as in main.js: the headless harness has no main.js and shots swap fog per cut.
   scene.fog = new THREE.Fog(0x221b3d, 10, 140);
 
@@ -115,8 +116,9 @@ export function buildWorld(scene) {
     update(dt) {
       t += dt;
       b.updateLights(shotCam.position);
-      // Slow cloud drift.
+      // Slow cloud drift; the dome rides with the camera so every backlot island sits at its centre.
       refs.sky.dome.rotation.y = t * 0.004;
+      refs.sky.dome.position.copy(shotCam.position);
       // Taxi crossing during the abarrotes shot.
       const tx = refs.taxi?.taxi;
       if (tx) {
@@ -136,7 +138,7 @@ export function buildWorld(scene) {
       // The pickup book floats, rotates and bobs inside its purple bubble.
       const book = refs.library?.book;
       if (book) {
-        book.rotation.y = t * 0.5;
+        book.rotation.y = Math.sin(t * 0.7) * 0.18;
         book.position.y = book.userData.baseY + Math.sin(t * 1.35) * 0.12;
       }
       // Tower beacon + the park's distant one blink out of phase.
@@ -181,7 +183,7 @@ function makeStars(parent) {
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: 0.5, vertexColors: true, transparent: true, opacity: 0.9,
+    size: 0.3, vertexColors: true, transparent: true, opacity: 0.9,
     sizeAttenuation: true, depthWrite: false, fog: false,
   }));
   pts.userData.noBatch = true;

@@ -492,7 +492,7 @@ export function dressCity(b) {
 
   // Power poles + sagging spans along the abarrotes street for depth.
   const poles = [];
-  for (let x = 28; x <= 54; x += 13) poles.push(pole(b, x, 312.5, 6.4));
+  for (const x of [30.5, 51.5]) poles.push(pole(b, x, 302.9, 6.4));
   for (let i = 0; i + 1 < poles.length; i++) {
     powerSpan(b, poles[i], poles[i + 1]);
     powerSpan(b, { x: poles[i].x, y: poles[i].y - 0.35, z: poles[i].z }, { x: poles[i + 1].x, y: poles[i + 1].y - 0.35, z: poles[i + 1].z }, 0.9);

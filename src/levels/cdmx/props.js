@@ -246,7 +246,8 @@ export function angelStatue(b, M) {
   const wing = (s) => {
     const W = new THREE.Group();
     W.position.set(s * 0.34, 5.9, -0.12);
-    W.rotation.set(-0.12, s * -0.28, s * 0.62);   // up, back, out
+    W.rotation.set(-0.12, s * -0.28, s * 0.95);   // up, back, out
+    W.scale.setScalar(1.55);
     fig.add(W);
     const WP = (geo, mat, x, y, z, opts = {}) => add(b, geo, mat, x, y, z, { ...opts, parent: W });
     // Two arm segments per wing.
@@ -337,7 +338,7 @@ export function angelTowers(b, M) {
   // Mid tower with thin horizontal stripes.
   tower(14, -56, 13, 13, 50, T.stripeTowerTex());
   // Left near tower — warm amber grid.
-  tower(-20, -40, 15, 15, 60, T.glassTowerTex('#ffcf9a', 8, 20));
+  tower(-30, -44, 15, 15, 60, T.glassTowerTex('#ffcf9a', 8, 20));
   // Smaller grey blocks scattered behind.
   const darkGlass = basic({ map: T.glassTowerTex('#5a7ab0', 6, 14) });
   for (const [x, z, w, h] of [[-38, -62, 14, 34], [-8, -72, 16, 42], [40, -66, 15, 38], [2, -80, 18, 30], [-52, -40, 12, 28]]) {
@@ -434,14 +435,11 @@ export function metroSet(b, M) {
   const floorGeo = new THREE.PlaneGeometry(220, deckW - 0.6);
   floorGeo.rotateX(-PI / 2);
   P(floorGeo, M.stationFloor, -20, 0.02, 2.2);
-  // Yellow safety line + tactile strip at the platform edge.
-  P(new THREE.BoxGeometry(220, 0.05, 0.35), BASIC.curbLine, -20, 0.04, 0.55);
-  P(new THREE.BoxGeometry(220, 0.04, 0.5), M.dark, -20, 0.03, 0.95);
   // Parapet wall between platform and track — the foreground element of the shot.
-  P(new THREE.BoxGeometry(220, 1.15, 0.28), M.concrete, -20, 0.58, 0.32);
+  P(new THREE.BoxGeometry(220, 1.35, 0.28), M.parapet, -20, 0.68, 0.32);
   // Panel seams on the parapet face.
   for (let x = -124; x < 92; x += 6) {
-    P(new THREE.BoxGeometry(0.08, 1.1, 0.3), M.dark, x, 0.58, 0.32);
+    P(new THREE.BoxGeometry(0.08, 1.3, 0.3), M.dark, x, 0.68, 0.32);
   }
   // Viaduct side girder under the platform edge (the "lower deck" glimpse).
   P(new THREE.BoxGeometry(220, 1.6, 0.5), M.concrete, -20, -1.6, -0.4);
@@ -452,9 +450,9 @@ export function metroSet(b, M) {
   }
   // Train: four cars receding toward -x (screen left), dropped onto the track bed.
   const cars = new THREE.Group();
-  cars.position.y = -0.92;
+  cars.position.set(0, -0.4, -1.1);
   G.add(cars);
-  for (const cx of [14, -5, -24, -43]) metroCar(b, M, cars, cx);
+  for (const cx of [5, -16, -37, -58]) metroCar(b, M, cars, cx);
   // A second track hint far side + dark tunnel mouth at the far end.
   P(new THREE.BoxGeometry(220, 0.4, 2.6), M.concrete, -20, -1.3, -6.4);
   P(new THREE.BoxGeometry(14, 5.5, 0.8), M.dark, -128, 1.6, -2.5);
@@ -469,7 +467,9 @@ export function metroSet(b, M) {
   // Lights: violet platform wash + warm spill on the train side from camera-right.
   const wc = world(G, 0, 0, 0);
   b.light(wc[0] + 6, 4.5, wc[2] + 5, 0x8a76ff, 22, 34);
+  b.light(wc[0] + 9, 2.2, wc[2] + 4, 0xb09aff, 34, 22);
   b.light(wc[0] - 6, 3.4, wc[2] - 6, 0xffb066, 20, 30);
+  b.light(wc[0] + 9, 2.4, wc[2] - 3.5, 0xffc080, 22, 22);
   b.light(wc[0] + 30, 3.0, wc[2] + 4, 0xffd9a0, 14, 40);
   lightCone(b, wc[0] - 6, 3.2, wc[2] - 5, 0xffb066, 4, 2.2);
   return {};
@@ -522,10 +522,10 @@ export function taxi(b, M) {
   G.userData.on = false;
   G.userData.k = 0;
   G.userData.dur = 2.8;
-  G.userData.from = 10;
-  G.userData.to = -10;
+  G.userData.from = 16;
+  G.userData.to = -16;
   G.userData.baseX = 40;
-  G.userData.baseZ = 304;
+  G.userData.baseZ = 307.5;
   G.rotation.y = Math.PI + 0.18;
   G.position.x = G.userData.baseX + G.userData.from;
   return { taxi: G };
@@ -538,12 +538,12 @@ export function abarrotes(b, M) {
   const front = 0; // building front face at local z=0, faces +z toward the street
 
   // --- White one-storey block. ---
-  B(11, 4.6, 6, M.plaster, 0, 2.3, -3);
-  B(11.4, 0.5, 6.4, M.plaster, 0, 4.85, -3);          // cornice
+  B(11, 5.4, 6, M.plaster, 0, 2.7, -3);
+  B(11.4, 0.5, 6.4, M.plaster, 0, 5.65, -3);          // cornice
   B(11.2, 0.9, 0.4, M.stone, 0, 0.45, 0.1);           // plinth band
   // Painted lettering band on the white wall.
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(9.4, 1.35), basic({ map: T.shopFrontTex() }));
-  sign.position.set(0, 3.55, front + 0.02);
+  sign.position.set(0, 4.45, front + 0.02);
   G.add(sign);
   // Blue awning: sloped striped plane + fascia with 'TIENDA DE ABARROTES'.
   const awn = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 1.7), lam({ map: T.awningTex('#1d5aa8', '#e8ddc4'), side: THREE.DoubleSide }));
@@ -576,15 +576,15 @@ export function abarrotes(b, M) {
   B(3.4, 1.9, 0.24, M.blue, 4.3, 3.15, front + 0.06);
   signPlane(b, 'NÉCTAR', '#1d5aa8', '#ffffff', 2.6, 0.7, 4.3, 3.15, front + 0.2, { parent: G, collide: false });
   // Left: red/orange payphone on a post with a lit screen.
-  cyl(b, 0.06, 0.08, 2.6, 6, M.metal, -4.9, 1.3, 0.8, { parent: G });
-  B(0.62, 1.5, 0.5, M.red, -4.9, 1.35, 0.8, { parent: G });
-  B(0.4, 0.9, 0.06, M.dark, -4.9, 1.5, 1.07, { parent: G });
+  cyl(b, 0.06, 0.08, 2.6, 6, M.metal, -4.2, 1.3, 0.8, { parent: G });
+  B(0.62, 1.5, 0.5, M.red, -4.2, 1.35, 0.8, { parent: G });
+  B(0.4, 0.9, 0.06, M.dark, -4.2, 1.5, 1.07, { parent: G });
   const payScr = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.3), BASIC.glowWarm);
-  payScr.position.set(-4.9, 1.62, 1.11);
+  payScr.position.set(-4.2, 1.62, 1.11);
   G.add(payScr);
-  signPlane(b, 'TEL', '#c23a10', '#ffe6b0', 0.5, 0.24, -4.9, 2.15, 1.06, { parent: G, collide: false });
+  signPlane(b, 'TEL', '#c23a10', '#ffe6b0', 0.5, 0.24, -4.2, 2.15, 1.06, { parent: G, collide: false });
   // Narrow dark side wall at the far left.
-  B(0.8, 4.6, 5.5, M.dark, -5.9, 2.3, -2.8);
+  B(0.8, 5.4, 5.5, M.dark, -5.9, 2.7, -2.8);
 
   // --- Street: sidewalk, red curb, asphalt with a yellow edge line. ---
   G.add(flat(20, 3.4, M.sidewalk, 0, 0.03, 1.9));
@@ -593,20 +593,17 @@ export function abarrotes(b, M) {
   for (let x = -9.5; x < 10; x += 2.4) {
     G.add(flat(1.2, 0.14, BASIC.curbLine, x, 0.035, 6.8));
   }
-  // A couple of parked cars and clutter along the curb.
-  parkedCar(b, 40 - 7.5, 307.5, PI, 0x3a2a4a);
-  parkedCar(b, 40 + 8.2, 307.8, PI + 0.06, 0x24404a);
+  // Clutter along the curb.
   putClutter(b, M, G);
 
-  // Blocks behind the shop for depth.
-  building(b, { x: 40 - 8.5, z: 288, w: 9, d: 8, h: 13, ry: 0, seed: 'abL', shop: { kind: 'shutter', name: 'COPPELIA' }, balconies: true });
-  building(b, { x: 40 + 9, z: 289, w: 10, d: 9, h: 17, ry: 0, seed: 'abR', shop: { kind: 'open', name: 'REFACIL' }, balconies: true });
-  building(b, { x: 40 + 0.5, z: 284, w: 12, d: 10, h: 24, ry: 0, seed: 'abB', shop: null, balconies: false, roof: true });
+  // A leafy street tree on the corner, canopy overlapping the shop's right edge.
+  darkTree(b, M, G, 4.6, 1.5, 1.25);
 
   // Lights: warm shop interior + spill, cool street fill.
   b.light(40 - 0.4, 2.6, 300 - 1.0, 0xffc78a, 22, 16);
-  b.light(40 - 4.9, 2.6, 300 + 2.5, 0xffb066, 12, 12);
+  b.light(40 - 4.2, 2.6, 300 + 2.5, 0xffb066, 12, 12);
   b.light(40 + 2, 4.5, 300 + 6, 0x8a76ff, 14, 22);
+  b.light(40, 4.2, 300 + 4.5, 0xfff0dc, 16, 12);
   lightCone(b, 40 - 0.4, 4.6, 300 + 2.5, 0xffb066, 4.5, 2.4);
   return {};
 }
@@ -694,9 +691,41 @@ function distantTorre(b, M, G, x, z, h = 30) {
   return { beacon };
 }
 
+// Leaf/blossom clump texture: many small soft dots with alpha, tinted per material.
+const clumpTex = (cols, key) => T.canvasTexture(128, 128, (g, w, h) => {
+  let seed = 0;
+  for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const r = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 520; i++) {
+    const a = r() * PI * 2, d = Math.sqrt(r()) * w * 0.46;
+    const x = w / 2 + Math.cos(a) * d, y = h / 2 + Math.sin(a) * d * 0.9;
+    g.fillStyle = cols[Math.floor(r() * cols.length)];
+    g.beginPath();
+    g.ellipse(x, y, 2 + r() * 4, 1.5 + r() * 3, r() * PI, 0, PI * 2);
+    g.fill();
+  }
+});
+const clumpMat = (cols, key) => lam({ map: clumpTex(cols, key), alphaTest: 0.5, side: THREE.DoubleSide });
+const FOLIAGE = {};
+const foliageMat = (kind) => (FOLIAGE[kind] ??= kind === 'jacaranda'
+  ? clumpMat(['#b47cf0', '#9a5ad0', '#d4a8ff', '#7a3ab8', '#c890ff'], 'jac')
+  : clumpMat(['#16241a', '#1e3022', '#0e1810', '#2a3a26'], 'leaf'));
+
+// A soft crown of crossed alpha cards around a centre: reads as foliage, not polygons.
+function crown(b, G, x, y, z, r, mat, n = 22) {
+  let seed = Math.floor(x * 73 + z * 31 + y * 7) >>> 0;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * PI * 2, d = Math.sqrt(rnd()) * r * 0.85;
+    const s = r * (0.7 + rnd() * 0.5);
+    add(b, new THREE.PlaneGeometry(s * 1.4, s * 1.1), mat,
+      x + Math.cos(a) * d, y + (rnd() - 0.5) * r * 0.9, z + Math.sin(a) * d,
+      { parent: G, ry: rnd() * PI, rx: (rnd() - 0.5) * 0.8, rz: (rnd() - 0.5) * 0.6 });
+  }
+}
+
 // A dark broadleaf tree: trunk, branch stubs and clustered near-black foliage blobs.
 function darkTree(b, M, G, x, z, s = 1, leafMat = null) {
-  const lm = leafMat ?? M.leaf;
   cyl(b, 0.28 * s, 0.55 * s, 5.2 * s, 6, M.bark, x, 2.6 * s, z, { parent: G });
   for (const [dx, dz, ry, rz, len] of [
     [1.2, 0.4, 0.5, 0.8, 2.6], [-1.1, -0.3, 2.4, -0.7, 2.4], [0.3, -1.2, 4.0, 0.9, 2.2],
@@ -709,8 +738,7 @@ function darkTree(b, M, G, x, z, s = 1, leafMat = null) {
     [0, 5.6, 0, 1.9], [-1.3, 5.1, 0.4, 1.5], [1.4, 5.3, -0.3, 1.6], [0.2, 6.4, 0.5, 1.5],
     [-0.8, 4.6, -0.9, 1.3], [0.9, 4.7, 0.9, 1.4], [0, 4.4, -1.2, 1.2],
   ]) {
-    const blob = add(b, new THREE.IcosahedronGeometry(r * s, 0), lm, x + dx * s, dy * s, z + dz * s, { parent: G });
-    blob.scale.set(1.25, 0.8, 1.1);
+    crown(b, G, x + dx * s, dy * s, z + dz * s, r * s * 1.15, leafMat ?? foliageMat('leaf'), 14);
   }
 }
 
@@ -739,8 +767,8 @@ export function park(b, M) {
     [-2.6, 6.4, -0.6, 1.5, 1], [2.7, 6.5, 0.7, 1.6, 0], [0.6, 5.2, -1.6, 1.5, 2],
     [-0.6, 5.4, 1.7, 1.5, 1],
   ]) {
-    const blob = add(b, new THREE.IcosahedronGeometry(r, 0), bloomMats[mi], jx + dx, dy, jz + dz, { parent: G });
-    blob.scale.set(1.35, 0.78, 1.15);
+    if (mi === 0) add(b, new THREE.IcosahedronGeometry(r * 0.55, 1), bloomMats[2], jx + dx, dy, jz + dz, { parent: G });
+    crown(b, G, jx + dx, dy, jz + dz, r * 0.95, foliageMat('jacaranda'), 24);
   }
 
   // Dark silhouette trees: one framing the left edge, one canopy over the right top.
@@ -753,10 +781,10 @@ export function park(b, M) {
   const dt = distantTorre(b, M, G, -24, -16, 30);
 
   // Street lamps with warm pools.
-  const lamp1 = parkLamp(b, M, G, -11, -9);
+  const lamp1 = parkLamp(b, M, G, -8, -9);
   const lamp2 = parkLamp(b, M, G, -4, -12);
   // Warm pools on the path under each lamp.
-  queueDecal(b, 0xffb066, G.position.x - 11, 0.06, G.position.z - 9, 7, 5, 0.2);
+  queueDecal(b, 0xffb066, G.position.x - 8, 0.06, G.position.z - 9, 7, 5, 0.2);
   queueDecal(b, 0xffb066, G.position.x - 4, 0.06, G.position.z - 12, 6, 5, 0.18);
 
   // Benches: dark iron pair foreground-left, teal-blue one right with a seated silhouette.
@@ -783,49 +811,50 @@ export function biblioteca(b, M) {
   const P = (geo, mat, x, y, z, opts = {}) => add(b, geo, mat, x, y, z, { ...opts, parent: G });
   const B = (w, h, d, mat, x, y, z, opts = {}) => P(new THREE.BoxGeometry(w, h, d), mat, x, y, z, opts);
 
-  // Mosaic block: dark slab + the big mural plane on the front face.
-  B(46, 20, 4.5, M.dark, 0, 10, -2.5);
-  const mural = new THREE.Mesh(new THREE.PlaneGeometry(45.4, 19.4), basic({ map: T.bibliotecaMuralTex() }));
+  // Mosaic block: near-square tall slab + the big mural plane on the front face.
+  // (The reference frames it as x0–0.83 × y0.27–0.75 — a ~20 m square reads right in portrait.)
+  B(21, 20, 4.5, M.dark, 0, 10, -2.5);
+  const mural = new THREE.Mesh(new THREE.PlaneGeometry(20.4, 19.4), basic({ map: T.bibliotecaMuralTex() }));
   mural.position.set(0, 10.4, -0.22);
   G.add(mural);
   // Smaller box on top-left with its own mosaic pattern.
-  B(15, 4.2, 4.5, M.dark, -14.5, 22.1, -2.5);
-  const mural2 = new THREE.Mesh(new THREE.PlaneGeometry(14.4, 3.6), basic({ map: T.muralTex('bib-top') }));
-  mural2.position.set(-14.5, 22.1, -0.22);
+  B(10, 4.2, 4.5, M.dark, -5.5, 22.1, -2.5);
+  const mural2 = new THREE.Mesh(new THREE.PlaneGeometry(9.4, 3.6), basic({ map: T.muralTex('bib-top') }));
+  mural2.position.set(-5.5, 22.1, -0.22);
   G.add(mural2);
   // Cantilevered dark ledge partway down, then the glass ground floor.
-  B(46.6, 0.9, 5.2, M.dark, 0, 6.4, -2.3);
+  B(21.6, 0.9, 5.2, M.dark, 0, 6.4, -2.3);
   // Glass ground floor: lit interior grid behind a faint glass plane.
-  const gf = new THREE.Mesh(new THREE.PlaneGeometry(44, 5.6), basic({ map: T.facadeTex(11, 4, '#ffcf9a') }));
+  const gf = new THREE.Mesh(new THREE.PlaneGeometry(20, 5.6), basic({ map: T.facadeTex(6, 4, '#ffcf9a') }));
   gf.position.set(0, 2.9, -0.18);
   G.add(gf);
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(44, 5.6), BASIC.glass);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(20, 5.6), BASIC.glass);
   glass.position.set(0, 2.9, -0.05);
   G.add(glass);
   // Warm interior wash between the lit-window grid and the glass skin.
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(44, 5.6), basic({ color: 0xffc98a, transparent: true, opacity: 0.2, depthWrite: false }));
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(20, 5.6), basic({ color: 0xffc98a, transparent: true, opacity: 0.2, depthWrite: false }));
   glow.position.set(0, 2.9, -0.12);
   G.add(glow);
-  for (let i = 0; i < 6; i++) {
-    B(0.8, 5.4, 0.8, M.dark, -18 + i * 7.2, 2.7, -1.2, { collide: false });
+  for (let i = 0; i < 4; i++) {
+    B(0.8, 5.4, 0.8, M.dark, -7.5 + i * 5, 2.7, -1.2, { collide: false });
   }
   // Pilotis: dark columns in front of the glass.
-  for (let i = 0; i < 7; i++) {
-    cyl(b, 0.42, 0.5, 6.0, 8, M.stone, -19.8 + i * 6.6, 3.0, 1.6, { parent: G });
+  for (let i = 0; i < 4; i++) {
+    cyl(b, 0.42, 0.5, 6.0, 8, M.stone, -7.5 + i * 5, 3.0, 1.6, { parent: G });
   }
   // Plaza ground + a couple of lamps and planters.
   G.add(flat(70, 40, M.concrete, 0, 0.01, 8));
-  for (const [lx, lz] of [[-20, 6], [20, 6], [-26, 12], [26, 12]]) {
+  for (const [lx, lz] of [[-9, 6], [9, 6], [-13, 12], [13, 12]]) {
     cyl(b, 0.08, 0.13, 4.6, 6, M.metal, lx, 2.3, lz, { parent: G });
     add(b, new THREE.SphereGeometry(0.26, 8, 6), BASIC.glowWarm, lx, 4.75, lz, { parent: G, collide: false });
     b.light(G.position.x + lx, 4.5, G.position.z + lz, 0xffb066, 14, 18);
   }
   // Uplights washing the mural from below — the reference's hot base.
-  b.light(G.position.x - 12, 1.4, G.position.z + 5, 0xffa050, 26, 30);
-  b.light(G.position.x + 12, 1.4, G.position.z + 5, 0xffa050, 26, 30);
-  b.light(G.position.x, 1.2, G.position.z + 8, 0xffc080, 20, 26);
-  lightCone(b, G.position.x - 12, 1.2, G.position.z + 5, 0xffa050, 5, 2.4);
-  lightCone(b, G.position.x + 12, 1.2, G.position.z + 5, 0xffa050, 5, 2.4);
+  b.light(G.position.x - 6, 1.4, G.position.z + 5, 0xffa050, 30, 30);
+  b.light(G.position.x + 6, 1.4, G.position.z + 5, 0xffa050, 30, 30);
+  b.light(G.position.x, 1.2, G.position.z + 8, 0xffc080, 24, 26);
+  lightCone(b, G.position.x - 6, 1.2, G.position.z + 5, 0xffa050, 5, 2.4);
+  lightCone(b, G.position.x + 6, 1.2, G.position.z + 5, 0xffa050, 5, 2.4);
   return {};
 }
 
@@ -866,10 +895,10 @@ export function library(b, M) {
     face.rotation.y = -PI / 2;
     G.add(face);
   }
-  // '920' concrete pillar, left of centre in frame.
-  B(1.7, 7.6, 1.7, M.libPillar, -4.6, 3.8, -0.5);
+  // '920' concrete pillar, left edge of frame — close to camera so it reads foreground.
+  B(1.7, 7.6, 1.7, M.libPillar, -4.2, 3.8, -1.2);
   // Small red label plate at its base (geometry, cheap).
-  B(1.0, 0.4, 0.08, M.red, -4.6, 1.1, 0.42, { collide: false });
+  B(1.0, 0.4, 0.08, M.red, -2.4, 1.1, 0.72, { collide: false });
   // Mezzanine gallery on the left with railings.
   B(5.5, 0.35, 3.2, M.libFrame, -6.8, 4.1, -4.5);
   for (let i = 0; i < 6; i++) {
@@ -893,39 +922,37 @@ export function library(b, M) {
   bookG.userData.baseY = 1.85;
   bookG.position.set(0.6, 1.85, -0.4);
   G.add(bookG);
-  const cover = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.62), M.book);
+  const cover = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.01), M.book);
   cover.position.z = 0.035;
   bookG.add(cover);
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.62), M.bookBack);
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.01), M.bookBack);
   back.position.z = -0.035;
   back.rotation.y = PI;
   bookG.add(back);
   // Page block + cover boards.
-  const pages = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.56, 0.05), lam({ color: 0xe8e2d2 }));
+  const pages = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.95, 0.05), lam({ color: 0xe8e2d2 }));
   bookG.add(pages);
   for (const s of [-1, 1]) {
-    const board = new THREE.Mesh(new THREE.BoxGeometry(0.47, 0.63, 0.012), M.bookBack);
-    board.position.set(s * 0.235, 0, 0);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1.02, 0.012), M.bookBack);
+    board.position.set(s * 0.75, 0, 0);
     board.rotation.y = PI / 2;
     bookG.add(board);
   }
-  const top = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.012, 0.05), lam({ color: 0xf2ecdc }));
-  top.position.y = 0.285;
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.012, 0.05), lam({ color: 0xf2ecdc }));
+  top.position.y = 0.48;
   bookG.add(top);
   // Purple bubble: translucent shell + bright equator ring + inner dark core.
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 12),
-    basic({ color: 0x6a40ff, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.DoubleSide }));
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(1.0, 20, 14),
+    basic({ color: 0x7a50ff, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
   bookG.add(shell);
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.62, 12, 10),
-    basic({ color: 0x1a0a4a, transparent: true, opacity: 0.3, depthWrite: false }));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 12),
+    basic({ color: 0x14083a, transparent: true, opacity: 0.35, depthWrite: false }));
   bookG.add(core);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.025, 6, 32),
-    basic({ color: 0x9a6aff }));
-  ring.rotation.x = PI / 2;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.05, 6, 40),
+    basic({ color: 0x8a5aff }));
   bookG.add(ring);
-  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.02, 6, 32),
-    basic({ color: 0x6a40ff }));
-  ring2.rotation.y = PI / 2;
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.96, 0.03, 6, 40),
+    basic({ color: 0x5a34e0, transparent: true, opacity: 0.6 }));
   bookG.add(ring2);
   // Violet light pool on the floor below.
   queueDecal(b, 0x7a4aff, G.position.x + 0.6, 0.05, G.position.z - 0.4, 4.2, 4.2, 0.3);
@@ -948,35 +975,34 @@ export function torre(b, M) {
   const B = (w, h, d, mat, x, y, z, opts = {}) => P(new THREE.BoxGeometry(w, h, d), mat, x, y, z, opts);
   const shaftMat = basic({ map: T.torreFacadeTex() });
 
-  // Stepped shaft: three tiers sharing the window-stripe texture.
-  const tiers = [
-    [26, 40, 0], [21, 30, 40], [16, 26, 70],
-  ];
-  for (const [w, h, y] of tiers) {
+  // Slim shaft with the window-stripe texture, then a narrower upper block and the crown.
+  const shaft = (w, h, y) => {
     const g = new THREE.BoxGeometry(w, h, w);
     const uv = g.attributes.uv;
-    const vScale = h / 96; // keep floors ~3.7m regardless of tier height
+    const vScale = h / 96; // keep floors ~3.7m regardless of block height
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * vScale);
     P(g, shaftMat, 0, y + h / 2, 0);
-    // Setback cap in dark metal.
-    B(w + 0.6, 0.8, w + 0.6, M.metal, 0, y + h + 0.4, 0, { collide: false });
-  }
-  // Crown: terrace level + glass penthouse with warm/teal windows on every face.
-  B(14, 3.5, 14, M.metal, 0, 98.2, 0);
+  };
+  shaft(26, 90, 0);
+  B(26.8, 0.8, 26.8, M.metal, 0, 90.4, 0, { collide: false });
+  shaft(22, 6, 90.8);
+  B(20, 1.6, 20, M.metal, 0, 97.6, 0);
   const pentMat = basic({ map: T.glassTowerTex('#ffd88a', 6, 3) });
-  const pentGeo = new THREE.BoxGeometry(11, 3, 11);
-  P(pentGeo, pentMat, 0, 100.8, 0, { collide: false });
+  P(new THREE.BoxGeometry(15, 3.2, 15), pentMat, 0, 100, 0, { collide: false });
+  B(15.6, 0.5, 15.6, M.metal, 0, 101.8, 0, { collide: false });
+  P(new THREE.BoxGeometry(9, 2.2, 9), pentMat, 0, 103.1, 0, { collide: false });
   // Lattice spire: four struts converging to the apex + square cross-braces.
-  const apex = [0, 131, 0], base = 105;
+  const spireMat = lam({ color: 0xa89890, emissive: 0x3a2a26 });
+  const apex = [0, 145, 0], base = 104;
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    strut(b, M.metal, [sx * 1.7, base, sz * 1.7], apex, 0.14, G);
+    strut(b, spireMat, [sx * 1.6, base, sz * 1.6], apex, 0.24, G);
   }
-  for (const [t, s] of [[0.25, 1.35], [0.5, 1.0], [0.75, 0.6]]) {
+  for (const [t, s] of [[0.25, 1.25], [0.5, 0.85], [0.75, 0.45]]) {
     const y = base + (apex[1] - base) * t, r = s;
-    strut(b, M.metal, [-r, y, r], [r, y, r], 0.07, G);
-    strut(b, M.metal, [r, y, r], [r, y, -r], 0.07, G);
-    strut(b, M.metal, [r, y, -r], [-r, y, -r], 0.07, G);
-    strut(b, M.metal, [-r, y, -r], [-r, y, r], 0.07, G);
+    strut(b, spireMat, [-r, y, r], [r, y, r], 0.1, G);
+    strut(b, spireMat, [r, y, r], [r, y, -r], 0.1, G);
+    strut(b, spireMat, [r, y, -r], [-r, y, -r], 0.1, G);
+    strut(b, spireMat, [-r, y, -r], [-r, y, r], 0.1, G);
   }
   // Red beacon at the tip — dedicated material so the pulse stays local.
   const beaconMat = basic({ color: 0xff5040 });
@@ -988,22 +1014,23 @@ export function torre(b, M) {
 
   // Name band wrapping the tier-2 corner (21 m faces at +/-10.5).
   const signMat = towerSignMat();
-  const bandF = new THREE.Mesh(new THREE.PlaneGeometry(20, 2.0), signMat);
-  bandF.position.set(0, 64, 10.53);
+  const bandF = new THREE.Mesh(new THREE.PlaneGeometry(25, 4.2), signMat);
+  bandF.position.set(0, 86, 13.06);
   G.add(bandF);
-  const bandR = new THREE.Mesh(new THREE.PlaneGeometry(20, 2.0), signMat);
-  bandR.position.set(10.53, 64, 0);
+  const bandR = new THREE.Mesh(new THREE.PlaneGeometry(25, 4.2), signMat);
+  bandR.position.set(13.06, 86, 0);
   bandR.rotation.y = PI / 2;
   G.add(bandR);
   // Band housing.
-  B(21, 2.4, 0.5, M.metal, 0, 64, 10.35, { collide: false });
-  B(0.5, 2.4, 21, M.metal, 10.35, 64, 0, { collide: false });
+  B(26.4, 4.6, 0.2, M.metal, 0, 86, 12.9, { collide: false });
+  B(0.2, 4.6, 26.4, M.metal, 12.9, 86, 0, { collide: false });
 
-  // Moon: small warm disc up-right of the crown, facing back toward the tower.
-  const moon = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), basic({ map: T.moonGlowTex(), transparent: true, depthWrite: false, fog: false }));
-  moon.position.set(18, 95, -55);
-  moon.lookAt(G.position.x + 4, 55, G.position.z);
+  // Moon: small warm disc right of the crown, facing the shot camera.
+  const moon = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), basic({ map: T.moonGlowTex(), transparent: true, depthWrite: false, fog: false }));
+  moon.name = 'moon';
+  moon.position.set(-13.5, 110.2, -43.3);
   G.add(moon);
+  moon.lookAt(356, 74, -98);
 
   // Street level hint + distant grey towers lower-right.
   G.add(flat(60, 60, M.concrete, 0, 0.01, 10));

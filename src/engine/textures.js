@@ -1418,54 +1418,49 @@ export const metroDoorTex = () => canvasTexture(96, 160, (g, w, h) => {
 });
 
 // 'Español' textbook cover: yellow field, black title, subtitle and a simple llama panel.
-export const bookTex = () => canvasTexture(256, 340, (g, w, h) => {
-  g.fillStyle = '#f0c02e';
+export const bookTex = () => canvasTexture(400, 270, (g, w, h) => {
+  g.fillStyle = '#f2c22a';
   g.fillRect(0, 0, w, h);
-  // Page-edge shading on the right/bottom.
-  const shadeG = g.createLinearGradient(w - 26, 0, w, 0);
+  const shadeG = g.createLinearGradient(0, h - 30, 0, h);
   shadeG.addColorStop(0, 'rgba(120,80,20,0)');
-  shadeG.addColorStop(1, 'rgba(120,80,20,0.5)');
+  shadeG.addColorStop(1, 'rgba(120,80,20,0.45)');
   g.fillStyle = shadeG;
-  g.fillRect(w - 26, 0, 26, h);
-  g.fillStyle = '#1c1a16';
-  g.font = 'bold 44px "Arial Black", Arial, sans-serif';
+  g.fillRect(0, h - 30, w, 30);
+  g.fillStyle = '#16140f';
+  g.font = 'bold 50px Arial, sans-serif';
   g.textAlign = 'left';
   g.textBaseline = 'alphabetic';
-  g.fillText('Español', 18, 62);
-  g.font = 'bold 17px Arial, sans-serif';
-  g.fillStyle = 'rgba(28,26,22,0.85)';
-  g.fillText('Lecturas y escritura', 20, 88);
-  // Illustration panel: sky, sun, hills and a simple llama silhouette (own drawing).
-  const px = 18, py = 108, pw = w - 36, ph = h - 140;
-  g.fillStyle = '#2e5f9e';
+  g.fillText('Español', 16, 54);
+  g.font = 'bold 13px Arial, sans-serif';
+  g.fillText('Primer grado', 18, 76);
+  g.fillStyle = '#c0392b';
+  g.fillText('L E C T U R A S', 112, 76);
+  // Illustration panel on the right: night-blue field, sun and a chunky llama (own drawing).
+  const px = w * 0.42, py = 92, pw = w * 0.55, ph = h - 108;
+  g.fillStyle = '#f7f1e3';
   g.fillRect(px, py, pw, ph);
-  g.fillStyle = '#f4d03f';
+  g.fillStyle = '#e0533a';
   g.beginPath();
-  g.arc(px + pw * 0.72, py + ph * 0.24, 20, 0, Math.PI * 2);
+  g.arc(px + pw * 0.82, py + ph * 0.22, 16, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = '#7fb069';
-  g.beginPath();
-  g.ellipse(px + pw * 0.3, py + ph * 0.95, pw * 0.5, ph * 0.3, 0, Math.PI, 0);
-  g.fill();
-  g.fillStyle = '#8a5a2e';
-  // Llama body, neck, head, ears, legs — chunky geometric silhouette.
-  g.fillRect(px + pw * 0.42, py + ph * 0.52, pw * 0.3, ph * 0.2);       // body
-  g.fillRect(px + pw * 0.6, py + ph * 0.3, pw * 0.09, ph * 0.26);      // neck
-  g.fillRect(px + pw * 0.55, py + ph * 0.22, pw * 0.16, ph * 0.1);     // head
-  g.fillRect(px + pw * 0.56, py + ph * 0.18, pw * 0.035, ph * 0.06);   // ear
-  g.fillRect(px + pw * 0.67, py + ph * 0.18, pw * 0.035, ph * 0.06);   // ear
-  g.fillStyle = '#5e3d1e';
-  g.fillRect(px + pw * 0.44, py + ph * 0.72, pw * 0.035, ph * 0.24);   // legs
-  g.fillRect(px + pw * 0.52, py + ph * 0.72, pw * 0.035, ph * 0.24);
-  g.fillRect(px + pw * 0.6, py + ph * 0.72, pw * 0.035, ph * 0.24);
-  g.fillRect(px + pw * 0.66, py + ph * 0.72, pw * 0.035, ph * 0.24);
-  // Panel frame.
-  g.strokeStyle = '#1c1a16';
-  g.lineWidth = 6;
-  g.strokeRect(px + 3, py + 3, pw - 6, ph - 6);
-  g.fillStyle = 'rgba(0,0,0,0.08)';
-  g.fillRect(px, py + ph - 8, pw, 8);
-  grain(g, w, h, 8);
+  g.fillStyle = '#3f8f4a';
+  g.fillRect(px, py + ph * 0.82, pw, ph * 0.18);
+  const blob = (x, y, rx, ry, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); };
+  blob(px + pw * 0.45, py + ph * 0.58, pw * 0.22, ph * 0.15, '#fbfaf5');            // body
+  for (const [dx, dy, r] of [[-0.1, -0.02, 0.05], [0.05, 0.04, 0.06], [0.14, -0.04, 0.04], [-0.02, 0.08, 0.035]]) {
+    blob(px + pw * (0.45 + dx), py + ph * (0.58 + dy), pw * r, pw * r * 0.8, '#151515');
+  }
+  blob(px + pw * 0.66, py + ph * 0.36, pw * 0.05, ph * 0.18, '#fbfaf5');            // neck
+  blob(px + pw * 0.71, py + ph * 0.2, pw * 0.09, ph * 0.08, '#fbfaf5');             // head
+  blob(px + pw * 0.75, py + ph * 0.19, 3, 3, '#151515');
+  g.fillStyle = '#d4a017';
+  g.fillRect(px + pw * 0.62, py + ph * 0.42, pw * 0.09, ph * 0.05);                 // scarf
+  g.fillStyle = '#151515';
+  for (const lx of [0.3, 0.4, 0.5, 0.58]) g.fillRect(px + pw * lx, py + ph * 0.68, pw * 0.035, ph * 0.16);
+  g.strokeStyle = '#16140f';
+  g.lineWidth = 4;
+  g.strokeRect(px + 2, py + 2, pw - 4, ph - 4);
+  grain(g, w, h, 6);
 });
 
 // Library shelf face: dark metal uprights, many rows of colourful spines and a few
@@ -1550,14 +1545,14 @@ export const torreFacadeTex = () => canvasTexture(256, 1024, (g, w, h) => {
   for (let f = 0; f < floors; f++) {
     const y0 = f * fh;
     const hue = hues[f % hues.length];
-    const lit = 0.5 + rand() * 0.5;
-    // Window cells across the floor.
-    const cols = 7, cw = w / cols;
+    const lit = 0.7 + rand() * 0.3;
+    // Window cells across the floor: near-continuous ribbon glazing.
+    const cols = 14, cw = w / cols;
     for (let c = 0; c < cols; c++) {
-      if (rand() < 0.18) continue;
-      g.fillStyle = hue;
-      g.globalAlpha = lit * (0.55 + rand() * 0.45);
-      g.fillRect(c * cw + cw * 0.22, y0 + fh * 0.24, cw * 0.56, fh * 0.44);
+      if (rand() < 0.08) continue;
+      g.fillStyle = rand() < 0.15 ? hues[(f + 2) % hues.length] : hue;
+      g.globalAlpha = lit * (0.7 + rand() * 0.3);
+      g.fillRect(c * cw + cw * 0.08, y0 + fh * 0.18, cw * 0.84, fh * 0.58);
     }
     g.globalAlpha = 1;
     // Bright floor separator line — the strip-light glow between storeys.
@@ -1570,7 +1565,7 @@ export const torreFacadeTex = () => canvasTexture(256, 1024, (g, w, h) => {
   }
   // Vertical piers between window columns.
   g.fillStyle = 'rgba(8,10,16,0.55)';
-  for (let c = 0; c <= 7; c++) g.fillRect(c * (w / 7) - 1, 0, 2, h);
+  for (let c = 0; c <= 14; c++) g.fillRect(c * (w / 14) - 1, 0, 2, h);
 });
 
 // Illuminated name band: warm white field, big dark 'LATINOAMERICANA' letterspaced.
@@ -1623,7 +1618,7 @@ export const stripeTowerTex = () => canvasTexture(256, 512, (g, w, h) => {
 export const bibliotecaMuralTex = () => canvasTexture(1024, 640, (g, w, h) => {
   const rnd = prng('bibmural');
   // Terracotta mosaic ground: per-tile jitter reads as thousands of stones.
-  const tile = 16;
+  const tile = 8;
   const base = ['#8f3a20', '#a04020', '#96502a', '#7e3418', '#b05028'];
   for (let y = 0; y < h; y += tile) {
     for (let x = 0; x < w; x += tile) {
@@ -1675,13 +1670,14 @@ export const bibliotecaMuralTex = () => canvasTexture(1024, 640, (g, w, h) => {
     g.fillStyle = white;
     g.beginPath(); g.arc(cx, cy, r * 0.3, 0, Math.PI * 2); g.fill();
   };
-  disc(w * 0.07, h * 0.5, 74, teal, black);
-  disc(w * 0.6, h * 0.58, 88, cream, '#a04020');
+  disc(w * 0.12, h * 0.52, 110, teal, black);
+  disc(w * 0.72, h * 0.6, 120, cream, '#a04020');
+  for (const [dx, dy, r] of [[0.42, 0.22, 34], [0.9, 0.25, 40], [0.3, 0.8, 30], [0.55, 0.85, 26]]) disc(w * dx, h * dy, r, ochre, blue);
   // Vertical stacks of stepped figure motifs through the centre.
-  for (let col = 0; col < 3; col++) {
-    const sx = w * (0.3 + col * 0.09), top = h * (0.1 + col * 0.05);
-    for (let i = 0; i < 4; i++) {
-      glyph(sx + (rnd() - 0.5) * 10, top + i * h * 0.16, 34 + rnd() * 10, i % 2 ? cream : black, 0);
+  for (let col = 0; col < 6; col++) {
+    const sx = w * (0.26 + col * 0.06), top = h * (0.14 + (col % 3) * 0.04);
+    for (let i = 0; i < 5; i++) {
+      glyph(sx + (rnd() - 0.5) * 10, top + i * h * 0.15, 30 + rnd() * 12, i % 2 ? white : black, 0);
     }
   }
   // Serpent zig-zag bands top and bottom.
@@ -1700,9 +1696,9 @@ export const bibliotecaMuralTex = () => canvasTexture(1024, 640, (g, w, h) => {
   zig(h * 0.09, 14, white);
   zig(h * 0.9, 14, cream);
   // Scattered glyph fields.
-  for (let i = 0; i < 90; i++) {
-    const cols = [cream, white, black, blue, teal, ochre];
-    glyph(rnd() * w, h * 0.16 + rnd() * h * 0.7, 10 + rnd() * 16, cols[Math.floor(rnd() * cols.length)], Math.floor(rnd() * 4));
+  for (let i = 0; i < 420; i++) {
+    const cols = [cream, white, white, black, blue, teal, ochre];
+    glyph(rnd() * w, h * 0.12 + rnd() * h * 0.78, 10 + rnd() * 22, cols[Math.floor(rnd() * cols.length)], Math.floor(rnd() * 4));
   }
   // Horizontal register bands framing the field.
   g.fillStyle = black;
