@@ -10,7 +10,7 @@
   CI deploys to https://nightshift.radarcentral.dev on every push to `main` via `.github/workflows/deploy.yml`.
 - Browser E2E playthroughs of every story (slow, needs Docker): `npm run test:e2e`
 - CDMX showcase tour (non-playable, camera-driven): open the "Ciudad de México" menu card, or
-  `?debug&shot=N` (1–10) to play one shot. The showcase renders at 480p in "photo" mode; the default
+  `?debug&shot=N` (1–7, ordered as the reference tour) to play one shot. The showcase renders at 480p in "photo" mode; the default
   internal render height is 360 (`RENDER_HEIGHT` in `src/engine/post.js`). `?renderH=N` overrides it —
   `record-cdmx.mjs` defaults to `RENDER_H=360`, drop to 300/240 if SwiftShader can't keep up.
 - Record the showcase to `docs/cdmx-night.mp4` (needs the dev server on :5173):

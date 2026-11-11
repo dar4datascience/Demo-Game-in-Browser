@@ -26,7 +26,8 @@ one showcase:
 - **Central de Abasto** (`ceda`): 4:10 AM Iztapalapa market. Three characters (diablero, seller,
   consumer), each with its own mission, all sharing one blackout-chase finale.
 - **Ciudad de México** (`cdmx`): non-playable night-city showcase; `story.js` drives a 10-shot
-  camera tour (`?shot=N` plays one shot) used for `docs/cdmx-night.mp4`.
+  camera tour of the seven reference shots — angel, metro, abarrotes, park, biblioteca,
+  library, torre (`?shot=N` plays one shot) used for `docs/cdmx-night.mp4`.
 
 Everything is procedural: canvas textures, skinned low-poly people, WebAudio. No copied assets or
 real business names.
